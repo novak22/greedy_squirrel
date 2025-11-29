@@ -17,6 +17,7 @@ import { VisualEffects } from '../effects/VisualEffects.js';
 import { SoundManager } from '../audio/SoundManager.js';
 import { Settings } from '../ui/Settings.js';
 import { SpinHistory } from '../ui/SpinHistory.js';
+import { Gamble } from '../features/Gamble.js';
 
 export class SlotMachine {
     constructor() {
@@ -71,8 +72,9 @@ export class SlotMachine {
         this.turboMode = new TurboMode(this);
         this.settings = new Settings(this);
 
-        // Phase 5: Initialize spin history
+        // Phase 5: Initialize spin history and gamble
         this.spinHistory = new SpinHistory(20);
+        this.gamble = new Gamble(this);
 
         // Load saved data
         this.loadGameState();
@@ -500,6 +502,27 @@ export class SlotMachine {
             this.credits
         );
 
+        // Phase 5: Offer gamble on regular wins (not during free spins/bonus)
+        if (totalWin > 0 && !isFreeSpin && !bonusInfo.triggered && this.gamble.canGamble(totalWin)) {
+            // Deduct the win temporarily
+            this.credits -= totalWin;
+            this.updateDisplay();
+
+            // Offer gamble
+            const gambleResult = await this.offerGamble(totalWin);
+
+            // Add gamble result back
+            this.credits += gambleResult;
+            totalWin = gambleResult; // Update total win for history
+            this.lastWin = gambleResult;
+            this.updateDisplay();
+
+            // Track gamble in statistics if they won more
+            if (gambleResult > 0) {
+                this.statistics.recordSpin(this.currentBet, gambleResult, true);
+            }
+        }
+
         // Phase 5: Record spin in history
         const features = [];
         if (this.freeSpins.isActive()) features.push('freeSpins');
@@ -531,6 +554,59 @@ export class SlotMachine {
             await this.spin();
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
+    }
+
+    /**
+     * Phase 5: Offer gamble feature after win
+     */
+    async offerGamble(winAmount) {
+        return new Promise(async (resolve) => {
+            const overlay = document.getElementById('featureOverlay');
+            if (!overlay) {
+                resolve(winAmount);
+                return;
+            }
+
+            overlay.innerHTML = `
+                <div class="gamble-container">
+                    <h2 class="gamble-title">🎴 GAMBLE FEATURE</h2>
+
+                    <div class="gamble-current-win">
+                        <div class="gamble-label">You Won:</div>
+                        <div class="gamble-amount">${winAmount}</div>
+                    </div>
+
+                    <div class="gamble-message">
+                        Try to double your win?<br>
+                        Guess the card color!
+                    </div>
+
+                    <div class="gamble-buttons">
+                        <button class="btn btn-small" id="gambleAccept">
+                            🎲 GAMBLE
+                        </button>
+                        <button class="btn btn-small" id="gambleDecline">
+                            💰 COLLECT
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            overlay.classList.add('show');
+
+            document.getElementById('gambleAccept').addEventListener('click', async () => {
+                overlay.classList.remove('show');
+                // start() now returns a promise that resolves with the final win amount
+                const finalAmount = await this.gamble.start(winAmount);
+                resolve(finalAmount);
+            });
+
+            document.getElementById('gambleDecline').addEventListener('click', () => {
+                overlay.classList.remove('show');
+                this.soundManager.playClick();
+                resolve(winAmount);
+            });
+        });
     }
 
     /**
