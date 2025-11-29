@@ -38,6 +38,7 @@ export class SlotMachine {
         this.reelCount = GAME_CONFIG.reelCount;
         this.rowCount = GAME_CONFIG.rowCount;
         this.symbolsPerReel = GAME_CONFIG.symbolsPerReel;
+        this.betOptions = GAME_CONFIG.betOptions;
 
         // Reel strips (generated once with weighted symbols)
         this.reelStrips = [];
