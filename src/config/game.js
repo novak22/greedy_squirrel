@@ -8,7 +8,7 @@ export const GAME_CONFIG = {
     initialCredits: 1000,
 
     // Bet options
-    betOptions: [10, 20, 50, 100, 200],
+    betOptions: [10, 20, 50, 100, 200, 500, 1000, 2000],
 
     // RTP configuration (Return to Player)
     targetRTP: 95.5, // Target 95.5% RTP
