@@ -8,10 +8,22 @@ export class RNG {
      * @returns {string} - Symbol emoji
      */
     static getWeightedSymbol(reelIndex) {
+        if (typeof reelIndex !== 'number' || reelIndex < 0) {
+            throw new Error(`Invalid reel index: ${reelIndex}. Must be a non-negative number.`);
+        }
+
         const availableSymbols = getSymbolsForReel(reelIndex);
+
+        if (!availableSymbols || availableSymbols.length === 0) {
+            throw new Error(`No symbols available for reel ${reelIndex}`);
+        }
 
         // Calculate total weight
         const totalWeight = availableSymbols.reduce((sum, symbol) => sum + symbol.weight, 0);
+
+        if (totalWeight <= 0) {
+            throw new Error(`Invalid total weight for reel ${reelIndex}: ${totalWeight}`);
+        }
 
         // Generate random number between 0 and totalWeight
         let random = Math.random() * totalWeight;
@@ -35,6 +47,10 @@ export class RNG {
      * @returns {Array<string>} - Array of symbol emojis
      */
     static generateReelStrip(reelIndex, length) {
+        if (typeof length !== 'number' || length <= 0) {
+            throw new Error(`Invalid reel strip length: ${length}. Must be a positive number.`);
+        }
+
         const strip = [];
         for (let i = 0; i < length; i++) {
             strip.push(this.getWeightedSymbol(reelIndex));
@@ -48,6 +64,10 @@ export class RNG {
      * @returns {number} - Random position
      */
     static getRandomPosition(stripLength) {
+        if (typeof stripLength !== 'number' || stripLength <= 0) {
+            throw new Error(`Invalid strip length: ${stripLength}. Must be a positive number.`);
+        }
+
         return Math.floor(Math.random() * stripLength);
     }
 
@@ -59,6 +79,18 @@ export class RNG {
      * @returns {Array<string>} - Array of visible symbols
      */
     static getSymbolsAtPosition(reelStrip, position, count) {
+        if (!Array.isArray(reelStrip) || reelStrip.length === 0) {
+            throw new Error('Invalid reel strip: must be a non-empty array');
+        }
+
+        if (typeof position !== 'number' || position < 0) {
+            throw new Error(`Invalid position: ${position}. Must be a non-negative number.`);
+        }
+
+        if (typeof count !== 'number' || count <= 0) {
+            throw new Error(`Invalid count: ${count}. Must be a positive number.`);
+        }
+
         const symbols = [];
         for (let i = 0; i < count; i++) {
             const index = (position + i) % reelStrip.length;

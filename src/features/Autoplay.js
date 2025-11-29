@@ -88,15 +88,10 @@ export class Autoplay {
             // Delay before next spin (reduced in turbo mode)
             const delay = this.game.turboMode.isActive ? GAME_CONFIG.autoplay.turboDelay : GAME_CONFIG.autoplay.normalDelay;
             this.clearNextSpinTimeout();
-            this.nextSpinTimeout = this.timerManager
-                ? this.timerManager.setTimeout(() => {
-                    this.nextSpinTimeout = null;
-                    this.executeNextSpin();
-                }, delay, 'autoplay')
-                : setTimeout(() => {
-                    this.nextSpinTimeout = null;
-                    this.executeNextSpin();
-                }, delay);
+            this.nextSpinTimeout = this.timerManager.setTimeout(() => {
+                this.nextSpinTimeout = null;
+                this.executeNextSpin();
+            }, delay, 'autoplay');
         } else {
             this.stop();
         }
@@ -107,11 +102,7 @@ export class Autoplay {
      */
     clearNextSpinTimeout() {
         if (this.nextSpinTimeout) {
-            if (this.timerManager) {
-                this.timerManager.clearTimeout(this.nextSpinTimeout);
-            } else {
-                clearTimeout(this.nextSpinTimeout);
-            }
+            this.timerManager.clearTimeout(this.nextSpinTimeout);
             this.nextSpinTimeout = null;
         }
     }
