@@ -28,6 +28,7 @@ import { BuyBonus } from '../features/BuyBonus.js';
 import { WinAnticipation } from '../features/WinAnticipation.js';
 import { TimerManager } from '../utils/TimerManager.js';
 import { Logger } from '../utils/Logger.js';
+import { ErrorHandler, ERROR_TYPES } from './ErrorHandler.js';
 
 export class SlotMachine {
     constructor() {
@@ -82,6 +83,10 @@ export class SlotMachine {
         // Debug mode (enable with ?debug=true in URL)
         this.debugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
         this.debugNextSpin = null; // Format: [['🌰','🌰','🌰'], ['🌰','🌰','🌰'], ...]
+
+        ErrorHandler.init({
+            showMessage: (message) => this.showMessage(message)
+        });
 
         // Track active timers to avoid overlapping animations
         this.winCounterInterval = null;
@@ -911,25 +916,20 @@ export class SlotMachine {
             });
 
         } catch (error) {
-            Logger.error('Spin failed with error:', error);
-
-            // Restore state from checkpoint using GameState
-            this.state.restoreCheckpoint(checkpoint);
-
-            // Re-enable spin button
-            if (this.dom.spinBtn) this.dom.spinBtn.disabled = false;
-
-            // Clear any stuck animations
-            this.cleanupTimers();
-            this.clearWinningSymbols();
-            this.hidePaylines();
-
-            // Notify user
-            await this.showMessage('ERROR: SPIN FAILED\nBET REFUNDED');
-
-            // Update display to reflect restored state
-            this.updateDisplay();
-            this.saveGameState();
+            await ErrorHandler.handle(error, {
+                context: 'Spin',
+                type: ERROR_TYPES.SPIN,
+                userMessage: 'ERROR: SPIN FAILED\nBET REFUNDED',
+                fallback: async () => {
+                    this.state.restoreCheckpoint(checkpoint);
+                    if (this.dom.spinBtn) this.dom.spinBtn.disabled = false;
+                    this.cleanupTimers();
+                    this.clearWinningSymbols();
+                    this.hidePaylines();
+                    this.updateDisplay();
+                    this.saveGameState();
+                }
+            });
         }
     }
 
@@ -970,8 +970,17 @@ export class SlotMachine {
                 await new Promise(resolve => setTimeout(resolve, GAME_CONFIG.animations.freeSpinDelay));
             }
         } catch (error) {
-            Logger.error('Error during free spins execution:', error);
-            await this.freeSpins.end();
+            await ErrorHandler.handle(error, {
+                context: 'FreeSpins',
+                type: ERROR_TYPES.FREE_SPIN,
+                userMessage: 'FREE SPINS INTERRUPTED\nRESUMING NORMAL PLAY',
+                fallback: async () => {
+                    await this.freeSpins.end();
+                    this.state.setSpinning(false);
+                    this.cleanupTimers();
+                    this.updateDisplay();
+                }
+            });
         }
 
         // Restore button state
