@@ -5,13 +5,22 @@ export class VisualEffects {
         this.game = slotMachine;
         this.particlesEnabled = true;
         this.animationsEnabled = true;
+        this.activeParticleEffects = 0;
+        this.effectQueue = [];
+        this.maxConcurrentParticleEffects = 3;
+        this.effectDebounce = 100;
+        this.lastParticleEffectTime = 0;
+    }
+
+    shouldAnimate() {
+        return this.animationsEnabled && !document.hidden;
     }
 
     /**
      * Create particle effect at position
      */
     createParticles(x, y, config = {}) {
-        if (!this.particlesEnabled) return;
+        if (!this.particlesEnabled || !this.shouldAnimate()) return;
 
         const {
             count = 20,
@@ -20,6 +29,51 @@ export class VisualEffects {
             duration = 1000,
             gravity = 0.5
         } = config;
+
+        this.enqueueParticleEffect(() => {
+            this.runParticleEffect(x, y, { count, emoji, spread, duration, gravity });
+        }, duration);
+    }
+
+    enqueueParticleEffect(effectRunner, duration) {
+        if (!this.shouldAnimate()) return;
+
+        const now = Date.now();
+        const shouldQueue =
+            this.activeParticleEffects >= this.maxConcurrentParticleEffects ||
+            (now - this.lastParticleEffectTime < this.effectDebounce && this.effectQueue.length > 0);
+
+        if (shouldQueue) {
+            this.effectQueue.push({ effectRunner, duration });
+            return;
+        }
+
+        this.startParticleEffect(effectRunner, duration);
+    }
+
+    startParticleEffect(effectRunner, duration) {
+        this.activeParticleEffects++;
+        this.lastParticleEffectTime = Date.now();
+        effectRunner();
+
+        setTimeout(() => {
+            this.activeParticleEffects = Math.max(0, this.activeParticleEffects - 1);
+            this.processParticleQueue();
+        }, duration);
+    }
+
+    processParticleQueue() {
+        if (!this.shouldAnimate() || this.effectQueue.length === 0) return;
+
+        while (this.effectQueue.length > 0 && this.activeParticleEffects < this.maxConcurrentParticleEffects) {
+            const nextEffect = this.effectQueue.shift();
+            if (!nextEffect) break;
+            this.startParticleEffect(nextEffect.effectRunner, nextEffect.duration);
+        }
+    }
+
+    runParticleEffect(x, y, config) {
+        const { count, emoji, spread, duration, gravity } = config;
 
         const container = document.createElement('div');
         container.className = 'particle-container';
@@ -81,7 +135,7 @@ export class VisualEffects {
      * Show win celebration effect
      */
     showWinCelebration(winAmount, multiplier) {
-        if (!this.animationsEnabled) return;
+        if (!this.shouldAnimate()) return;
 
         const container = document.querySelector('.game-container');
         if (!container) return;
@@ -113,7 +167,7 @@ export class VisualEffects {
      * Show screen flash effect
      */
     showScreenFlash(color = 'white') {
-        if (!this.animationsEnabled) return;
+        if (!this.shouldAnimate()) return;
 
         const flash = document.createElement('div');
         flash.className = 'screen-flash';
@@ -138,7 +192,7 @@ export class VisualEffects {
      * Animate symbol bounce for wins
      */
     bounceSymbol(symbolElement) {
-        if (!this.animationsEnabled) return;
+        if (!this.shouldAnimate()) return;
 
         symbolElement.style.animation = 'symbolBounce 0.5s ease-in-out';
         setTimeout(() => {
@@ -150,7 +204,7 @@ export class VisualEffects {
      * Show scatter collect animation
      */
     showScatterCollect(scatterElements) {
-        if (!this.animationsEnabled) return;
+        if (!this.shouldAnimate()) return;
 
         scatterElements.forEach((element, index) => {
             setTimeout(() => {
@@ -168,7 +222,7 @@ export class VisualEffects {
      * Show bonus symbol collect animation
      */
     showBonusCollect(bonusElements) {
-        if (!this.animationsEnabled) return;
+        if (!this.shouldAnimate()) return;
 
         bonusElements.forEach((element, index) => {
             setTimeout(() => {
@@ -186,7 +240,7 @@ export class VisualEffects {
      * Create level up fireworks
      */
     showLevelUpEffect() {
-        if (!this.animationsEnabled) return;
+        if (!this.shouldAnimate()) return;
 
         const container = document.querySelector('.game-container');
         if (!container) return;
@@ -216,7 +270,7 @@ export class VisualEffects {
      * Show achievement unlock effect
      */
     showAchievementEffect() {
-        if (!this.animationsEnabled) return;
+        if (!this.shouldAnimate()) return;
 
         const notification = document.getElementById('achievementNotification');
         if (!notification) return;
@@ -237,7 +291,7 @@ export class VisualEffects {
      * Create coin fountain effect for big wins
      */
     showCoinFountain() {
-        if (!this.animationsEnabled) return;
+        if (!this.shouldAnimate()) return;
 
         const container = document.querySelector('.game-container');
         if (!container) return;
@@ -271,6 +325,10 @@ export class VisualEffects {
      */
     toggleAnimations(enabled) {
         this.animationsEnabled = enabled;
+        if (!enabled) {
+            this.effectQueue = [];
+            this.activeParticleEffects = 0;
+        }
     }
 
     /**
