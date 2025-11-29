@@ -800,15 +800,16 @@ export class SlotMachine {
             this.gamble.canGamble(totalWin) &&
             !this.autoCollectEnabled
         ) {
-            // Deduct the win temporarily
-            this.state.deductCredits(totalWin);
+            // Remove the win from credits before gamble (already added in updateCreditsAndStats)
+            const currentCredits = this.state.getCredits();
+            this.state.setCredits(currentCredits - totalWin);
             this.updateDisplay();
 
             // Offer gamble
             const gambleResult = await this.offerGamble(totalWin);
 
             // Add gamble result back
-            this.state.addCredits(gambleResult);
+            this.state.setCredits(this.state.getCredits() + gambleResult);
             totalWin = gambleResult;
             this.state.setLastWin(gambleResult);
             this.updateDisplay();
