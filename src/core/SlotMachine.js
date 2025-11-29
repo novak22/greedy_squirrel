@@ -74,6 +74,9 @@ export class SlotMachine {
         this.turboMode = new TurboMode(this);
         this.settings = new Settings(this);
 
+        // Track active timers to avoid overlapping animations
+        this.winCounterInterval = null;
+
         // Phase 5: Initialize spin history, gamble, buy bonus, and win anticipation
         this.spinHistory = new SpinHistory(20);
         this.gamble = new Gamble(this);
@@ -739,6 +742,7 @@ export class SlotMachine {
         return new Promise((resolve) => {
             const reel = document.getElementById(`reel-${reelIndex}`);
             const container = reel.querySelector('.symbol-container');
+            const symbols = Array.from(container.querySelectorAll('.symbol'));
 
             reel.classList.add('spinning');
 
@@ -747,7 +751,6 @@ export class SlotMachine {
 
             const interval = setInterval(() => {
                 // Show random symbols during spin for visual effect
-                const symbols = container.querySelectorAll('.symbol');
                 const position = RNG.getRandomPosition(this.symbolsPerReel);
                 const displaySymbols = RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], position, this.rowCount);
 
@@ -860,6 +863,12 @@ export class SlotMachine {
         return new Promise((resolve) => {
             const overlay = document.getElementById('winOverlay');
 
+            // Prevent overlapping counter intervals from previous messages
+            if (this.winCounterInterval) {
+                clearInterval(this.winCounterInterval);
+                this.winCounterInterval = null;
+            }
+
             // Phase 5: Win counter animation
             if (winAmount > 0) {
                 this.animateWinCounter(overlay, winAmount, message);
@@ -891,7 +900,7 @@ export class SlotMachine {
         let currentAmount = 0;
         let step = 0;
 
-        const countInterval = setInterval(() => {
+        this.winCounterInterval = setInterval(() => {
             step++;
             currentAmount = Math.min(Math.floor(increment * step), finalAmount);
 
@@ -905,7 +914,8 @@ export class SlotMachine {
             }
 
             if (currentAmount >= finalAmount) {
-                clearInterval(countInterval);
+                clearInterval(this.winCounterInterval);
+                this.winCounterInterval = null;
                 overlay.textContent = baseMessage; // Final message
             }
         }, stepDuration);

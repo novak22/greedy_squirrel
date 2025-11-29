@@ -84,7 +84,7 @@ export class Autoplay {
         // Continue to next spin if still active
         if (this.isActive) {
             // Delay before next spin (reduced in turbo mode)
-            const delay = this.game.turboMode ? 500 : 1000;
+            const delay = this.game.turboMode.isActive ? 500 : 1000;
             this.clearNextSpinTimeout();
             this.nextSpinTimeout = setTimeout(() => {
                 this.nextSpinTimeout = null;
