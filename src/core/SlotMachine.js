@@ -889,8 +889,18 @@ export class SlotMachine {
             await this.executeReelSpin(reelData);
 
             const result = this.getReelResult();
+
+            if (this.debugMode) {
+                console.log('[DEBUG] Reel result:', result);
+            }
+
             let winInfo = PaylineEvaluator.evaluateWins(result, this.state.getCurrentBet());
             const bonusInfo = PaylineEvaluator.checkBonusTrigger(result);
+
+            if (this.debugMode) {
+                console.log('[DEBUG] Win info:', winInfo);
+                console.log('[DEBUG] Scatter count:', winInfo.scatterCount);
+            }
 
             let totalWin = await this.processWins(winInfo, isFreeSpin);
 
