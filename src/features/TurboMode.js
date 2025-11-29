@@ -68,7 +68,7 @@ export class TurboMode {
      * Update turbo mode UI
      */
     updateUI() {
-        const turboBtn = document.getElementById('turboBtn');
+        const turboBtn = this.game.dom?.turboBtn;
         if (!turboBtn) return;
 
         if (!this.unlocked) {
@@ -80,6 +80,10 @@ export class TurboMode {
             turboBtn.style.cursor = 'pointer';
             turboBtn.textContent = '🚀 TURBO';
             turboBtn.classList.toggle('active', this.isActive);
+        }
+
+        if (this.game.ui) {
+            this.game.ui.updateTurboMode(this.isActive);
         }
     }
 

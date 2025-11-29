@@ -104,6 +104,8 @@ export class UIController {
             });
         }
 
+        // Stats modal controls are bound from SlotMachine via bindStatsControls
+
         // Keyboard controls
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
@@ -114,20 +116,32 @@ export class UIController {
         });
 
         // Paytable modal
-        const paytableBtn = document.getElementById('paytableBtn');
-        const closePaytable = document.getElementById('closePaytable');
-        if (paytableBtn) {
-            paytableBtn.addEventListener('click', () => {
+        if (this.dom.paytableBtn) {
+            this.dom.paytableBtn.addEventListener('click', () => {
                 this.state.setState('ui.showPaytable', true);
                 this.togglePaytable(true);
             });
         }
-        if (closePaytable) {
-            closePaytable.addEventListener('click', () => {
+        if (this.dom.closePaytable) {
+            this.dom.closePaytable.addEventListener('click', () => {
                 this.state.setState('ui.showPaytable', false);
                 this.togglePaytable(false);
             });
         }
+    }
+
+    bindStatsControls(onToggle, onTabChange) {
+        if (this.dom.statsBtn) {
+            this.dom.statsBtn.addEventListener('click', onToggle);
+        }
+
+        if (this.dom.closeStats) {
+            this.dom.closeStats.addEventListener('click', onToggle);
+        }
+
+        this.dom.statsTabs?.forEach(tab => {
+            tab.addEventListener('click', () => onTabChange(tab.dataset.tab));
+        });
     }
 
 
@@ -136,10 +150,7 @@ export class UIController {
      * @param {Set<string>} winningPositions - Set of position strings "reel-row"
      */
     highlightWinningSymbols(winningPositions) {
-        // Clear previous highlights
-        document.querySelectorAll('.symbol.winning').forEach(symbol => {
-            symbol.classList.remove('winning');
-        });
+        this.clearWinningSymbols();
 
         if (!winningPositions || winningPositions.size === 0) return;
 
@@ -166,7 +177,7 @@ export class UIController {
         if (!winningLines || winningLines.length === 0) return;
 
         winningLines.forEach(lineIndex => {
-            const payline = document.querySelector(`.payline-${lineIndex + 1}`);
+            const payline = this.dom.paylines?.find(line => line.classList.contains(`payline-${lineIndex + 1}`));
             if (payline) {
                 payline.classList.add('active');
             }
@@ -177,7 +188,7 @@ export class UIController {
      * Hide all paylines
      */
     hidePaylines() {
-        document.querySelectorAll('.payline').forEach(line => {
+        this.dom.paylines?.forEach(line => {
             line.classList.remove('active');
         });
     }
@@ -186,9 +197,34 @@ export class UIController {
      * Clear winning symbols highlights
      */
     clearWinningSymbols() {
-        document.querySelectorAll('.symbol.winning').forEach(symbol => {
-            symbol.classList.remove('winning');
+        this.dom.reels.forEach(reel => {
+            const winningSymbols = reel?.querySelectorAll('.symbol.winning') || [];
+            winningSymbols.forEach(symbol => symbol.classList.remove('winning'));
         });
+    }
+
+    toggleStatsModal(show) {
+        if (!this.dom.statsModal) return;
+
+        this.dom.statsModal.classList.toggle('active', show);
+    }
+
+    setActiveStatsTab(tab) {
+        this.dom.statsTabs?.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tab);
+        });
+    }
+
+    renderStatsContent(html) {
+        if (this.dom.statsContentArea) {
+            this.dom.statsContentArea.innerHTML = html;
+        }
+    }
+
+    clearElementContent(element) {
+        if (element) {
+            element.innerHTML = '';
+        }
     }
 
     /**
@@ -270,6 +306,20 @@ export class UIController {
         }
     }
 
+    showFeatureOverlay(content) {
+        if (!this.dom.featureOverlay) return null;
+
+        this.dom.featureOverlay.innerHTML = content;
+        this.dom.featureOverlay.classList.add('show');
+        return this.dom.featureOverlay;
+    }
+
+    hideFeatureOverlay() {
+        if (!this.dom.featureOverlay) return;
+
+        this.dom.featureOverlay.classList.remove('show');
+    }
+
     /**
      * Update turbo mode UI
      * @param {boolean} enabled - Turbo mode state
@@ -277,6 +327,10 @@ export class UIController {
     updateTurboMode(enabled) {
         if (this.dom.turboBtn) {
             this.dom.turboBtn.classList.toggle('active', enabled);
+        }
+
+        if (this.dom.gameContainer) {
+            this.dom.gameContainer.classList.toggle('turbo-mode', enabled);
         }
     }
 
@@ -309,7 +363,7 @@ export class UIController {
      * Trigger screen shake effect
      */
     triggerScreenShake() {
-        const container = document.querySelector('.slot-machine');
+        const container = this.dom.slotMachineContainer || this.dom.gameContainer;
         if (!container) return;
 
         container.classList.add('shake');
@@ -324,7 +378,7 @@ export class UIController {
      * @param {number} total - Total free spins
      */
     updateFreeSpinsCounter(remaining, total) {
-        const counter = document.getElementById('freeSpinsCounter');
+        const counter = this.dom.freeSpinsCounter;
         if (!counter) return;
 
         if (remaining > 0) {
