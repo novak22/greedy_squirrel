@@ -14,11 +14,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Expose to window for debugging
     window.game = game;
 
-    const cleanupTimers = () => game.cleanupTimers();
+    const disposeGame = () => {
+        if (typeof game.dispose === 'function') {
+            game.dispose();
+        }
+    };
 
-    window.addEventListener('beforeunload', () => {
-        cleanupTimers();
-    });
+    window.addEventListener('beforeunload', disposeGame);
+    window.addEventListener('pagehide', disposeGame);
 
     // Subscribe to game events for debugging/analytics
     game.events.on(GAME_EVENTS.WIN, (data) => {
