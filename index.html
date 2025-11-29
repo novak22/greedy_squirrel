@@ -10,6 +10,10 @@
     <div class="game-container">
         <div class="game-header">
             <h1>🐿️ GREEDY SQUIRREL 🐿️</h1>
+
+            <!-- Phase 3: Level Display -->
+            <div id="levelDisplay" class="level-display"></div>
+
             <div class="info-panel">
                 <div class="info-item">
                     <span class="label">CREDITS</span>
@@ -77,6 +81,8 @@
 
         <div class="paytable-toggle">
             <button class="btn btn-small" id="paytableBtn">PAYTABLE</button>
+            <!-- Phase 3: Stats Button -->
+            <button class="btn btn-small" id="statsBtn">STATS</button>
         </div>
     </div>
 
@@ -85,6 +91,11 @@
     <div id="cascadeMultiplier" class="cascade-multiplier-ui"></div>
     <div id="featureOverlay" class="feature-overlay"></div>
     <div id="bonusGameUI" class="bonus-game-ui"></div>
+
+    <!-- Phase 3: Progression UI Elements -->
+    <div id="achievementNotification" class="achievement-notification"></div>
+    <div id="dailyRewardPrompt" class="daily-reward-prompt"></div>
+    <div id="challengesDisplay" class="challenges-display"></div>
 
     <div class="paytable-modal" id="paytableModal">
         <div class="paytable-content">
@@ -193,6 +204,25 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phase 3: Statistics Modal -->
+    <div class="stats-modal" id="statsModal">
+        <div class="stats-content">
+            <button class="close-btn" id="closeStats">&times;</button>
+            <h2>STATISTICS & ACHIEVEMENTS</h2>
+
+            <div class="stats-tabs">
+                <button class="stats-tab active" data-tab="session">Session</button>
+                <button class="stats-tab" data-tab="alltime">All-Time</button>
+                <button class="stats-tab" data-tab="achievements">Achievements</button>
+                <button class="stats-tab" data-tab="daily">Daily</button>
+            </div>
+
+            <div id="statsContentArea" class="stats-content-area">
+                <!-- Dynamically populated by game -->
             </div>
         </div>
     </div>

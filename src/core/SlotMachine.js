@@ -1,4 +1,4 @@
-// Main SlotMachine class with Phase 1 & 2 enhancements
+// Main SlotMachine class with Phase 1, 2 & 3 enhancements
 import { SYMBOLS, getAllSymbolEmojis } from '../config/symbols.js';
 import { GAME_CONFIG } from '../config/game.js';
 import { RNG } from '../utils/RNG.js';
@@ -7,6 +7,10 @@ import { PaylineEvaluator } from './PaylineEvaluator.js';
 import { FreeSpins } from '../features/FreeSpins.js';
 import { BonusGame } from '../features/BonusGame.js';
 import { Cascade } from '../features/Cascade.js';
+import { LevelSystem } from '../progression/LevelSystem.js';
+import { Achievements } from '../progression/Achievements.js';
+import { DailyRewards } from '../progression/DailyRewards.js';
+import { Statistics } from '../progression/Statistics.js';
 
 export class SlotMachine {
     constructor() {
@@ -48,6 +52,12 @@ export class SlotMachine {
         this.bonusGame = new BonusGame(this);
         this.cascade = new Cascade(this);
 
+        // Phase 3: Initialize progression systems
+        this.levelSystem = new LevelSystem(this);
+        this.achievements = new Achievements(this);
+        this.dailyRewards = new DailyRewards(this);
+        this.statistics = new Statistics(this);
+
         // Load saved data
         this.loadGameState();
 
@@ -58,6 +68,15 @@ export class SlotMachine {
         this.updateDisplay();
         this.createReels();
         this.attachEventListeners();
+
+        // Phase 3: Initialize progression UI
+        this.levelSystem.updateUI();
+        this.dailyRewards.updateChallengesUI();
+
+        // Check if can claim daily reward
+        if (this.dailyRewards.canClaimDailyReward()) {
+            this.showDailyRewardPrompt();
+        }
     }
 
     /**
@@ -70,6 +89,15 @@ export class SlotMachine {
             this.currentBet = savedData.currentBet || GAME_CONFIG.betOptions[0];
             this.currentBetIndex = savedData.currentBetIndex || 0;
             this.stats = savedData.stats || this.stats;
+
+            // Phase 3: Load progression data
+            if (savedData.progression) {
+                this.levelSystem.init(savedData.progression.levelSystem);
+                this.achievements.init(savedData.progression.achievements);
+                this.dailyRewards.init(savedData.progression.dailyRewards);
+                this.statistics.init(savedData.progression.statistics);
+            }
+
             console.log('Game state loaded from localStorage');
         }
     }
@@ -82,7 +110,14 @@ export class SlotMachine {
             credits: this.credits,
             currentBet: this.currentBet,
             currentBetIndex: this.currentBetIndex,
-            stats: this.stats
+            stats: this.stats,
+            // Phase 3: Save progression data
+            progression: {
+                levelSystem: this.levelSystem.getSaveData(),
+                achievements: this.achievements.getSaveData(),
+                dailyRewards: this.dailyRewards.getSaveData(),
+                statistics: this.statistics.getSaveData()
+            }
         });
     }
 
@@ -113,6 +148,24 @@ export class SlotMachine {
         document.getElementById('maxBet').addEventListener('click', () => this.setMaxBet());
         document.getElementById('paytableBtn').addEventListener('click', () => this.togglePaytable(true));
         document.getElementById('closePaytable').addEventListener('click', () => this.togglePaytable(false));
+
+        // Phase 3: Stats button and modal
+        const statsBtn = document.getElementById('statsBtn');
+        if (statsBtn) {
+            statsBtn.addEventListener('click', () => this.toggleStats());
+        }
+
+        const closeStats = document.getElementById('closeStats');
+        if (closeStats) {
+            closeStats.addEventListener('click', () => this.toggleStats());
+        }
+
+        // Phase 3: Stats tabs
+        document.querySelectorAll('.stats-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                this.updateStatsDisplay(tab.dataset.tab);
+            });
+        });
 
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space' && !this.isSpinning) {
@@ -182,6 +235,10 @@ export class SlotMachine {
             this.stats.totalWagered += this.currentBet;
         }
 
+        // Phase 3: Award spin XP
+        this.levelSystem.awardXP('spin');
+        this.dailyRewards.updateChallengeProgress('play_spins', 1);
+
         document.getElementById('spinBtn').disabled = true;
         this.clearWinningSymbols();
         this.hidePaylines();
@@ -221,6 +278,11 @@ export class SlotMachine {
             if (winInfo.hasScatterWin) {
                 message += `\n⭐ ${winInfo.scatterCount} SCATTERS!`;
                 this.stats.scatterHits++;
+
+                // Phase 3: Track scatter hits
+                this.statistics.recordFeatureTrigger('scatter', { count: winInfo.scatterCount });
+                this.dailyRewards.updateChallengeProgress('hit_scatters', winInfo.scatterCount);
+                this.levelSystem.awardXP('scatter');
             }
 
             await this.showMessage(message);
@@ -245,7 +307,24 @@ export class SlotMachine {
                 this.stats.biggestWin = totalWin;
             }
 
+            // Phase 3: Award win XP and track stats
+            this.levelSystem.awardXP('win', totalWin);
+            this.statistics.recordSpin(this.currentBet, totalWin, true);
+            this.dailyRewards.updateChallengeProgress('win_amount', totalWin);
+
+            // Check for big win
+            const winMultiplier = totalWin / this.currentBet;
+            if (winMultiplier >= 100) {
+                this.levelSystem.awardXP('bigWin');
+            }
+
+            // Update daily challenges
+            this.dailyRewards.updateChallengeProgress('big_win', winMultiplier >= 50 ? 1 : 0);
+
             this.updateDisplay();
+        } else {
+            // Phase 3: Track loss
+            this.statistics.recordSpin(this.currentBet, 0, false);
         }
 
         // Phase 2: Check for Free Spins trigger
@@ -256,6 +335,12 @@ export class SlotMachine {
             } else {
                 // Initial trigger
                 this.stats.freeSpinsTriggers++;
+
+                // Phase 3: Track free spins trigger
+                this.statistics.recordFeatureTrigger('freeSpins');
+                this.levelSystem.awardXP('freeSpins');
+                this.dailyRewards.updateChallengeProgress('trigger_freespins', 1);
+
                 await this.freeSpins.trigger(winInfo.scatterCount);
 
                 // Execute free spins
@@ -266,6 +351,12 @@ export class SlotMachine {
         // Phase 2: Check for Bonus trigger
         if (bonusInfo.triggered && !isFreeSpin) {
             this.stats.bonusHits++;
+
+            // Phase 3: Track bonus trigger
+            this.statistics.recordFeatureTrigger('bonus');
+            this.levelSystem.awardXP('bonus');
+            this.dailyRewards.updateChallengeProgress('trigger_bonus', 1);
+
             const bonusCount = bonusInfo.bonusLines[0].count;
             await this.bonusGame.trigger(bonusCount);
 
@@ -291,6 +382,14 @@ export class SlotMachine {
                 const freeSpinsTotal = await this.freeSpins.end();
             }
         }
+
+        // Phase 3: Check achievements
+        this.achievements.checkAchievements(
+            this.statistics.allTime,
+            this.lastWin,
+            this.currentBet,
+            this.credits
+        );
 
         // Save game state after each spin
         this.saveGameState();
@@ -435,5 +534,248 @@ export class SlotMachine {
         } else {
             modal.classList.remove('show');
         }
+    }
+
+    /**
+     * Phase 3: Show level up message
+     */
+    async showLevelUpMessage(level, reward) {
+        const overlay = document.getElementById('featureOverlay');
+        if (!overlay) return;
+
+        let rewardText = '';
+        if (reward) {
+            rewardText = `<p class="level-reward">+${reward.credits} Credits</p>`;
+            if (reward.type === 'feature') {
+                rewardText += `<p class="level-unlock">✨ ${reward.value.toUpperCase()} UNLOCKED!</p>`;
+            }
+        }
+
+        overlay.innerHTML = `
+            <div class="feature-transition">
+                <div class="feature-icon">🎉</div>
+                <h1 class="feature-title">LEVEL UP!</h1>
+                <div class="feature-details">
+                    <p class="level-number-big">LEVEL ${level}</p>
+                    ${rewardText}
+                </div>
+            </div>
+        `;
+        overlay.classList.add('show');
+
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        overlay.classList.remove('show');
+    }
+
+    /**
+     * Phase 3: Show daily reward prompt
+     */
+    async showDailyRewardPrompt() {
+        // Wait a bit after page load
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        const overlay = document.getElementById('featureOverlay');
+        if (!overlay) return;
+
+        overlay.innerHTML = `
+            <div class="feature-transition">
+                <div class="feature-icon">🎁</div>
+                <h1 class="feature-title">DAILY REWARD</h1>
+                <div class="feature-details">
+                    <p class="daily-prompt">Your daily reward is ready!</p>
+                </div>
+                <button class="btn btn-claim-daily" id="claimDailyBtn">CLAIM REWARD</button>
+            </div>
+        `;
+        overlay.classList.add('show');
+
+        // Add click handler
+        document.getElementById('claimDailyBtn').addEventListener('click', async () => {
+            overlay.classList.remove('show');
+            await this.dailyRewards.claimDailyReward();
+        });
+    }
+
+    /**
+     * Phase 3: Toggle statistics dashboard
+     */
+    toggleStats() {
+        const modal = document.getElementById('statsModal');
+        if (!modal) return;
+
+        if (!modal.classList.contains('active')) {
+            this.currentStatsTab = 'session';
+            this.updateStatsDisplay('session');
+            modal.classList.add('active');
+        } else {
+            modal.classList.remove('active');
+        }
+    }
+
+    /**
+     * Phase 3: Update statistics display with tabs
+     */
+    updateStatsDisplay(tab = 'session') {
+        const container = document.getElementById('statsContentArea');
+        if (!container) return;
+
+        // Update active tab
+        document.querySelectorAll('.stats-tab').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tab);
+        });
+
+        const sessionStats = this.statistics.getSessionStats();
+        const allTimeStats = this.statistics.getAllTimeStats();
+        const achievementStats = this.achievements.getStats();
+
+        let html = '';
+
+        switch(tab) {
+            case 'session':
+                html = `
+                    <h3 style="color: #ffd700; margin-bottom: 20px;">🎮 Current Session</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Spins</div>
+                            <div class="stat-value">${sessionStats.spins}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Wagered</div>
+                            <div class="stat-value">${sessionStats.wagered}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Won</div>
+                            <div class="stat-value">${sessionStats.won}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Net Profit</div>
+                            <div class="stat-value ${sessionStats.netProfit >= 0 ? 'positive' : 'negative'}">${sessionStats.netProfit >= 0 ? '+' : ''}${sessionStats.netProfit}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Win Rate</div>
+                            <div class="stat-value neutral">${sessionStats.winRate}%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Biggest Win</div>
+                            <div class="stat-value">${sessionStats.biggestWin}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Best Streak</div>
+                            <div class="stat-value">${sessionStats.bestStreak}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Play Time</div>
+                            <div class="stat-value">${Statistics.formatTime(sessionStats.sessionTime)}</div>
+                        </div>
+                    </div>
+                `;
+                break;
+
+            case 'alltime':
+                html = `
+                    <h3 style="color: #ffd700; margin-bottom: 20px;">🏆 All-Time Statistics</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Total Spins</div>
+                            <div class="stat-value">${allTimeStats.totalSpins}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total Wagered</div>
+                            <div class="stat-value">${allTimeStats.totalWagered}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total Won</div>
+                            <div class="stat-value">${allTimeStats.totalWon}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Net Profit</div>
+                            <div class="stat-value ${allTimeStats.netProfit >= 0 ? 'positive' : 'negative'}">${allTimeStats.netProfit >= 0 ? '+' : ''}${allTimeStats.netProfit}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">RTP</div>
+                            <div class="stat-value neutral">${allTimeStats.rtp}%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Biggest Win</div>
+                            <div class="stat-value">${allTimeStats.biggestWin}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Win Multiplier</div>
+                            <div class="stat-value">${allTimeStats.biggestWinMultiplier}x</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Best Streak</div>
+                            <div class="stat-value">${allTimeStats.bestWinStreak}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Free Spins</div>
+                            <div class="stat-value">${allTimeStats.freeSpinsTriggers}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Bonus Rounds</div>
+                            <div class="stat-value">${allTimeStats.bonusHits}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Cascade Wins</div>
+                            <div class="stat-value">${allTimeStats.cascadeWins}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total Play Time</div>
+                            <div class="stat-value">${Statistics.formatTime(allTimeStats.totalPlayTime + sessionStats.sessionTime)}</div>
+                        </div>
+                    </div>
+                `;
+                break;
+
+            case 'achievements':
+                const unlocked = this.achievements.getUnlocked();
+                const locked = this.achievements.getLocked();
+
+                html = `
+                    <h3 style="color: #ffd700; margin-bottom: 10px;">🏅 Achievements (${achievementStats.unlocked}/${achievementStats.total})</h3>
+                    <p style="text-align: center; color: #b0bec5; margin-bottom: 20px;">Completion: ${achievementStats.completion}%</p>
+                    <div class="achievements-grid">
+                        ${unlocked.map(a => `
+                            <div class="achievement-item unlocked">
+                                <div class="achievement-item-icon">${a.icon}</div>
+                                <div class="achievement-item-name">${a.name}</div>
+                                <div class="achievement-item-desc">${a.description}</div>
+                                <div class="achievement-item-reward">+${a.reward} Credits</div>
+                                <div class="achievement-item-date">Unlocked ${new Date(a.unlockedAt).toLocaleDateString()}</div>
+                            </div>
+                        `).join('')}
+                        ${locked.map(a => `
+                            <div class="achievement-item locked">
+                                <div class="achievement-item-icon">${a.icon}</div>
+                                <div class="achievement-item-name">???</div>
+                                <div class="achievement-item-desc">${a.description}</div>
+                                <div class="achievement-item-reward">+${a.reward} Credits</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                break;
+
+            case 'daily':
+                const canClaim = this.dailyRewards.canClaimDailyReward();
+                const streak = this.dailyRewards.currentStreak;
+
+                html = `
+                    <h3 style="color: #ffd700; margin-bottom: 20px;">📅 Daily Rewards & Challenges</h3>
+                    <div style="text-align: center; margin: 20px 0;">
+                        <p style="font-size: 1.2em; color: #ffd700; margin-bottom: 15px;">Current Streak: ${streak} days</p>
+                        ${canClaim ?
+                            '<button class="btn-claim-reward" onclick="window.game.dailyRewards.claimDailyReward()">Claim Daily Reward</button>' :
+                            '<p style="color: #b0bec5;">Come back tomorrow for your next reward!</p>'
+                        }
+                    </div>
+                    <div id="challengesListArea" style="margin-top: 30px;"></div>
+                `;
+                container.innerHTML = html;
+                this.dailyRewards.updateChallengesUI();
+                return;
+        }
+
+        container.innerHTML = html;
     }
 }
