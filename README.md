@@ -116,7 +116,7 @@ slotgame1/
 
 See [EVOLUTION_PLAN.md](EVOLUTION_PLAN.md) for the complete roadmap:
 - **Phase 2**: Free spins, bonus rounds, cascading wins
-- **Phase 3**: Level system, achievements, daily rewards
+- **Phase 3**: Level system, achievements, daily challenges
 - **Phase 4**: Autoplay, turbo mode, gamble feature
 - **Phase 5**: Audio system, advanced animations
 - **Phase 6**: Leaderboards, social features

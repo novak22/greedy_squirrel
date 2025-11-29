@@ -1,11 +1,9 @@
-// Daily rewards and challenges system
+// Daily challenges system
 import { PROGRESSION_CONFIG } from '../config/progression.js';
 
-export class DailyRewards {
+export class DailyChallenges {
     constructor(game) {
         this.game = game;
-        this.currentStreak = 0;
-        this.lastClaimDate = null;
         this.challenges = [];
         this.challengeProgress = {};
     }
@@ -15,120 +13,15 @@ export class DailyRewards {
      */
     init(savedData) {
         if (savedData) {
-            this.currentStreak = savedData.currentStreak || 0;
-            this.lastClaimDate = savedData.lastClaimDate || null;
             this.challenges = savedData.challenges || [];
             this.challengeProgress = savedData.challengeProgress || {};
 
-            // Check if need to reset streak
-            this.checkStreakExpiry();
-
-            // Generate new challenges if needed
             if (this.shouldRefreshChallenges()) {
                 this.generateChallenges();
             }
         } else {
             this.generateChallenges();
         }
-    }
-
-    /**
-     * Check if streak has expired
-     */
-    checkStreakExpiry() {
-        if (!this.lastClaimDate) return;
-
-        const timeSinceLastClaim = Date.now() - this.lastClaimDate;
-        const timeout = PROGRESSION_CONFIG.dailyRewards.streakTimeout;
-
-        if (timeSinceLastClaim > timeout * 2) {
-            // More than 48 hours - reset streak
-            this.currentStreak = 0;
-        }
-    }
-
-    /**
-     * Check if can claim daily reward
-     */
-    canClaimDailyReward() {
-        if (!this.lastClaimDate) return true;
-
-        const now = new Date();
-        const lastClaim = new Date(this.lastClaimDate);
-
-        // Check if it's a different day
-        return now.getDate() !== lastClaim.getDate() ||
-               now.getMonth() !== lastClaim.getMonth() ||
-               now.getFullYear() !== lastClaim.getFullYear();
-    }
-
-    /**
-     * Claim daily reward
-     */
-    async claimDailyReward() {
-        if (!this.canClaimDailyReward()) {
-            await this.game.showMessage('Daily reward already claimed!\nCome back tomorrow!');
-            return null;
-        }
-
-        // Increment streak
-        this.currentStreak++;
-        if (this.currentStreak > 7) {
-            this.currentStreak = 1; // Reset after week
-        }
-
-        this.lastClaimDate = Date.now();
-
-        // Get reward for current streak day
-        const rewards = PROGRESSION_CONFIG.dailyRewards.rewards;
-        const reward = rewards[this.currentStreak - 1];
-
-        if (reward) {
-            // Award credits
-            this.game.credits += reward.credits;
-
-            // Award bonus if any
-            if (reward.bonus === 'freeSpins') {
-                // Could trigger free spins here
-                await this.showDailyRewardClaimed(reward);
-            } else {
-                await this.showDailyRewardClaimed(reward);
-            }
-
-            this.game.updateDisplay();
-            this.game.saveGameState();
-
-            return reward;
-        }
-
-        return null;
-    }
-
-    /**
-     * Show daily reward claimed message
-     */
-    async showDailyRewardClaimed(reward) {
-        const overlay = document.getElementById('featureOverlay');
-        if (!overlay) return;
-
-        overlay.innerHTML = `
-            <div class="feature-transition">
-                <div class="feature-icon">🎁</div>
-                <h1 class="feature-title">DAILY REWARD!</h1>
-                <div class="feature-details">
-                    <p class="daily-streak">Day ${this.currentStreak} Streak</p>
-                    <p class="daily-reward">+${reward.credits} Credits</p>
-                    <p class="daily-description">${reward.description}</p>
-                    ${reward.bonus ? `<p class="daily-bonus">BONUS: ${reward.bonusValue} Free Spins!</p>` : ''}
-                </div>
-                <p class="feature-end">Keep your streak alive!</p>
-            </div>
-        `;
-        overlay.classList.add('show');
-
-        await new Promise(resolve => setTimeout(resolve, 3000));
-
-        overlay.classList.remove('show');
     }
 
     /**
@@ -239,7 +132,7 @@ export class DailyRewards {
                     <div class="challenge-stats">${challenge.progress} / ${challenge.target}</div>
                     <div class="challenge-reward">
                         ${challenge.completed && !challenge.claimed ?
-                            `<button class="btn-claim" onclick="window.game.dailyRewards.claimChallengeReward('${challenge.id}')">Claim ${challenge.reward} Credits</button>` :
+                            `<button class="btn-claim" onclick="window.game.dailyChallenges.claimChallengeReward('${challenge.id}')">Claim ${challenge.reward} Credits</button>` :
                             challenge.claimed ? '✓ Claimed' :
                             `Reward: ${challenge.reward} Credits`}
                     </div>
@@ -256,8 +149,6 @@ export class DailyRewards {
      */
     getSaveData() {
         return {
-            currentStreak: this.currentStreak,
-            lastClaimDate: this.lastClaimDate,
             challenges: this.challenges,
             challengeProgress: this.challengeProgress
         };
