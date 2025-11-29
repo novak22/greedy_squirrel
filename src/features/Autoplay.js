@@ -1,4 +1,5 @@
 // Autoplay system with configurable settings and stop conditions
+import { GAME_CONFIG } from '../config/game.js';
 
 export class Autoplay {
     constructor(slotMachine, timerManager) {
@@ -8,7 +9,6 @@ export class Autoplay {
 
         // Autoplay settings
         this.settings = {
-            spins: 10,                    // Legacy: preferred spin count (autoplay now runs until stopped)
             stopOnWin: false,             // Stop if any win occurs
             stopOnBigWin: true,           // Stop if win > X * bet
             bigWinMultiplier: 50,         // What counts as a big win
@@ -86,7 +86,7 @@ export class Autoplay {
         // Continue to next spin if still active
         if (this.isActive) {
             // Delay before next spin (reduced in turbo mode)
-            const delay = this.game.turboMode.isActive ? 500 : 1000;
+            const delay = this.game.turboMode.isActive ? GAME_CONFIG.autoplay.turboDelay : GAME_CONFIG.autoplay.normalDelay;
             this.clearNextSpinTimeout();
             this.nextSpinTimeout = this.timerManager
                 ? this.timerManager.setTimeout(() => {

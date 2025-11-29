@@ -359,7 +359,7 @@ export class SlotMachine {
     }
 
     getMaxBetIncrement() {
-        return this.credits * 0.1;
+        return this.credits * GAME_CONFIG.maxBetIncrementPercent;
     }
 
     findHighestBetWithinIncrement(maxIncrement) {
@@ -371,20 +371,26 @@ export class SlotMachine {
         return this.currentBetIndex;
     }
 
-    async spin() {
-        if (this.isSpinning) return;
+    /**
+     * Validate if a spin can be initiated
+     */
+    canSpin() {
+        if (this.isSpinning) return false;
+        if (this.bonusGame.isActive()) return false;
 
-        // Check if in bonus game (can't spin during bonus)
-        if (this.bonusGame.isActive()) return;
-
-        // Free spins mode - don't deduct credits
         const isFreeSpin = this.freeSpins.isActive();
-
         if (!isFreeSpin && this.credits < this.currentBet) {
             this.showMessage('INSUFFICIENT CREDITS');
-            return;
+            return false;
         }
 
+        return true;
+    }
+
+    /**
+     * Initialize spin state and deduct bet
+     */
+    initializeSpin(isFreeSpin) {
         this.isSpinning = true;
 
         // Phase 4: Play spin sound
@@ -414,7 +420,12 @@ export class SlotMachine {
 
         // Phase 5: Reset anticipation state
         this.winAnticipation.reset();
+    }
 
+    /**
+     * Pre-generate reel positions and check for anticipation
+     */
+    prepareReelResults() {
         // Phase 5: Pre-generate all reel positions for anticipation peeking
         const predeterminedPositions = [];
         for (let i = 0; i < this.reelCount; i++) {
@@ -427,14 +438,12 @@ export class SlotMachine {
         });
 
         // Phase 5: Pre-check if we should do anticipation (before spinning any reels)
-        // This determines if we spin sequentially (with anticipation) or in parallel (fast)
         let shouldDoAnticipation = false;
         let anticipationData = null;
         let anticipationReel = -1;
 
         // Quick check: will anticipation trigger on any reel?
         for (let checkReel = 2; checkReel < this.reelCount - 1 && !shouldDoAnticipation; checkReel++) {
-            // Build partial result as if we've stopped checkReel reels
             const partialForCheck = finalResult.slice(0, checkReel);
             const check = this.winAnticipation.checkAnticipation(checkReel, partialForCheck, finalResult);
             if (check) {
@@ -444,6 +453,26 @@ export class SlotMachine {
                 break;
             }
         }
+
+        return {
+            predeterminedPositions,
+            finalResult,
+            shouldDoAnticipation,
+            anticipationData,
+            anticipationReel
+        };
+    }
+
+    /**
+     * Spin reels with optional anticipation effects
+     */
+    async executeReelSpin(reelData) {
+        const {
+            predeterminedPositions,
+            shouldDoAnticipation,
+            anticipationData,
+            anticipationReel
+        } = reelData;
 
         if (shouldDoAnticipation) {
             // Sequential spinning with anticipation effects
@@ -479,17 +508,17 @@ export class SlotMachine {
             }
             await Promise.all(spinPromises);
         }
+    }
 
-        const result = this.getReelResult();
-        let winInfo = PaylineEvaluator.evaluateWins(result, this.currentBet);
-        const bonusInfo = PaylineEvaluator.checkBonusTrigger(result);
-
+    /**
+     * Process wins and apply effects
+     */
+    async processWins(winInfo, isFreeSpin) {
         let totalWin = 0;
 
         if (winInfo.totalWin > 0) {
             // Apply free spins multiplier if active
             if (isFreeSpin) {
-                const originalWin = winInfo.totalWin;
                 winInfo.totalWin = this.freeSpins.applyMultiplier(winInfo.totalWin);
                 this.freeSpins.addWin(winInfo.totalWin);
             }
@@ -505,7 +534,7 @@ export class SlotMachine {
             this.visualEffects.showWinCelebration(winInfo.totalWin, winMultiplier);
 
             // Phase 5: Screen shake for mega wins
-            if (winMultiplier >= 100) {
+            if (winMultiplier >= GAME_CONFIG.winThresholds.mega) {
                 this.triggerScreenShake();
             }
 
@@ -540,7 +569,13 @@ export class SlotMachine {
             }
         }
 
-        // Add total wins to credits
+        return totalWin;
+    }
+
+    /**
+     * Update credits and statistics after win
+     */
+    updateCreditsAndStats(totalWin) {
         if (totalWin > 0) {
             this.credits += totalWin;
             this.lastWin = totalWin;
@@ -557,19 +592,24 @@ export class SlotMachine {
 
             // Check for big win
             const winMultiplier = totalWin / this.currentBet;
-            if (winMultiplier >= 100) {
+            if (winMultiplier >= GAME_CONFIG.winThresholds.mega) {
                 this.levelSystem.awardXP('bigWin');
             }
 
             // Update daily challenges
-            this.dailyChallenges.updateChallengeProgress('big_win', winMultiplier >= 50 ? 1 : 0);
+            this.dailyChallenges.updateChallengeProgress('big_win', winMultiplier >= GAME_CONFIG.winThresholds.big ? 1 : 0);
 
             this.updateDisplay();
         } else {
             // Phase 3: Track loss
             this.statistics.recordSpin(this.currentBet, 0, false);
         }
+    }
 
+    /**
+     * Handle feature triggers (free spins, bonus)
+     */
+    async handleFeatureTriggers(winInfo, bonusInfo, isFreeSpin) {
         // Phase 2: Check for Free Spins trigger
         if (winInfo.hasScatterWin && this.freeSpins.shouldTrigger(winInfo.scatterCount)) {
             if (isFreeSpin) {
@@ -623,12 +663,17 @@ export class SlotMachine {
                 await this.showMessage(`BONUS WIN: ${bonusWin}`);
             }
         }
+    }
 
+    /**
+     * Finalize spin and cleanup
+     */
+    async finalizeSpin(totalWin, winInfo, bonusInfo, isFreeSpin) {
         // Handle free spins countdown
         if (isFreeSpin) {
             const hasMoreSpins = await this.freeSpins.executeSpin();
             if (!hasMoreSpins) {
-                const freeSpinsTotal = await this.freeSpins.end();
+                await this.freeSpins.end();
             }
         }
 
@@ -657,7 +702,7 @@ export class SlotMachine {
 
             // Add gamble result back
             this.credits += gambleResult;
-            totalWin = gambleResult; // Update total win for history
+            totalWin = gambleResult;
             this.lastWin = gambleResult;
             this.updateDisplay();
 
@@ -691,6 +736,32 @@ export class SlotMachine {
     }
 
     /**
+     * Main spin method - orchestrates the entire spin process
+     */
+    async spin() {
+        if (!this.canSpin()) return;
+
+        const isFreeSpin = this.freeSpins.isActive();
+
+        this.initializeSpin(isFreeSpin);
+
+        const reelData = this.prepareReelResults();
+        await this.executeReelSpin(reelData);
+
+        const result = this.getReelResult();
+        let winInfo = PaylineEvaluator.evaluateWins(result, this.currentBet);
+        const bonusInfo = PaylineEvaluator.checkBonusTrigger(result);
+
+        let totalWin = await this.processWins(winInfo, isFreeSpin);
+
+        this.updateCreditsAndStats(totalWin);
+
+        await this.handleFeatureTriggers(winInfo, bonusInfo, isFreeSpin);
+
+        await this.finalizeSpin(totalWin, winInfo, bonusInfo, isFreeSpin);
+    }
+
+    /**
      * Execute all free spins
      */
     async executeFreeSpins() {
@@ -708,7 +779,7 @@ export class SlotMachine {
             await this.spin();
 
             // Short delay between free spins for visibility
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await new Promise(resolve => setTimeout(resolve, GAME_CONFIG.animations.freeSpinDelay));
         }
 
         // Restore button state
@@ -774,9 +845,9 @@ export class SlotMachine {
                 this.cleanupTimers('gamble-offer');
             };
 
-            // Start 5-second auto-collect countdown
+            // Start auto-collect countdown
             const timerDisplay = document.getElementById('gambleOfferTimer');
-            let timeLeft = 5;
+            let timeLeft = GAME_CONFIG.gamble.offerTimeout;
             autoCollectTimer = this.timerManager.setInterval(() => {
                 timeLeft -= 1;
                 if (timerDisplay) {
@@ -824,7 +895,7 @@ export class SlotMachine {
             reel.classList.add('spinning');
 
             let spins = 0;
-            const maxSpins = Math.floor(duration / 100);
+            const maxSpins = Math.floor(duration / GAME_CONFIG.reelSpinInterval);
 
             const interval = this.timerManager.setInterval(() => {
                 // Show random symbols during spin for visual effect
@@ -850,7 +921,7 @@ export class SlotMachine {
 
                         // Phase 5: Add bounce animation and special classes
                         symbols[i].classList.add('landed');
-                        this.timerManager.setTimeout(() => symbols[i].classList.remove('landed'), 600, 'reels');
+                        this.timerManager.setTimeout(() => symbols[i].classList.remove('landed'), GAME_CONFIG.animations.symbolLanded, 'reels');
 
                         // Add special classes for premium symbols
                         this.applySymbolClasses(symbols[i], finalSymbols[i]);
@@ -861,7 +932,7 @@ export class SlotMachine {
 
                     resolve();
                 }
-            }, 100);
+            }, GAME_CONFIG.reelSpinInterval);
         });
     }
 
@@ -968,8 +1039,8 @@ export class SlotMachine {
      * Phase 5: Animate win counter from 0 to final amount
      */
     animateWinCounter(overlay, finalAmount, baseMessage) {
-        const duration = this.turboMode.isActive ? 500 : 1000;
-        const steps = this.turboMode.isActive ? 10 : 20;
+        const duration = this.turboMode.isActive ? GAME_CONFIG.animations.winCounterFast : GAME_CONFIG.animations.winCounterNormal;
+        const steps = this.turboMode.isActive ? GAME_CONFIG.animations.winCounterStepsFast : GAME_CONFIG.animations.winCounterStepsNormal;
         const stepDuration = duration / steps;
         const increment = finalAmount / steps;
 
@@ -985,8 +1056,12 @@ export class SlotMachine {
             overlay.textContent = message;
 
             // Play tick sound every few steps
-            if (step % 3 === 0 && this.soundManager.effectsEnabled) {
-                this.soundManager.playTone(400 + (step * 20), 0.03, 'sine');
+            if (step % GAME_CONFIG.soundTickFrequency === 0 && this.soundManager.effectsEnabled) {
+                this.soundManager.playTone(
+                    GAME_CONFIG.soundTickBaseFrequency + (step * GAME_CONFIG.soundTickFrequencyStep),
+                    0.03,
+                    'sine'
+                );
             }
 
             if (currentAmount >= finalAmount) {
@@ -1042,7 +1117,7 @@ export class SlotMachine {
         `;
         overlay.classList.add('show');
 
-        await new Promise(resolve => setTimeout(resolve, 2500));
+        await new Promise(resolve => setTimeout(resolve, GAME_CONFIG.animations.levelUpMessage));
         overlay.classList.remove('show');
     }
 
@@ -1241,7 +1316,7 @@ export class SlotMachine {
 
         this.timerManager.setTimeout(() => {
             container.classList.remove('screen-shake');
-        }, 500, 'visual-effects');
+        }, GAME_CONFIG.animations.screenShake, 'visual-effects');
     }
 
     /**
@@ -1279,7 +1354,7 @@ export class SlotMachine {
      */
     resetAllData() {
         // Clear localStorage
-        localStorage.removeItem('greedySquirrelGame');
+        Storage.clear();
 
         // Reset all game state
         this.credits = GAME_CONFIG.initialCredits;

@@ -102,6 +102,9 @@ export class PaylineEvaluator {
         const bonusEmoji = SYMBOLS.BONUS.emoji;
 
         // Find first non-wild, non-scatter, non-bonus symbol
+        // DESIGN DECISION: Wilds are substitutes only, they do not have their own payout value.
+        // A payline containing only wilds, scatters, or bonus symbols does not pay.
+        // This is intentional game design to balance the RTP.
         let baseSymbol = null;
         for (const symbol of symbols) {
             if (symbol !== wildEmoji && symbol !== scatterEmoji && symbol !== bonusEmoji) {
@@ -110,7 +113,7 @@ export class PaylineEvaluator {
             }
         }
 
-        // If no base symbol found (all wilds/scatters/bonus), no payline win
+        // If no base symbol found (all special symbols), no payline win
         if (!baseSymbol) {
             return { win: 0, matchCount: 0, symbol: null };
         }

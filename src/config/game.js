@@ -10,11 +10,20 @@ export const GAME_CONFIG = {
     // Bet options
     betOptions: [10, 20, 50, 100, 200, 500, 1000, 2000],
 
+    // Betting limits
+    maxBetIncrementPercent: 0.1, // 10% of current balance
+
     // RTP configuration (Return to Player)
     targetRTP: 95.5, // Target 95.5% RTP
 
     // Volatility setting
     volatility: 'medium', // low, medium, high
+
+    // Win thresholds (multipliers)
+    winThresholds: {
+        big: 50,    // 50x bet = big win
+        mega: 100   // 100x bet = mega win
+    },
 
     // Paylines (row indices for each reel)
     paylines: [
@@ -32,10 +41,39 @@ export const GAME_CONFIG = {
 
     // Spin animation timings (ms)
     spinDurations: [2000, 2300, 2600, 2900, 3200],
+    reelSpinInterval: 100, // Update interval during spin animation
+
+    // Animation durations (ms)
+    animations: {
+        symbolLanded: 600,      // Symbol bounce animation when landed
+        levelUpMessage: 2500,   // Level up overlay display time
+        freeSpinDelay: 1500,    // Delay between free spins
+        screenShake: 500,       // Screen shake effect duration
+        winCounterFast: 500,    // Win counter animation (turbo)
+        winCounterNormal: 1000, // Win counter animation (normal)
+        winCounterStepsFast: 10,   // Number of steps in counter (turbo)
+        winCounterStepsNormal: 20  // Number of steps in counter (normal)
+    },
 
     // UI timings
     winDisplayDuration: 2000,
     messageDisplayDuration: 2000,
+
+    // Autoplay delays (ms)
+    autoplay: {
+        normalDelay: 1000,  // Delay between spins (normal mode)
+        turboDelay: 500     // Delay between spins (turbo mode)
+    },
+
+    // Gamble feature
+    gamble: {
+        offerTimeout: 5  // Auto-collect timeout in seconds
+    },
+
+    // Win counter sound
+    soundTickFrequency: 3,  // Play tick sound every N steps
+    soundTickBaseFrequency: 400,  // Base frequency for tick sound
+    soundTickFrequencyStep: 20,   // Frequency increase per step
 
     // localStorage key
     storageKey: 'greedy_squirrel_save'
