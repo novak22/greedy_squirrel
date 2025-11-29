@@ -1,7 +1,7 @@
 // Spin History tracker - records last N spins for player reference
 
 export class SpinHistory {
-    constructor(maxHistory = 20) {
+    constructor(maxHistory = 50) {
         this.maxHistory = maxHistory;
         this.history = [];
         this.isVisible = false;
@@ -125,15 +125,10 @@ export class SpinHistory {
 
         const html = this.history.map((spin, index) => {
             const profitClass = spin.profit > 0 ? 'profit-positive' : spin.profit < 0 ? 'profit-negative' : 'profit-neutral';
-            const timeAgo = this.formatTimeAgo(spin.timestamp);
             const featuresHTML = spin.features.length > 0 ? `<div class="history-features">${this.formatFeatures(spin.features)}</div>` : '';
 
             return `
                 <div class="history-item ${spin.isBigWin ? 'big-win' : ''}">
-                    <div class="history-item-header">
-                        <span class="history-spin-number">#${this.history.length - index}</span>
-                        <span class="history-time">${timeAgo}</span>
-                    </div>
                     <div class="history-item-details">
                         <div class="history-bet">Bet: ${spin.bet}</div>
                         <div class="history-win ${spin.win > 0 ? 'has-win' : ''}">Win: ${spin.win}</div>
@@ -200,7 +195,7 @@ export class SpinHistory {
     formatTimeAgo(timestamp) {
         const seconds = Math.floor((Date.now() - timestamp) / 1000);
 
-        if (seconds < 60) return 'Just now';
+        if (seconds < 60) return `${seconds}s ago`;
         if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
         if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
         return `${Math.floor(seconds / 86400)}d ago`;
