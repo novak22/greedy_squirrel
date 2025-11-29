@@ -19,8 +19,7 @@ export class FreeSpins {
      */
     shouldTrigger(scatterCount) {
         const config = FEATURES_CONFIG.freeSpins.trigger;
-        return scatterCount >= config.minScatters &&
-               config.scatterCounts[scatterCount] !== undefined;
+        return scatterCount >= config.minScatters;
     }
 
     /**
@@ -29,7 +28,9 @@ export class FreeSpins {
      */
     async trigger(scatterCount) {
         const config = FEATURES_CONFIG.freeSpins.trigger;
-        const spinsAwarded = config.scatterCounts[scatterCount];
+        // Cap at 5 for lookup, use max spins for 6+
+        const countKey = Math.min(scatterCount, 5);
+        const spinsAwarded = config.scatterCounts[countKey];
 
         this.remainingSpins = spinsAwarded;
         this.totalSpins = spinsAwarded;
