@@ -34,7 +34,7 @@ body::before {
 .game-container {
     position: relative;
     z-index: 2;
-    max-width: 900px;
+    max-width: 750px;
     width: 95%;
     background: linear-gradient(180deg, #3d2f1f 0%, #2a1f15 100%);
     border: 3px solid #8b5a2b;
@@ -60,6 +60,11 @@ body::before {
     letter-spacing: 4px;
     margin-bottom: 10px;
     font-weight: bold;
+}
+
+.squirrel-flip {
+    display: inline-block;
+    transform: scaleX(-1);
 }
 
 .info-panel {
@@ -2425,6 +2430,20 @@ body::before {
     margin-bottom: 20px;
     color: #cd853f;
     font-size: 1.1em;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.gamble-timer {
+    color: #ffd700;
+    font-weight: bold;
+    animation: pulse 1s ease-in-out infinite;
+}
+
+.timer-value {
+    color: #ff6b6b;
+    font-size: 1.2em;
 }
 
 /* Gamble Message */

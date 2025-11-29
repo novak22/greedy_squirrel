@@ -624,7 +624,7 @@ export class SlotMachine {
 
             overlay.innerHTML = `
                 <div class="gamble-container">
-                    <h2 class="gamble-title">🎴 GAMBLE FEATURE</h2>
+                    <h2 class="gamble-title">🎴 DOUBLE UP</h2>
 
                     <div class="gamble-current-win">
                         <div class="gamble-label">You Won:</div>
@@ -638,7 +638,7 @@ export class SlotMachine {
 
                     <div class="gamble-buttons">
                         <button class="btn btn-small" id="gambleAccept">
-                            🎲 GAMBLE
+                            🎲 DOUBLE UP
                         </button>
                         <button class="btn btn-small" id="gambleDecline">
                             💰 COLLECT

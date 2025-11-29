@@ -4,7 +4,7 @@ export class TurboMode {
     constructor(slotMachine) {
         this.game = slotMachine;
         this.isActive = false;
-        this.unlocked = false;
+        this.unlocked = true; // Unlocked from start
 
         // Turbo speeds (in milliseconds)
         this.normalReelSpinTime = 2000;  // Base time for first reel
@@ -32,11 +32,6 @@ export class TurboMode {
      * Toggle turbo mode on/off
      */
     toggle() {
-        if (!this.unlocked) {
-            this.game.showMessage('Turbo mode unlocks at level 10');
-            return;
-        }
-
         this.isActive = !this.isActive;
         this.updateUI();
 
