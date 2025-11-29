@@ -1513,6 +1513,14 @@ export class SlotMachine {
     }
 
     /**
+     * Fully dispose of timer resources to prevent leaks during teardown.
+     */
+    dispose() {
+        this.cleanupTimers();
+        this.timerManager.dispose();
+    }
+
+    /**
      * Phase 5: Reset all game data
      */
     resetAllData() {

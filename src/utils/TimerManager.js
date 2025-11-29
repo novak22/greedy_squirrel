@@ -2,9 +2,15 @@ export class TimerManager {
     constructor() {
         this.timers = new Map();
         this.clearListeners = new Map(); // label -> [callbacks]
+        this.disposed = false;
     }
 
     setTimeout(callback, delay, label = 'general') {
+        if (this.disposed) {
+            console.warn('Attempted to schedule timeout on disposed TimerManager');
+            return null;
+        }
+
         const handle = setTimeout(() => {
             this.timers.delete(handle);
             callback();
@@ -14,6 +20,11 @@ export class TimerManager {
     }
 
     setInterval(callback, delay, label = 'general') {
+        if (this.disposed) {
+            console.warn('Attempted to schedule interval on disposed TimerManager');
+            return null;
+        }
+
         const handle = setInterval(callback, delay);
         this.timers.set(handle, { type: 'interval', label });
         return handle;
@@ -97,5 +108,20 @@ export class TimerManager {
                 }
             });
         }
+    }
+
+    /**
+     * Clear all timers, notify listeners, and reset references to avoid leaks.
+     */
+    dispose() {
+        if (this.disposed) return;
+
+        this.clearAll();
+        this.clearListeners.clear();
+
+        // Reset references to help garbage collection and prevent accidental reuse
+        this.timers = new Map();
+        this.clearListeners = new Map();
+        this.disposed = true;
     }
 }
