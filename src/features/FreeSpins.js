@@ -160,6 +160,8 @@ export class FreeSpins {
         const overlay = document.getElementById('featureOverlay');
         if (!overlay) return;
 
+        console.log('[FreeSpins] showTransition - scatterCount:', scatterCount, 'spinsAwarded:', spinsAwarded, 'multiplier:', this.multiplier);
+
         overlay.innerHTML = `
             <div class="feature-transition">
                 <div class="feature-icon">⭐⭐⭐</div>

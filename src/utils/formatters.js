@@ -7,11 +7,21 @@
  * @returns {string} - Formatted number
  */
 export function formatNumber(value, separator = ',') {
-    if (typeof value !== 'number' || !Number.isFinite(value)) {
+    // Handle undefined, null, or non-numeric values
+    if (value === undefined || value === null) {
+        console.warn('formatNumber received undefined/null:', value);
         return '0';
     }
 
-    const rounded = Math.floor(value);
+    // Convert to number if it's a string
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
+
+    if (typeof numValue !== 'number' || !Number.isFinite(numValue)) {
+        console.warn('formatNumber received invalid value:', value);
+        return '0';
+    }
+
+    const rounded = Math.floor(numValue);
     return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, separator);
 }
 
