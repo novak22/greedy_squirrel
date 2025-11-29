@@ -29,7 +29,7 @@ export class LevelSystem {
 
         switch (source) {
             case 'spin':
-                xpGained = config.spinBase + (this.game.currentBet / 10) * config.spinMultiplier;
+                xpGained = config.spinBase + (this.game.state.getCurrentBet() / 10) * config.spinMultiplier;
                 break;
             case 'win':
                 xpGained = (amount / 20) * config.winMultiplier;
@@ -84,9 +84,9 @@ export class LevelSystem {
         if (reward) {
             await this.game.showLevelUpMessage(newLevel, reward);
 
-            // Apply reward
+            // Apply reward using GameState
             if (reward.credits) {
-                this.game.credits += reward.credits;
+                this.game.state.addCredits(reward.credits);
                 this.game.updateDisplay();
             }
 

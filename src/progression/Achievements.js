@@ -53,9 +53,9 @@ export class Achievements {
                     achievement.unlockedAt = Date.now();
                     newlyUnlocked.push(achievement);
 
-                    // Award credits
+                    // Award credits using GameState
                     if (achievement.reward) {
-                        this.game.credits += achievement.reward;
+                        this.game.state.addCredits(achievement.reward);
                     }
                 }
             }

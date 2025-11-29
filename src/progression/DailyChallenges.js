@@ -90,7 +90,7 @@ export class DailyChallenges {
         }
 
         challenge.claimed = true;
-        this.game.credits += challenge.reward;
+        this.game.state.addCredits(challenge.reward);
         this.game.updateDisplay();
         this.game.saveGameState();
 

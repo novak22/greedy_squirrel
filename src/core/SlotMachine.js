@@ -6,6 +6,7 @@ import { Storage } from '../utils/Storage.js';
 import { PaylineEvaluator } from './PaylineEvaluator.js';
 import { EventBus, GAME_EVENTS } from './EventBus.js';
 import { StateManager, createInitialState } from './StateManager.js';
+import { GameState } from './GameState.js';
 import { UIController } from '../ui/UIController.js';
 import { FreeSpins } from '../features/FreeSpins.js';
 import { BonusGame } from '../features/BonusGame.js';
@@ -31,6 +32,7 @@ export class SlotMachine {
         this.timerManager = new TimerManager();
         this.events = new EventBus();
         this.stateManager = new StateManager(createInitialState());
+        this.state = new GameState(this.stateManager);
 
         // Game configuration
         this.reelCount = GAME_CONFIG.reelCount;
@@ -43,14 +45,14 @@ export class SlotMachine {
             this.reelStrips.push(RNG.generateReelStrip(i, this.symbolsPerReel));
         }
 
-        // Game state is now managed by StateManager via getters/setters
+        // Game state is now managed by GameState wrapper
         // Initialize state with config defaults
-        this.stateManager.setState('game.credits', GAME_CONFIG.initialCredits);
-        this.stateManager.setState('game.currentBet', GAME_CONFIG.betOptions[0]);
-        this.stateManager.setState('game.currentBetIndex', 0);
-        this.stateManager.setState('game.lastWin', 0);
-        this.stateManager.setState('game.isSpinning', false);
-        this.stateManager.setState('game.reelPositions', [0, 0, 0, 0, 0]);
+        this.state.setCredits(GAME_CONFIG.initialCredits);
+        this.state.setCurrentBet(GAME_CONFIG.betOptions[0]);
+        this.state.setCurrentBetIndex(0);
+        this.state.setLastWin(0);
+        this.state.setSpinning(false);
+        this.state.setReelPositions([0, 0, 0, 0, 0]);
 
         // Initialize bonus features
         this.freeSpins = new FreeSpins(this);
@@ -106,58 +108,6 @@ export class SlotMachine {
             freeSpinsTriggers: this.statistics.allTime.freeSpinsTriggers,
             cascadeWins: this.statistics.allTime.cascadeWins
         };
-    }
-
-    /**
-     * Backward compatibility: State getters/setters that delegate to StateManager
-     * This allows gradual migration while maintaining existing API
-     */
-    get credits() {
-        return this.stateManager.getState('game.credits');
-    }
-
-    set credits(value) {
-        this.stateManager.setState('game.credits', value);
-    }
-
-    get currentBet() {
-        return this.stateManager.getState('game.currentBet');
-    }
-
-    set currentBet(value) {
-        this.stateManager.setState('game.currentBet', value);
-    }
-
-    get currentBetIndex() {
-        return this.stateManager.getState('game.currentBetIndex');
-    }
-
-    set currentBetIndex(value) {
-        this.stateManager.setState('game.currentBetIndex', value);
-    }
-
-    get lastWin() {
-        return this.stateManager.getState('game.lastWin');
-    }
-
-    set lastWin(value) {
-        this.stateManager.setState('game.lastWin', value);
-    }
-
-    get isSpinning() {
-        return this.stateManager.getState('game.isSpinning');
-    }
-
-    set isSpinning(value) {
-        this.stateManager.setState('game.isSpinning', value);
-    }
-
-    get reelPositions() {
-        return this.stateManager.getState('game.reelPositions');
-    }
-
-    set reelPositions(value) {
-        this.stateManager.setState('game.reelPositions', value);
     }
 
     init() {
@@ -224,9 +174,9 @@ export class SlotMachine {
     loadGameState() {
         const savedData = Storage.load();
         if (savedData) {
-            this.credits = savedData.credits || GAME_CONFIG.initialCredits;
-            this.currentBet = savedData.currentBet || GAME_CONFIG.betOptions[0];
-            this.currentBetIndex = savedData.currentBetIndex || 0;
+            this.state.setCredits(savedData.credits || GAME_CONFIG.initialCredits);
+            this.state.setCurrentBet(savedData.currentBet || GAME_CONFIG.betOptions[0]);
+            this.state.setCurrentBetIndex(savedData.currentBetIndex || 0);
             // Note: stats are now handled by Statistics class, not duplicated here
 
             // Load progression data
@@ -264,9 +214,9 @@ export class SlotMachine {
      */
     saveGameState() {
         Storage.save({
-            credits: this.credits,
-            currentBet: this.currentBet,
-            currentBetIndex: this.currentBetIndex,
+            credits: this.state.getCredits(),
+            currentBet: this.state.getCurrentBet(),
+            currentBetIndex: this.state.getCurrentBetIndex(),
             // Note: stats are now saved via progression.statistics
             // Save progression data
             progression: {
@@ -309,7 +259,7 @@ export class SlotMachine {
 
             // Display initial symbols from reel strip
             const position = RNG.getRandomPosition(this.symbolsPerReel);
-            this.reelPositions[i] = position;
+            this.state.setReelPosition(i, position);
             const symbols = RNG.getSymbolsAtPosition(this.reelStrips[i], position, this.rowCount);
 
             for (let j = 0; j < this.rowCount; j++) {
@@ -411,7 +361,7 @@ export class SlotMachine {
         }
 
         document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && !this.isSpinning && !this.autoplay.isActive) {
+            if (e.code === 'Space' && !this.state.isSpinning() && !this.autoplay.isActive) {
                 e.preventDefault();
                 this.spin();
             }
@@ -419,10 +369,10 @@ export class SlotMachine {
     }
 
     updateDisplay() {
-        if (this.dom.credits) this.dom.credits.textContent = this.credits;
-        if (this.dom.bet) this.dom.bet.textContent = this.currentBet;
-        if (this.dom.betDisplay) this.dom.betDisplay.textContent = this.currentBet;
-        if (this.dom.win) this.dom.win.textContent = this.lastWin;
+        if (this.dom.credits) this.dom.credits.textContent = this.state.getCredits();
+        if (this.dom.bet) this.dom.bet.textContent = this.state.getCurrentBet();
+        if (this.dom.betDisplay) this.dom.betDisplay.textContent = this.state.getCurrentBet();
+        if (this.dom.win) this.dom.win.textContent = this.state.getLastWin();
     }
 
     /**
@@ -441,59 +391,59 @@ export class SlotMachine {
     }
 
     changeBet(direction) {
-        if (this.isSpinning) return;
+        if (this.state.isSpinning()) return;
 
         this.soundManager.playClick();
 
         const newIndex = Math.min(
-            Math.max(this.currentBetIndex + direction, 0),
+            Math.max(this.state.getCurrentBetIndex() + direction, 0),
             this.betOptions.length - 1
         );
 
-        if (newIndex === this.currentBetIndex) return;
+        if (newIndex === this.state.getCurrentBetIndex()) return;
 
         const proposedBet = this.betOptions[newIndex];
-        const increment = proposedBet - this.currentBet;
+        const increment = proposedBet - this.state.getCurrentBet();
 
         if (increment > 0 && increment >= this.getMaxBetIncrement()) {
             this.showMessage('BET INCREASE LIMITED TO 10% OF BALANCE');
             return;
         }
 
-        this.currentBetIndex = newIndex;
-        this.currentBet = proposedBet;
+        this.state.setCurrentBetIndex(newIndex);
+        this.state.setCurrentBet(proposedBet);
         this.updateDisplay();
     }
 
     setMaxBet() {
-        if (this.isSpinning) return;
+        if (this.state.isSpinning()) return;
 
         this.soundManager.playClick();
 
         const maxIncrement = this.getMaxBetIncrement();
         const targetIndex = this.findHighestBetWithinIncrement(maxIncrement);
 
-        if (targetIndex === this.currentBetIndex) {
+        if (targetIndex === this.state.getCurrentBetIndex()) {
             this.showMessage('BET INCREASE LIMITED TO 10% OF BALANCE');
             return;
         }
 
-        this.currentBetIndex = targetIndex;
-        this.currentBet = this.betOptions[this.currentBetIndex];
+        this.state.setCurrentBetIndex(targetIndex);
+        this.state.setCurrentBet(this.betOptions[this.state.getCurrentBetIndex()]);
         this.updateDisplay();
     }
 
     getMaxBetIncrement() {
-        return this.credits * GAME_CONFIG.maxBetIncrementPercent;
+        return this.state.getCredits() * GAME_CONFIG.maxBetIncrementPercent;
     }
 
     findHighestBetWithinIncrement(maxIncrement) {
-        for (let i = this.betOptions.length - 1; i > this.currentBetIndex; i--) {
-            if (this.betOptions[i] - this.currentBet < maxIncrement) {
+        for (let i = this.betOptions.length - 1; i > this.state.getCurrentBetIndex(); i--) {
+            if (this.betOptions[i] - this.state.getCurrentBet() < maxIncrement) {
                 return i;
             }
         }
-        return this.currentBetIndex;
+        return this.state.getCurrentBetIndex();
     }
 
     /**
@@ -501,11 +451,11 @@ export class SlotMachine {
      * @returns {boolean} True if spin can proceed, false otherwise
      */
     canSpin() {
-        if (this.isSpinning) return false;
+        if (this.state.isSpinning()) return false;
         if (this.bonusGame.isActive()) return false;
 
         const isFreeSpin = this.freeSpins.isActive();
-        if (!isFreeSpin && this.credits < this.currentBet) {
+        if (!isFreeSpin && this.state.getCredits() < this.state.getCurrentBet()) {
             this.showMessage('INSUFFICIENT CREDITS');
             return false;
         }
@@ -518,17 +468,17 @@ export class SlotMachine {
      * @param {boolean} isFreeSpin - Whether this is a free spin (no bet deduction)
      */
     initializeSpin(isFreeSpin) {
-        this.isSpinning = true;
+        this.state.setSpinning(true);
 
         // Play spin sound
         this.soundManager.playReelSpin();
 
         // Only deduct bet if not in free spins
         if (!isFreeSpin) {
-            this.credits -= this.currentBet;
+            this.state.deductCredits(this.state.getCurrentBet());
         }
 
-        this.lastWin = 0;
+        this.state.setLastWin(0);
         this.updateDisplay();
 
         // Statistics are now tracked via this.statistics.recordSpin()
@@ -670,7 +620,7 @@ export class SlotMachine {
             totalWin = winInfo.totalWin;
 
             // Emit win event
-            const winMultiplier = winInfo.totalWin / this.currentBet;
+            const winMultiplier = winInfo.totalWin / this.state.getCurrentBet();
             this.events.emit(GAME_EVENTS.WIN, {
                 amount: winInfo.totalWin,
                 multiplier: winMultiplier,
@@ -736,16 +686,16 @@ export class SlotMachine {
      */
     updateCreditsAndStats(totalWin) {
         if (totalWin > 0) {
-            this.credits += totalWin;
-            this.lastWin = totalWin;
+            this.state.addCredits(totalWin);
+            this.state.setLastWin(totalWin);
 
             // Award win XP and track stats
             this.levelSystem.awardXP('win', totalWin);
-            this.statistics.recordSpin(this.currentBet, totalWin, true);
+            this.statistics.recordSpin(this.state.getCurrentBet(), totalWin, true);
             this.dailyChallenges.updateChallengeProgress('win_amount', totalWin);
 
             // Check for big win
-            const winMultiplier = totalWin / this.currentBet;
+            const winMultiplier = totalWin / this.state.getCurrentBet();
             if (winMultiplier >= GAME_CONFIG.winThresholds.mega) {
                 this.levelSystem.awardXP('bigWin');
             }
@@ -756,7 +706,7 @@ export class SlotMachine {
             this.updateDisplay();
         } else {
             // Track loss
-            this.statistics.recordSpin(this.currentBet, 0, false);
+            this.statistics.recordSpin(this.state.getCurrentBet(), 0, false);
         }
     }
 
@@ -807,8 +757,8 @@ export class SlotMachine {
 
             const bonusWin = await this.bonusGame.end();
             if (bonusWin > 0) {
-                this.credits += bonusWin;
-                this.lastWin += bonusWin;
+                this.state.addCredits(bonusWin);
+                this.state.setLastWin(this.state.getLastWin() + bonusWin);
                 // Bonus wins tracked via Statistics class
 
                 this.updateDisplay();
@@ -837,9 +787,9 @@ export class SlotMachine {
         // Check achievements
         this.achievements.checkAchievements(
             this.statistics.allTime,
-            this.lastWin,
-            this.currentBet,
-            this.credits
+            this.state.getLastWin(),
+            this.state.getCurrentBet(),
+            this.state.getCredits()
         );
 
         // Offer gamble on regular wins (not during free spins/bonus)
@@ -851,21 +801,21 @@ export class SlotMachine {
             !this.autoCollectEnabled
         ) {
             // Deduct the win temporarily
-            this.credits -= totalWin;
+            this.state.deductCredits(totalWin);
             this.updateDisplay();
 
             // Offer gamble
             const gambleResult = await this.offerGamble(totalWin);
 
             // Add gamble result back
-            this.credits += gambleResult;
+            this.state.addCredits(gambleResult);
             totalWin = gambleResult;
-            this.lastWin = gambleResult;
+            this.state.setLastWin(gambleResult);
             this.updateDisplay();
 
             // Track gamble in statistics if they won more
             if (gambleResult > 0) {
-                this.statistics.recordSpin(this.currentBet, gambleResult, true);
+                this.statistics.recordSpin(this.state.getCurrentBet(), gambleResult, true);
             }
         }
 
@@ -876,17 +826,17 @@ export class SlotMachine {
         if (bonusInfo.triggered) features.push('bonus');
         if (this.cascade.enabled && totalWin > winInfo.totalWin) features.push('cascade');
 
-        this.spinHistory.recordSpin(this.currentBet, totalWin, features);
+        this.spinHistory.recordSpin(this.state.getCurrentBet(), totalWin, features);
 
         // Save game state after each spin
         this.saveGameState();
 
-        this.isSpinning = false;
+        this.state.setSpinning(false);
         if (this.dom.spinBtn) this.dom.spinBtn.disabled = false;
 
-        if (this.credits === 0 && !isFreeSpin) {
+        if (this.state.getCredits() === 0 && !isFreeSpin) {
             await this.showMessage('GAME OVER\nResetting to 1000 credits');
-            this.credits = GAME_CONFIG.initialCredits;
+            this.state.setCredits(GAME_CONFIG.initialCredits);
             this.updateDisplay();
             this.saveGameState();
         }
@@ -900,20 +850,16 @@ export class SlotMachine {
 
         const isFreeSpin = this.freeSpins.isActive();
 
-        // Create checkpoint for error recovery
-        const checkpoint = {
-            credits: this.credits,
-            lastWin: this.lastWin,
-            isSpinning: this.isSpinning
-        };
+        // Create checkpoint for error recovery using GameState
+        const checkpoint = this.state.createCheckpoint();
 
         try {
             this.initializeSpin(isFreeSpin);
 
             // Emit spin start event
             this.events.emit(GAME_EVENTS.SPIN_START, {
-                bet: this.currentBet,
-                credits: this.credits,
+                bet: this.state.getCurrentBet(),
+                credits: this.state.getCredits(),
                 isFreeSpin
             });
 
@@ -921,7 +867,7 @@ export class SlotMachine {
             await this.executeReelSpin(reelData);
 
             const result = this.getReelResult();
-            let winInfo = PaylineEvaluator.evaluateWins(result, this.currentBet);
+            let winInfo = PaylineEvaluator.evaluateWins(result, this.state.getCurrentBet());
             const bonusInfo = PaylineEvaluator.checkBonusTrigger(result);
 
             let totalWin = await this.processWins(winInfo, isFreeSpin);
@@ -934,9 +880,9 @@ export class SlotMachine {
 
             // Emit spin end event
             this.events.emit(GAME_EVENTS.SPIN_END, {
-                bet: this.currentBet,
+                bet: this.state.getCurrentBet(),
                 win: totalWin,
-                credits: this.credits,
+                credits: this.state.getCredits(),
                 winInfo,
                 isFreeSpin
             });
@@ -944,10 +890,8 @@ export class SlotMachine {
         } catch (error) {
             console.error('Spin failed with error:', error);
 
-            // Restore state from checkpoint
-            this.credits = checkpoint.credits;
-            this.lastWin = checkpoint.lastWin;
-            this.isSpinning = false;
+            // Restore state from checkpoint using GameState
+            this.state.restoreCheckpoint(checkpoint);
 
             // Re-enable spin button
             if (this.dom.spinBtn) this.dom.spinBtn.disabled = false;
@@ -1089,7 +1033,7 @@ export class SlotMachine {
      * @returns {Promise<Object>} Win information from PaylineEvaluator
      */
     async evaluateWinsWithoutDisplay(result) {
-        return PaylineEvaluator.evaluateWins(result, this.currentBet);
+        return PaylineEvaluator.evaluateWins(result, this.state.getCurrentBet());
     }
 
     /**
@@ -1143,7 +1087,7 @@ export class SlotMachine {
 
                 // Set final position
                 const finalPosition = predeterminedPosition !== null ? predeterminedPosition : RNG.getRandomPosition(this.symbolsPerReel);
-                this.reelPositions[reelIndex] = finalPosition;
+                this.state.setReelPosition(reelIndex, finalPosition);
                 const finalSymbols = RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], finalPosition, this.rowCount);
 
                 // Update to final symbols
@@ -1585,7 +1529,7 @@ export class SlotMachine {
         if (!label) {
             this.autoplay.isActive = false;
             this.autoplay.updateUI();
-            this.isSpinning = false;
+            this.state.setSpinning(false);
 
             if (this.dom.spinBtn) {
                 this.dom.spinBtn.disabled = false;
@@ -1600,11 +1544,11 @@ export class SlotMachine {
         // Clear localStorage
         Storage.clear();
 
-        // Reset all game state
-        this.credits = GAME_CONFIG.initialCredits;
-        this.currentBet = GAME_CONFIG.betOptions[0];
-        this.currentBetIndex = 0;
-        this.lastWin = 0;
+        // Reset all game state using GameState
+        this.state.setCredits(GAME_CONFIG.initialCredits);
+        this.state.setCurrentBet(GAME_CONFIG.betOptions[0]);
+        this.state.setCurrentBetIndex(0);
+        this.state.setLastWin(0);
 
         // Clear all subsystems (stats are managed by Statistics class)
         this.levelSystem = new LevelSystem(this);

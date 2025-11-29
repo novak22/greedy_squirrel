@@ -12,14 +12,14 @@ export class BuyBonus {
      * Get cost to buy bonus at current bet
      */
     getCost() {
-        return this.game.currentBet * this.costMultiplier;
+        return this.game.state.getCurrentBet() * this.costMultiplier;
     }
 
     /**
      * Check if player can afford to buy bonus
      */
     canBuy() {
-        return this.enabled && this.game.credits >= this.getCost();
+        return this.enabled && this.game.state.getCredits() >= this.getCost();
     }
 
     /**
@@ -54,7 +54,7 @@ export class BuyBonus {
 
             <div class="buy-bonus-balance">
                 <div class="balance-label">Your Credits:</div>
-                <div class="balance-amount ${canAfford ? 'sufficient' : 'insufficient'}">${this.game.credits}</div>
+                <div class="balance-amount ${canAfford ? 'sufficient' : 'insufficient'}">${this.game.state.getCredits()}</div>
             </div>
 
             ${!canAfford ? `
@@ -111,8 +111,8 @@ export class BuyBonus {
 
         const cost = this.getCost();
 
-        // Deduct cost
-        this.game.credits -= cost;
+        // Deduct cost using GameState
+        this.game.state.deductCredits(cost);
         this.game.updateDisplay();
         this.game.saveGameState();
 
@@ -134,13 +134,11 @@ export class BuyBonus {
         const bonusWin = await this.game.bonusGame.end();
 
         if (bonusWin > 0) {
-            this.game.credits += bonusWin;
-            this.game.lastWin = bonusWin;
-            this.game.stats.totalWon += bonusWin;
+            this.game.state.addCredits(bonusWin);
+            this.game.state.setLastWin(bonusWin);
 
-            if (bonusWin > this.game.stats.biggestWin) {
-                this.game.stats.biggestWin = bonusWin;
-            }
+            // Stats are now tracked via statistics class
+            this.game.statistics.recordSpin(this.game.state.getCurrentBet(), bonusWin, true);
 
             // Award XP for bonus
             this.game.levelSystem.awardXP('bonus');
@@ -159,7 +157,7 @@ export class BuyBonus {
         const buyBonusBtn = document.getElementById('buyBonusBtn');
         if (buyBonusBtn) {
             buyBonusBtn.addEventListener('click', () => {
-                if (!this.game.isSpinning) {
+                if (!this.game.state.isSpinning()) {
                     this.show();
                 }
             });
