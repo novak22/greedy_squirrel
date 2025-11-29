@@ -10,12 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const cleanupTimers = () => game.cleanupTimers();
 
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            cleanupTimers();
-        }
-    });
-
     window.addEventListener('beforeunload', () => {
         cleanupTimers();
     });
