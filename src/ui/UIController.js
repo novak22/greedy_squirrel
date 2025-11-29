@@ -118,13 +118,13 @@ export class UIController {
         const closePaytable = document.getElementById('closePaytable');
         if (paytableBtn) {
             paytableBtn.addEventListener('click', () => {
-                this.state.setState('ui.showPaytable', true);
+                this.state.update('ui.showPaytable', true);
                 this.togglePaytable(true);
             });
         }
         if (closePaytable) {
             closePaytable.addEventListener('click', () => {
-                this.state.setState('ui.showPaytable', false);
+                this.state.update('ui.showPaytable', false);
                 this.togglePaytable(false);
             });
         }
@@ -228,7 +228,7 @@ export class UIController {
      */
     animateWinCounter(element, finalAmount) {
         return new Promise((resolve) => {
-            const isTurbo = this.state.getState('controls.turboMode');
+            const isTurbo = this.state.select('controls.turboMode');
             const duration = isTurbo ?
                 GAME_CONFIG.animations.winCounterFast :
                 GAME_CONFIG.animations.winCounterNormal;

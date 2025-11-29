@@ -5,92 +5,71 @@
  * - Single source of truth for all game state
  * - Notify subscribers when state changes
  * - Support nested property paths (e.g., 'game.credits')
- * - Type-safe getters and setters
+ * - Immutable updates with stale-mutation protection
  *
  * Usage:
  *   const state = new StateManager(initialState);
- *   state.setState('game.credits', 1500);
+ *   state.update('game.credits', 1500);
+ *   state.select('game.credits');
  *   state.subscribe('game.credits', (newVal, oldVal) => { ... });
  */
 
 export class StateManager {
     constructor(initialState = {}) {
-        this.state = this.deepClone(initialState);
+        this.version = 0;
+        this.state = this.deepFreeze(this.deepClone(initialState));
         this.subscribers = new Map(); // path -> [callbacks]
         this.wildcardSubscribers = []; // callbacks for '*'
     }
 
     /**
-     * Get state value at path
-     * @param {string} path - Dot-notation path (e.g., 'game.credits')
+     * Read state value directly. Returned objects are frozen to prevent mutations.
+     * @param {string|null} path - Dot-notation path (e.g., 'game.credits'). Null returns the full state.
      * @returns {*} Value at path
      */
-    getState(path = null) {
+    select(path = null) {
         if (!path) return this.deepClone(this.state);
-
-        const keys = path.split('.');
-        let value = this.state;
-
-        for (const key of keys) {
-            if (value === undefined || value === null) return undefined;
-            value = value[key];
-        }
-
-        return value;
+        return this.deepClone(this.getValueAtPath(this.state, path));
     }
 
     /**
-     * Set state value at path and notify subscribers
-     * @param {string} path - Dot-notation path
-     * @param {*} value - New value
-     * @param {boolean} silent - If true, don't notify subscribers
+     * Immutable update for a single path. Accepts value or updater function.
+     * @param {string} path
+     * @param {(*|Function)} updater - New value or function(currentValue) => newValue
+     * @param {Object} options
+     * @param {boolean} [options.silent=false] - If true, skip notifications
+     * @param {number|null} [options.expectedVersion=null] - Optional optimistic lock
      */
-    setState(path, value, silent = false) {
-        const keys = path.split('.');
-        const lastKey = keys.pop();
+    update(path, updater, { silent = false, expectedVersion = null } = {}) {
+        const { nextState, change } = this.applyUpdate(this.state, path, updater);
 
-        // Navigate to parent object
-        let parent = this.state;
-        for (const key of keys) {
-            if (!(key in parent)) {
-                parent[key] = {};
-            }
-            parent = parent[key];
-        }
+        if (!change) return;
 
-        const oldValue = parent[lastKey];
-
-        // Only update if value changed
-        if (this.isEqual(oldValue, value)) {
-            return;
-        }
-
-        parent[lastKey] = value;
-
-        if (!silent) {
-            this.notify(path, value, oldValue);
-        }
+        this.commitState(nextState, [change], silent, expectedVersion);
     }
 
     /**
-     * Update multiple state properties at once
-     * @param {Object} updates - Object with path: value pairs
+     * Update multiple state properties at once immutably
+     * @param {Object} updates - Map of path -> value/updater
+     * @param {Object} options
+     * @param {boolean} [options.silent=false] - If true, skip notifications
+     * @param {number|null} [options.expectedVersion=null] - Optional optimistic lock
      */
-    batchUpdate(updates) {
+    updateMany(updates, { silent = false, expectedVersion = null } = {}) {
+        let draftState = this.state;
         const changes = [];
 
-        for (const [path, value] of Object.entries(updates)) {
-            const oldValue = this.getState(path);
-            this.setState(path, value, true); // Silent updates
-            if (!this.isEqual(oldValue, value)) {
-                changes.push({ path, value, oldValue });
+        for (const [path, updater] of Object.entries(updates)) {
+            const { nextState, change } = this.applyUpdate(draftState, path, updater);
+            draftState = nextState;
+            if (change) {
+                changes.push(change);
             }
         }
 
-        // Notify all changes at once
-        changes.forEach(({ path, value, oldValue }) => {
-            this.notify(path, value, oldValue);
-        });
+        if (changes.length === 0) return;
+
+        this.commitState(draftState, changes, silent, expectedVersion);
     }
 
     /**
@@ -144,7 +123,7 @@ export class StateManager {
         if (callbacks) {
             callbacks.forEach(callback => {
                 try {
-                    callback(newValue, oldValue, path);
+                    callback(this.deepClone(newValue), this.deepClone(oldValue), path);
                 } catch (error) {
                     // Always log errors, not debug-only
                     console.error(`Error in state subscriber for "${path}":`, error);
@@ -157,10 +136,10 @@ export class StateManager {
         if (parentPath) {
             const parentCallbacks = this.subscribers.get(parentPath);
             if (parentCallbacks) {
-                const parentValue = this.getState(parentPath);
+                const parentValue = this.select(parentPath);
                 parentCallbacks.forEach(callback => {
                     try {
-                        callback(parentValue, undefined, parentPath);
+                        callback(this.deepClone(parentValue), undefined, parentPath);
                     } catch (error) {
                         console.error(`Error in parent state subscriber for "${parentPath}":`, error);
                     }
@@ -171,7 +150,7 @@ export class StateManager {
         // Notify wildcard subscribers
         this.wildcardSubscribers.forEach(callback => {
             try {
-                callback(this.state, path);
+                callback(this.deepClone(this.state), path);
             } catch (error) {
                 console.error('Error in wildcard state subscriber:', error);
             }
@@ -197,10 +176,11 @@ export class StateManager {
      */
     reset(path = null, value = {}) {
         if (!path) {
-            this.state = this.deepClone(value);
+            this.state = this.deepFreeze(this.deepClone(value));
+            this.version++;
             this.notify('*', this.state, undefined);
         } else {
-            this.setState(path, value);
+            this.update(path, value);
         }
     }
 
@@ -219,7 +199,8 @@ export class StateManager {
      */
     loadSnapshot(snapshot, silent = false) {
         const oldState = this.state;
-        this.state = this.deepClone(snapshot);
+        this.state = this.deepFreeze(this.deepClone(snapshot));
+        this.version++;
 
         if (!silent) {
             this.notify('*', this.state, oldState);
@@ -311,6 +292,110 @@ export class StateManager {
     clearSubscribers() {
         this.subscribers.clear();
         this.wildcardSubscribers = [];
+    }
+
+    /**
+     * Get immutable value at path from provided state
+     * @param {Object} targetState
+     * @param {string} path
+     * @returns {*}
+     */
+    getValueAtPath(targetState, path) {
+        const keys = path.split('.');
+        let value = targetState;
+
+        for (const key of keys) {
+            if (value === undefined || value === null) return undefined;
+            value = value[key];
+        }
+
+        return value;
+    }
+
+    /**
+     * Apply immutable update to provided state and return change metadata
+     * @param {Object} baseState
+     * @param {string} path
+     * @param {(*|Function)} updater
+     * @returns {{ nextState: Object, change: { path: string, value: *, oldValue: * } | null }}
+     */
+    applyUpdate(baseState, path, updater) {
+        const keys = path.split('.');
+        const lastKey = keys[keys.length - 1];
+        const rootClone = Array.isArray(baseState) ? [...baseState] : { ...baseState };
+
+        let cursorOld = baseState;
+        let cursorNew = rootClone;
+
+        for (let i = 0; i < keys.length - 1; i++) {
+            const key = keys[i];
+            const nextOld = cursorOld?.[key] ?? {};
+            const nextNew = Array.isArray(nextOld) ? [...nextOld] : { ...nextOld };
+            cursorNew[key] = nextNew;
+            cursorOld = nextOld;
+            cursorNew = nextNew;
+        }
+
+        const currentValue = cursorOld ? cursorOld[lastKey] : undefined;
+        const safeCurrent = this.deepClone(currentValue);
+        const resolvedNext = typeof updater === 'function' ? updater(safeCurrent) : updater;
+        const nextValue = this.deepClone(resolvedNext);
+
+        if (this.isEqual(currentValue, nextValue)) {
+            return { nextState: baseState, change: null };
+        }
+
+        cursorNew[lastKey] = nextValue;
+
+        return {
+            nextState: rootClone,
+            change: { path, value: nextValue, oldValue: this.deepClone(currentValue) }
+        };
+    }
+
+    /**
+     * Freeze state tree to prevent stale external mutations
+     * @param {*} value
+     * @returns {*}
+     */
+    deepFreeze(value) {
+        if (value === null || typeof value !== 'object') return value;
+
+        Object.freeze(value);
+        Object.getOwnPropertyNames(value).forEach(prop => {
+            if (Object.prototype.hasOwnProperty.call(value, prop) && value[prop] !== null && typeof value[prop] === 'object' && !Object.isFrozen(value[prop])) {
+                this.deepFreeze(value[prop]);
+            }
+        });
+
+        return value;
+    }
+
+    /**
+     * Commit new state version and notify subscribers
+     * @param {Object} nextState
+     * @param {Array<{ path: string, value: *, oldValue: * }>} changes
+     * @param {boolean} silent
+     * @param {number|null} expectedVersion
+     */
+    commitState(nextState, changes, silent, expectedVersion) {
+        if (expectedVersion !== null && expectedVersion !== this.version) {
+            throw new Error(`Stale state update detected. Expected version ${expectedVersion} but current version is ${this.version}`);
+        }
+
+        const previousState = this.state;
+        this.state = this.deepFreeze(nextState);
+        this.version++;
+
+        if (silent) return;
+
+        changes.forEach(({ path, value, oldValue }) => {
+            this.notify(path, value, oldValue);
+        });
+
+        if (changes.length > 0) {
+            this.notify('*', this.state, previousState);
+        }
     }
 }
 

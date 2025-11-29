@@ -13,7 +13,7 @@ export class GameState {
     // ========== Credits ==========
 
     getCredits() {
-        return this.stateManager.getState('game.credits') || 0;
+        return this.stateManager.select('game.credits') ?? 0;
     }
 
     setCredits(value) {
@@ -27,7 +27,7 @@ export class GameState {
             throw new Error(`Credits must be finite: ${value}`);
         }
 
-        this.stateManager.setState('game.credits', Math.floor(value));
+        this.stateManager.update('game.credits', Math.floor(value));
     }
 
     addCredits(amount) {
@@ -46,7 +46,7 @@ export class GameState {
     // ========== Bet ==========
 
     getCurrentBet() {
-        return this.stateManager.getState('game.currentBet') || 10;
+        return this.stateManager.select('game.currentBet') ?? 10;
     }
 
     setCurrentBet(value) {
@@ -57,11 +57,11 @@ export class GameState {
             throw new Error(`Bet must be positive: ${value}`);
         }
 
-        this.stateManager.setState('game.currentBet', value);
+        this.stateManager.update('game.currentBet', value);
     }
 
     getCurrentBetIndex() {
-        return this.stateManager.getState('game.currentBetIndex') || 0;
+        return this.stateManager.select('game.currentBetIndex') ?? 0;
     }
 
     setCurrentBetIndex(value) {
@@ -72,13 +72,13 @@ export class GameState {
             throw new Error(`Bet index cannot be negative: ${value}`);
         }
 
-        this.stateManager.setState('game.currentBetIndex', value);
+        this.stateManager.update('game.currentBetIndex', value);
     }
 
     // ========== Win ==========
 
     getLastWin() {
-        return this.stateManager.getState('game.lastWin') || 0;
+        return this.stateManager.select('game.lastWin') ?? 0;
     }
 
     setLastWin(value) {
@@ -89,13 +89,13 @@ export class GameState {
             throw new Error(`Last win cannot be negative: ${value}`);
         }
 
-        this.stateManager.setState('game.lastWin', Math.floor(value));
+        this.stateManager.update('game.lastWin', Math.floor(value));
     }
 
     // ========== Spinning State ==========
 
     isSpinning() {
-        return this.stateManager.getState('game.isSpinning') || false;
+        return this.stateManager.select('game.isSpinning') ?? false;
     }
 
     setSpinning(value) {
@@ -103,13 +103,13 @@ export class GameState {
             throw new Error(`Spinning state must be boolean, got ${typeof value}`);
         }
 
-        this.stateManager.setState('game.isSpinning', value);
+        this.stateManager.update('game.isSpinning', value);
     }
 
     // ========== Reel Positions ==========
 
     getReelPositions() {
-        return this.stateManager.getState('game.reelPositions') || [0, 0, 0, 0, 0];
+        return this.stateManager.select('game.reelPositions') || [0, 0, 0, 0, 0];
     }
 
     setReelPositions(value) {
@@ -123,7 +123,7 @@ export class GameState {
             throw new Error(`All reel positions must be non-negative numbers`);
         }
 
-        this.stateManager.setState('game.reelPositions', [...value]);
+        this.stateManager.update('game.reelPositions', () => [...value]);
     }
 
     setReelPosition(reelIndex, position) {
@@ -131,9 +131,11 @@ export class GameState {
             throw new Error(`Invalid reel index: ${reelIndex}`);
         }
 
-        const positions = this.getReelPositions();
-        positions[reelIndex] = position;
-        this.setReelPositions(positions);
+        this.stateManager.update('game.reelPositions', (positions = [0, 0, 0, 0, 0]) => {
+            const nextPositions = Array.isArray(positions) ? [...positions] : [0, 0, 0, 0, 0];
+            nextPositions[reelIndex] = position;
+            return nextPositions;
+        });
     }
 
     // ========== Batch Updates ==========
@@ -166,7 +168,7 @@ export class GameState {
             stateUpdates['game.isSpinning'] = updates.isSpinning;
         }
 
-        this.stateManager.batchUpdate(stateUpdates);
+        this.stateManager.updateMany(stateUpdates);
     }
 
     // ========== Validation Helpers (private) ==========
