@@ -388,6 +388,7 @@ export class SlotMachine {
 
     /**
      * Validate if a spin can be initiated
+     * @returns {boolean} True if spin can proceed, false otherwise
      */
     canSpin() {
         if (this.isSpinning) return false;
@@ -404,6 +405,7 @@ export class SlotMachine {
 
     /**
      * Initialize spin state and deduct bet
+     * @param {boolean} isFreeSpin - Whether this is a free spin (no bet deduction)
      */
     initializeSpin(isFreeSpin) {
         this.isSpinning = true;
@@ -441,67 +443,79 @@ export class SlotMachine {
 
     /**
      * Pre-generate reel positions and check for anticipation
+     * @returns {Object} Object containing reel positions, predetermined symbols, and anticipation data
+     * @returns {number[]} return.reelPositions - Random positions for each reel
+     * @returns {string[][]} return.predeterminedSymbols - Predetermined symbols for each reel
+     * @returns {boolean} return.shouldTriggerAnticipation - Whether to trigger anticipation effects
+     * @returns {Object|null} return.anticipationConfig - Configuration for anticipation effects
+     * @returns {number} return.anticipationTriggerReel - Reel index where anticipation triggers
      */
     prepareReelResults() {
         // Pre-generate all reel positions for anticipation peeking
-        const predeterminedPositions = [];
+        const reelPositions = [];
         for (let i = 0; i < this.reelCount; i++) {
-            predeterminedPositions.push(RNG.getRandomPosition(this.symbolsPerReel));
+            reelPositions.push(RNG.getRandomPosition(this.symbolsPerReel));
         }
 
-        // Calculate final result for anticipation system to peek at
-        const finalResult = predeterminedPositions.map((pos, reelIndex) => {
+        // Calculate predetermined symbols for anticipation system to analyze
+        const predeterminedSymbols = reelPositions.map((pos, reelIndex) => {
             return RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], pos, this.rowCount);
         });
 
-        // Pre-check if we should do anticipation (before spinning any reels)
-        let shouldDoAnticipation = false;
-        let anticipationData = null;
-        let anticipationReel = -1;
+        // Pre-check if we should trigger anticipation effects (before spinning any reels)
+        let shouldTriggerAnticipation = false;
+        let anticipationConfig = null;
+        let anticipationTriggerReel = -1;
 
         // Quick check: will anticipation trigger on any reel?
-        for (let checkReel = 2; checkReel < this.reelCount - 1 && !shouldDoAnticipation; checkReel++) {
-            const partialForCheck = finalResult.slice(0, checkReel);
-            const check = this.winAnticipation.checkAnticipation(checkReel, partialForCheck, finalResult);
-            if (check) {
-                shouldDoAnticipation = true;
-                anticipationReel = checkReel;
-                anticipationData = check;
+        for (let reelIndex = 2; reelIndex < this.reelCount - 1 && !shouldTriggerAnticipation; reelIndex++) {
+            const stoppedReelsSymbols = predeterminedSymbols.slice(0, reelIndex);
+            const anticipationCheck = this.winAnticipation.checkAnticipation(reelIndex, stoppedReelsSymbols, predeterminedSymbols);
+            if (anticipationCheck) {
+                shouldTriggerAnticipation = true;
+                anticipationTriggerReel = reelIndex;
+                anticipationConfig = anticipationCheck;
                 break;
             }
         }
 
         return {
-            predeterminedPositions,
-            finalResult,
-            shouldDoAnticipation,
-            anticipationData,
-            anticipationReel
+            reelPositions,
+            predeterminedSymbols,
+            shouldTriggerAnticipation,
+            anticipationConfig,
+            anticipationTriggerReel
         };
     }
 
     /**
      * Spin reels with optional anticipation effects
+     * @param {Object} reelData - Data from prepareReelResults()
+     * @param {number[]} reelData.reelPositions - Predetermined positions for each reel
+     * @param {boolean} reelData.shouldTriggerAnticipation - Whether to apply anticipation effects
+     * @param {Object} reelData.anticipationConfig - Anticipation configuration data
+     * @param {number} reelData.anticipationTriggerReel - Reel where anticipation triggers
+     * @returns {Promise<void>}
      */
     async executeReelSpin(reelData) {
         const {
-            predeterminedPositions,
-            shouldDoAnticipation,
-            anticipationData,
-            anticipationReel
+            reelPositions,
+            shouldTriggerAnticipation,
+            anticipationConfig,
+            anticipationTriggerReel
         } = reelData;
 
-        if (shouldDoAnticipation) {
+        if (shouldTriggerAnticipation) {
             // Sequential spinning with anticipation effects
             for (let i = 0; i < this.reelCount; i++) {
                 let duration = this.turboMode.getReelSpinTime(i);
 
                 // Apply anticipation effects at the predetermined reel
-                if (i === anticipationReel) {
-                    const extraDelay = this.winAnticipation.getDramaticDelay(anticipationData.intensity);
+                if (i === anticipationTriggerReel) {
+                    const extraDelay = this.winAnticipation.getDramaticDelay(anticipationConfig.intensity);
                     duration += extraDelay;
 
-                    this.winAnticipation.applyAnticipationEffects(anticipationData, anticipationData.intensity);
+                    this.winAnticipation.applyAnticipationEffects(anticipationConfig, anticipationConfig.intensity);
 
                     // Add visual glow to remaining reels
                     for (let j = i; j < this.reelCount; j++) {
@@ -510,7 +524,7 @@ export class SlotMachine {
                     }
                 }
 
-                await this.spinReel(i, duration, predeterminedPositions[i]);
+                await this.spinReel(i, duration, reelPositions[i]);
 
                 // Remove dramatic-slow class after reel stops
                 const reel = document.getElementById(`reel-${i}`);
@@ -521,7 +535,7 @@ export class SlotMachine {
             const spinPromises = [];
             for (let i = 0; i < this.reelCount; i++) {
                 const duration = this.turboMode.getReelSpinTime(i);
-                spinPromises.push(this.spinReel(i, duration, predeterminedPositions[i]));
+                spinPromises.push(this.spinReel(i, duration, reelPositions[i]));
             }
             await Promise.all(spinPromises);
         }
@@ -529,6 +543,14 @@ export class SlotMachine {
 
     /**
      * Process wins and apply effects
+     * @param {Object} winInfo - Win information from PaylineEvaluator
+     * @param {number} winInfo.totalWin - Total win amount
+     * @param {Set} winInfo.winningPositions - Set of winning symbol positions
+     * @param {number[]} winInfo.winningLines - Array of winning payline indices
+     * @param {boolean} winInfo.hasScatterWin - Whether scatter symbols won
+     * @param {number} winInfo.scatterCount - Number of scatter symbols
+     * @param {boolean} isFreeSpin - Whether this is a free spin
+     * @returns {Promise<number>} Total win amount including cascades
      */
     async processWins(winInfo, isFreeSpin) {
         let totalWin = 0;
@@ -591,6 +613,7 @@ export class SlotMachine {
 
     /**
      * Update credits and statistics after win
+     * @param {number} totalWin - Total win amount to add to credits
      */
     updateCreditsAndStats(totalWin) {
         if (totalWin > 0) {
@@ -625,6 +648,12 @@ export class SlotMachine {
 
     /**
      * Handle feature triggers (free spins, bonus)
+     * @param {Object} winInfo - Win information with scatter data
+     * @param {Object} bonusInfo - Bonus trigger information
+     * @param {boolean} bonusInfo.triggered - Whether bonus was triggered
+     * @param {Array} bonusInfo.bonusLines - Array of bonus line data
+     * @param {boolean} isFreeSpin - Whether this is a free spin
+     * @returns {Promise<void>}
      */
     async handleFeatureTriggers(winInfo, bonusInfo, isFreeSpin) {
         // Check for Free Spins trigger
@@ -684,6 +713,11 @@ export class SlotMachine {
 
     /**
      * Finalize spin and cleanup
+     * @param {number} totalWin - Total win amount from this spin
+     * @param {Object} winInfo - Win information
+     * @param {Object} bonusInfo - Bonus trigger information
+     * @param {boolean} isFreeSpin - Whether this was a free spin
+     * @returns {Promise<void>}
      */
     async finalizeSpin(totalWin, winInfo, bonusInfo, isFreeSpin) {
         // Handle free spins countdown
@@ -899,11 +933,25 @@ export class SlotMachine {
 
     /**
      * Evaluate wins without displaying (used by cascade feature)
+     * @param {Array<Array<string>>} result - 2D array of reel symbols
+     * @returns {Promise<Object>} Win information from PaylineEvaluator
      */
     async evaluateWinsWithoutDisplay(result) {
         return PaylineEvaluator.evaluateWins(result, this.currentBet);
     }
 
+    /**
+     * Spin a single reel with animation
+     * NOTE: Performance optimization opportunity - This method updates DOM every 100ms
+     * for visual effect. Could be replaced with pure CSS animations for better performance.
+     * Current approach: JavaScript interval updates symbol text
+     * Better approach: CSS keyframe animation with blur/motion effects
+     *
+     * @param {number} reelIndex - Index of the reel to spin (0-4)
+     * @param {number} duration - How long the reel should spin in milliseconds
+     * @param {number|null} predeterminedPosition - Final position (null = random)
+     * @returns {Promise<void>} Resolves when reel stops spinning
+     */
     spinReel(reelIndex, duration, predeterminedPosition = null) {
         return new Promise((resolve) => {
             const reel = document.getElementById(`reel-${reelIndex}`);
@@ -971,6 +1019,10 @@ export class SlotMachine {
         });
     }
 
+    /**
+     * Get current symbols visible on all reels
+     * @returns {Array<Array<string>>} 2D array of symbols [reel][row]
+     */
     getReelResult() {
         const result = [];
 
@@ -989,6 +1041,10 @@ export class SlotMachine {
         return result;
     }
 
+    /**
+     * Highlight symbols that are part of winning combinations
+     * @param {Set<string>} winningPositions - Set of position strings (e.g., "0-1", "2-3")
+     */
     highlightWinningSymbols(winningPositions) {
         this.clearWinningSymbols();
 
