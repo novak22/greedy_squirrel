@@ -982,6 +982,9 @@ export class SlotMachine {
                     this.dom.spinBtn.disabled = true;
                 }
 
+                // Track remaining spins before the spin to detect stuck state
+                const remainingBefore = this.freeSpins.remainingSpins;
+
                 await this.spin();
 
                 if (this.debugMode) {
@@ -989,8 +992,8 @@ export class SlotMachine {
                 }
 
                 // Safety: if spin didn't decrement remaining spins, break to avoid infinite loop
-                if (this.freeSpins.remainingSpins === this.freeSpins.totalSpins) {
-                    console.error('Free spins stuck - breaking loop');
+                if (this.freeSpins.remainingSpins === remainingBefore) {
+                    console.error('Free spins stuck - remainingSpins did not decrement. Breaking loop.');
                     await this.freeSpins.end();
                     break;
                 }
