@@ -85,7 +85,7 @@ export class SlotMachine {
         this.winCounterInterval = null;
 
         // Initialize gamble and history features
-        this.spinHistory = new SpinHistory(20);
+        this.spinHistory = new SpinHistory(FEATURES_CONFIG.spinHistory.maxEntries);
         this.gamble = new Gamble(this);
         this.buyBonus = new BuyBonus(this);
         this.winAnticipation = new WinAnticipation(this);
@@ -282,17 +282,14 @@ export class SlotMachine {
     }
 
     attachEventListeners() {
-        if (this.dom.spinBtn) this.dom.spinBtn.addEventListener('click', () => this.spin());
-        if (this.dom.increaseBet) this.dom.increaseBet.addEventListener('click', () => this.changeBet(1));
-        if (this.dom.decreaseBet) this.dom.decreaseBet.addEventListener('click', () => this.changeBet(-1));
-        if (this.dom.maxBet) this.dom.maxBet.addEventListener('click', () => this.setMaxBet());
+        // Core game controls moved to UIController to avoid duplication
+        // UIController emits events, SlotMachine subscribes to them
+        this.events.on(GAME_EVENTS.SPIN_START, () => this.spin());
+        this.events.on('bet:increase', () => this.changeBet(1));
+        this.events.on('bet:decrease', () => this.changeBet(-1));
+        this.events.on('bet:max', () => this.setMaxBet());
 
-        const paytableBtn = document.getElementById('paytableBtn');
-        const closePaytable = document.getElementById('closePaytable');
-        if (paytableBtn) paytableBtn.addEventListener('click', () => this.togglePaytable(true));
-        if (closePaytable) closePaytable.addEventListener('click', () => this.togglePaytable(false));
-
-        // Stats button and modal
+        // Stats modal (unique to SlotMachine, not in UIController)
         const statsBtn = document.getElementById('statsBtn');
         if (statsBtn) {
             statsBtn.addEventListener('click', () => this.toggleStats());
@@ -310,7 +307,7 @@ export class SlotMachine {
             });
         });
 
-        // Autoplay and advanced controls
+        // Autoplay and advanced controls (feature-specific, not duplicated)
         const autoplayBtn = document.getElementById('autoplayBtn');
         if (autoplayBtn) {
             autoplayBtn.addEventListener('click', () => {
@@ -366,9 +363,9 @@ export class SlotMachine {
             });
         }
 
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && !this.state.isSpinning() && !this.autoplay.isActive) {
-                e.preventDefault();
+        // Keyboard controls - subscribe to event from UIController
+        this.events.on('keyboard:space', () => {
+            if (!this.state.isSpinning() && !this.autoplay.isActive) {
                 this.spin();
             }
         });
@@ -1071,7 +1068,7 @@ export class SlotMachine {
 
             // Start auto-collect countdown
             const timerDisplay = document.getElementById('gambleOfferTimer');
-            let timeLeft = GAME_CONFIG.gamble.offerTimeout;
+            let timeLeft = FEATURES_CONFIG.gamble.offerTimeout;
             autoCollectTimer = this.timerManager.setInterval(() => {
                 timeLeft -= 1;
                 if (timerDisplay) {
@@ -1605,9 +1602,8 @@ export class SlotMachine {
             this.winCounterInterval = null;
         }
 
-        if (!label || label === 'autoplay') {
-            this.autoplay.onTimersCleared();
-        }
+        // Timer cleanup notifications now handled by TimerManager.onClear() pattern
+        // No need to manually call onTimersCleared()
 
         if (!label) {
             this.autoplay.isActive = false;

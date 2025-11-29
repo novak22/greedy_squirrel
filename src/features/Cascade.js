@@ -41,64 +41,80 @@ export class Cascade {
     /**
      * Execute cascade sequence after a win
      * @param {Set} winningPositions - Positions of winning symbols
-     * @returns {number} - Total cascade wins
+     * @returns {Promise<number>} Total cascade wins
      */
     async executeCascade(winningPositions) {
-        if (!this.enabled || winningPositions.size === 0) {
+        if (!this.enabled || !winningPositions || winningPositions.size === 0) {
             return 0;
         }
 
-        this.reset();
-        let totalWins = 0;
-        let currentWinningPositions = winningPositions;
+        try {
+            this.reset();
+            let totalWins = 0;
+            let currentWinningPositions = winningPositions;
+            let cascadeIterations = 0;
+            const MAX_CASCADE_ITERATIONS = FEATURES_CONFIG.cascade.maxIterations;
 
-        while (currentWinningPositions.size > 0) {
-            // Show current multiplier
-            this.updateMultiplierUI();
+            while (currentWinningPositions.size > 0) {
+                // Safety check to prevent infinite cascade loops
+                if (cascadeIterations >= MAX_CASCADE_ITERATIONS) {
+                    console.error('Cascade: Maximum iteration limit reached, stopping cascade');
+                    break;
+                }
+                cascadeIterations++;
 
-            // Remove winning symbols
-            await this.removeSymbols(currentWinningPositions);
+                // Show current multiplier
+                this.updateMultiplierUI();
 
-            // Drop symbols down
-            await this.dropSymbols(currentWinningPositions);
+                // Remove winning symbols
+                await this.removeSymbols(currentWinningPositions);
 
-            // Fill empty spaces with new symbols
-            await this.fillEmptySpaces(currentWinningPositions);
+                // Drop symbols down
+                await this.dropSymbols(currentWinningPositions);
 
-            // Check for new wins
-            const result = this.game.getReelResult();
-            const winInfo = await this.game.evaluateWinsWithoutDisplay(result);
+                // Fill empty spaces with new symbols
+                await this.fillEmptySpaces(currentWinningPositions);
 
-            if (winInfo.totalWin > 0) {
-                this.cascadeCount++;
-                this.currentMultiplier = this.getMultiplier();
+                // Check for new wins
+                const result = this.game.getReelResult();
+                const winInfo = await this.game.evaluateWinsWithoutDisplay(result);
 
-                // Apply cascade multiplier
-                const cascadeWin = winInfo.totalWin * this.currentMultiplier;
-                totalWins += cascadeWin;
-                this.totalCascadeWins += cascadeWin;
+                if (winInfo.totalWin > 0) {
+                    this.cascadeCount++;
+                    this.currentMultiplier = this.getMultiplier();
 
-                // Track cascade in statistics
-                this.game.statistics.recordFeatureTrigger('cascade');
+                    // Apply cascade multiplier
+                    const cascadeWin = winInfo.totalWin * this.currentMultiplier;
+                    totalWins += cascadeWin;
+                    this.totalCascadeWins += cascadeWin;
 
-                // Highlight new wins
-                this.game.highlightWinningSymbols(winInfo.winningPositions);
-                this.game.showWinningPaylines(winInfo.winningLines);
+                    // Track cascade in statistics
+                    this.game.statistics.recordFeatureTrigger('cascade');
 
-                // Show cascade win
-                await this.showCascadeWin(cascadeWin, this.currentMultiplier);
+                    // Highlight new wins
+                    this.game.highlightWinningSymbols(winInfo.winningPositions);
+                    this.game.showWinningPaylines(winInfo.winningLines);
 
-                currentWinningPositions = winInfo.winningPositions;
-            } else {
-                // No more wins, end cascade
-                currentWinningPositions = new Set();
+                    // Show cascade win
+                    await this.showCascadeWin(cascadeWin, this.currentMultiplier);
+
+                    currentWinningPositions = winInfo.winningPositions;
+                } else {
+                    // No more wins, end cascade
+                    currentWinningPositions = new Set();
+                }
             }
+
+            // Hide multiplier UI
+            this.hideMultiplierUI();
+
+            return totalWins;
+        } catch (error) {
+            console.error('Cascade execution failed:', error);
+            this.hideMultiplierUI();
+            this.reset();
+            return 0;
         }
-
-        // Hide multiplier UI
-        this.hideMultiplierUI();
-
-        return totalWins;
     }
 
     /**

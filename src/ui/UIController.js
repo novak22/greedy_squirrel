@@ -108,7 +108,8 @@ export class UIController {
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
                 e.preventDefault();
-                this.events.emit(GAME_EVENTS.SPIN_START);
+                // Emit keyboard event for game logic to handle conditionally
+                this.events.emit('keyboard:space');
             }
         });
 
@@ -129,27 +130,6 @@ export class UIController {
         }
     }
 
-    /**
-     * Update reel display based on result
-     * @param {Array<Array<string>>} result - 2D array of symbols
-     */
-    updateReels(result) {
-        if (!result || result.length === 0) return;
-
-        for (let reelIndex = 0; reelIndex < result.length; reelIndex++) {
-            const reel = this.dom.reels[reelIndex];
-            if (!reel) continue;
-
-            const symbols = reel.querySelectorAll('.symbol');
-            const reelSymbols = result[reelIndex];
-
-            for (let row = 0; row < reelSymbols.length && row < symbols.length; row++) {
-                if (symbols[row]) {
-                    symbols[row].textContent = reelSymbols[row];
-                }
-            }
-        }
-    }
 
     /**
      * Highlight winning symbol positions
@@ -371,33 +351,6 @@ export class UIController {
         }
     }
 
-    /**
-     * Disable all controls (during features)
-     */
-    disableControls() {
-        if (this.dom.increaseBet) this.dom.increaseBet.disabled = true;
-        if (this.dom.decreaseBet) this.dom.decreaseBet.disabled = true;
-        if (this.dom.maxBet) this.dom.maxBet.disabled = true;
-    }
-
-    /**
-     * Enable all controls
-     */
-    enableControls() {
-        if (this.dom.increaseBet) this.dom.increaseBet.disabled = false;
-        if (this.dom.decreaseBet) this.dom.decreaseBet.disabled = false;
-        if (this.dom.maxBet) this.dom.maxBet.disabled = false;
-    }
-
-    /**
-     * Update spin button text
-     * @param {string} text - Button text
-     */
-    updateSpinButtonText(text) {
-        if (this.dom.spinBtn) {
-            this.dom.spinBtn.textContent = text;
-        }
-    }
 
     /**
      * Cleanup - remove event listeners and subscriptions

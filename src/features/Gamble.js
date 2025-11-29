@@ -1,38 +1,45 @@
 // Gamble/Double-up feature - Red/Black card prediction game
+import { FEATURES_CONFIG } from '../config/features.js';
 
 export class Gamble {
     constructor(slotMachine) {
         this.game = slotMachine;
         this.isActive = false;
         this.currentWin = 0;
-        this.gamblesRemaining = 5;
+        this.gamblesRemaining = FEATURES_CONFIG.gamble.maxAttempts;
         this.history = [];
-        this.maxGambles = 5;
-        this.resolveCallback = null; // Store the resolve callback
+        this.maxGambles = FEATURES_CONFIG.gamble.maxAttempts;
+        this.resolveCallback = null;
     }
 
     /**
      * Check if gamble is available for current win
      */
     canGamble(winAmount) {
-        return winAmount > 0 && winAmount <= 5000; // Max gamble limit
+        if (typeof winAmount !== 'number' || winAmount <= 0) {
+            return false;
+        }
+        return winAmount <= FEATURES_CONFIG.gamble.maxWinAmount;
     }
 
     /**
      * Start gamble feature
+     * @returns {Promise<number>} Final win amount after gamble completes
      */
-    async start(winAmount) {
-        if (!this.canGamble(winAmount)) return false;
+    start(winAmount) {
+        if (!this.canGamble(winAmount)) {
+            return Promise.resolve(winAmount);
+        }
 
-        return new Promise(async (resolve) => {
+        return new Promise((resolve) => {
             this.isActive = true;
             this.currentWin = winAmount;
             this.gamblesRemaining = this.maxGambles;
             this.history = [];
-            this.resolveCallback = resolve; // Store the resolve callback
+            this.resolveCallback = resolve;
 
             this.game.soundManager.playClick();
-            await this.showGambleUI();
+            this.showGambleUI();
         });
     }
 
@@ -129,7 +136,7 @@ export class Gamble {
             this.game.soundManager.playWin(2);
 
             // Check if can continue
-            if (this.gamblesRemaining > 0 && this.currentWin <= 5000) {
+            if (this.gamblesRemaining > 0 && this.currentWin <= FEATURES_CONFIG.gamble.maxWinAmount) {
                 // Show updated UI and continue
                 await this.showGambleUI();
             } else {

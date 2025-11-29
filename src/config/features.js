@@ -45,8 +45,19 @@ export const FEATURES_CONFIG = {
         revealDelay: 300 // Delay between reveals
     },
 
+    gamble: {
+        maxWinAmount: 5000,      // Maximum win amount that can be gambled
+        maxAttempts: 5,          // Maximum number of gamble attempts
+        offerTimeout: 5          // Seconds before auto-collect
+    },
+
+    spinHistory: {
+        maxEntries: 20           // Maximum number of spins to track in history
+    },
+
     cascade: {
         enabled: false, // Will enable in this phase
+        maxIterations: 20        // Safety limit to prevent infinite cascades
 
         // Multiplier progression for consecutive cascades
         multipliers: [1, 2, 3, 5, 8], // 1x, 2x, 3x, 5x, 8x

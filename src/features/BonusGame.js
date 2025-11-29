@@ -27,22 +27,33 @@ export class BonusGame {
      * @param {number} bonusCount - Number of bonus symbols
      */
     async trigger(bonusCount) {
-        this.active = true;
-        this.totalWon = 0;
-        this.pickedItems = [];
+        if (typeof bonusCount !== 'number' || bonusCount < 3) {
+            console.error('BonusGame: Invalid bonusCount:', bonusCount);
+            return;
+        }
 
-        // Number of picks based on bonus symbols (3-5)
-        this.totalPicks = Math.min(bonusCount, FEATURES_CONFIG.bonusGame.pickGame.maxPicks);
-        this.picksRemaining = this.totalPicks;
+        try {
+            this.active = true;
+            this.totalWon = 0;
+            this.pickedItems = [];
 
-        // Generate pick items
-        this.generatePicks();
+            // Number of picks based on bonus symbols (3-5)
+            this.totalPicks = Math.min(bonusCount, FEATURES_CONFIG.bonusGame.pickGame.maxPicks);
+            this.picksRemaining = this.totalPicks;
 
-        // Show transition
-        await this.showTransition(bonusCount);
+            // Generate pick items
+            this.generatePicks();
 
-        // Show pick-me game UI
-        this.showPickGame();
+            // Show transition
+            await this.showTransition(bonusCount);
+
+            // Show pick-me game UI
+            this.showPickGame();
+        } catch (error) {
+            console.error('BonusGame trigger failed:', error);
+            this.active = false;
+            this.hideUI();
+        }
     }
 
     /**

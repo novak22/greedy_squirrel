@@ -21,6 +21,11 @@ export class Autoplay {
 
         this.startingBalance = 0;
         this.nextSpinTimeout = null;
+
+        // Register for timer clear notifications
+        this.timerManager.onClear('autoplay', () => {
+            this.nextSpinTimeout = null;
+        });
     }
 
     /**
@@ -62,11 +67,6 @@ export class Autoplay {
             return;
         }
 
-        // Check stop conditions before spin
-        if (this.checkStopConditions()) {
-            return;
-        }
-
         // Check if can afford spin
         if (this.game.state.getCredits() < this.game.state.getCurrentBet()) {
             this.stop('Insufficient credits');
@@ -84,7 +84,7 @@ export class Autoplay {
             return;
         }
 
-        // Check stop conditions after spin
+        // Check stop conditions after spin (based on current spin results)
         if (this.checkStopConditions()) {
             return;
         }
@@ -111,13 +111,6 @@ export class Autoplay {
             this.timerManager.clearTimeout(this.nextSpinTimeout);
             this.nextSpinTimeout = null;
         }
-    }
-
-    /**
-     * Reset cached timer handles when a global cleanup occurs.
-     */
-    onTimersCleared() {
-        this.nextSpinTimeout = null;
     }
 
     /**
