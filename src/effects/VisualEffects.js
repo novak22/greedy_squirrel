@@ -13,7 +13,7 @@ export class VisualEffects {
     }
 
     shouldAnimate() {
-        return this.animationsEnabled && !document.hidden;
+        return this.animationsEnabled;
     }
 
     /**
