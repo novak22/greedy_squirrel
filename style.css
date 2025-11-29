@@ -4,6 +4,23 @@
     box-sizing: border-box;
 }
 
+:root {
+    --reel-size: clamp(80px, 17vw, 120px);
+    --reel-gap: clamp(6px, 1.5vw, 10px);
+    --machine-padding: clamp(10px, 2vw, 15px);
+    --symbol-font-size: clamp(2.5em, 5vw, 4em);
+    --payline-1: calc(var(--reel-size) * 0.5);
+    --payline-2: 0px;
+    --payline-3: calc(var(--reel-size) * 1);
+    --payline-4: calc(var(--reel-size) * 0.25);
+    --payline-5: calc(var(--reel-size) * 0.75);
+    --payline-6: calc(var(--reel-size) * 0.125);
+    --payline-7: calc(var(--reel-size) * 0.875);
+    --payline-8: calc(var(--reel-size) * 0.375);
+    --payline-9: calc(var(--reel-size) * 0.625);
+    --payline-10: calc(var(--reel-size) * 0.3083);
+}
+
 body {
     font-family: 'Arial', sans-serif;
     background: linear-gradient(135deg, #1a3a1a 0%, #2d5016 50%, #1a3a1a 100%);
@@ -14,7 +31,7 @@ body {
     color: #fff;
     overflow-x: hidden;
     overflow-y: auto;
-    padding: 10px 0;
+    padding: clamp(6px, 1.2vw, 10px) 0;
 }
 
 body::before {
@@ -35,11 +52,11 @@ body::before {
     position: relative;
     z-index: 2;
     max-width: 750px;
-    width: 95%;
+    width: min(95%, 1000px);
     background: linear-gradient(180deg, #3d2f1f 0%, #2a1f15 100%);
     border: 3px solid #8b5a2b;
     border-radius: 20px;
-    padding: 15px;
+    padding: var(--machine-padding);
     box-shadow:
         0 0 50px rgba(139, 90, 43, 0.5),
         inset 0 0 30px rgba(0, 0, 0, 0.5);
@@ -51,7 +68,7 @@ body::before {
 }
 
 .game-header h1 {
-    font-size: 2em;
+    font-size: clamp(1.5em, 4vw, 2em);
     color: #cd853f;
     text-shadow:
         0 0 20px rgba(205, 133, 63, 0.8),
@@ -70,7 +87,7 @@ body::before {
 .info-panel {
     display: flex;
     justify-content: center;
-    gap: 15px;
+    gap: clamp(10px, 3vw, 15px);
     margin-top: 10px;
 }
 
@@ -81,20 +98,20 @@ body::before {
     background: linear-gradient(180deg, #4a3520 0%, #2a1f15 100%);
     border: 2px solid #8b5a2b;
     border-radius: 10px;
-    padding: 8px 15px;
-    min-width: 100px;
+    padding: clamp(6px, 2vw, 8px) clamp(12px, 3vw, 15px);
+    min-width: clamp(85px, 20vw, 100px);
     box-shadow: 0 0 15px rgba(139, 90, 43, 0.3);
 }
 
 .info-item .label {
-    font-size: 0.7em;
+    font-size: clamp(0.65em, 1.8vw, 0.7em);
     color: #cd853f;
     margin-bottom: 3px;
     letter-spacing: 1px;
 }
 
 .info-item .value {
-    font-size: 1.3em;
+    font-size: clamp(1.1em, 3vw, 1.3em);
     font-weight: bold;
     color: #fff;
     text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
@@ -105,7 +122,7 @@ body::before {
     background: linear-gradient(180deg, #1a1410 0%, #2a1f15 50%, #1a1410 100%);
     border: 4px solid #8b5a2b;
     border-radius: 15px;
-    padding: 15px;
+    padding: var(--machine-padding);
     margin: 15px 0;
     box-shadow:
         inset 0 0 30px rgba(0, 0, 0, 0.8),
@@ -115,14 +132,14 @@ body::before {
 .reels-container {
     display: flex;
     justify-content: center;
-    gap: 8px;
+    gap: var(--reel-gap);
     position: relative;
     z-index: 2;
 }
 
 .reel {
-    width: 120px;
-    height: 360px;
+    width: var(--reel-size);
+    height: calc(var(--reel-size) * 3);
     background: linear-gradient(180deg, #2f2315 0%, #1a1410 100%);
     border: 3px solid #6b4423;
     border-radius: 10px;
@@ -140,12 +157,12 @@ body::before {
 }
 
 .symbol {
-    width: 120px;
-    height: 120px;
+    width: var(--reel-size);
+    height: var(--reel-size);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 4em;
+    font-size: var(--symbol-font-size);
     background: linear-gradient(135deg, #3a2f20 0%, #2a1f15 100%);
     border-bottom: 2px solid #4a3520;
     user-select: none;
@@ -256,7 +273,7 @@ body::before {
         transform: translateY(0);
     }
     to {
-        transform: translateY(-120px);
+        transform: translateY(calc(var(--reel-size) * -1));
     }
 }
 
@@ -265,7 +282,7 @@ body::before {
     top: 15px;
     left: 15px;
     width: calc(100% - 30px);
-    height: 360px;
+    height: calc(var(--reel-size) * 3);
     pointer-events: none;
     z-index: 1;
 }
@@ -300,16 +317,16 @@ body::before {
     }
 }
 
-.payline-1 { top: 60px; }
-.payline-2 { top: 0; }
-.payline-3 { top: 120px; }
-.payline-4 { top: 30px; }
-.payline-5 { top: 90px; }
-.payline-6 { top: 15px; }
-.payline-7 { top: 105px; }
-.payline-8 { top: 45px; }
-.payline-9 { top: 75px; }
-.payline-10 { top: 37px; }
+.payline-1 { top: var(--payline-1); }
+.payline-2 { top: var(--payline-2); }
+.payline-3 { top: var(--payline-3); }
+.payline-4 { top: var(--payline-4); }
+.payline-5 { top: var(--payline-5); }
+.payline-6 { top: var(--payline-6); }
+.payline-7 { top: var(--payline-7); }
+.payline-8 { top: var(--payline-8); }
+.payline-9 { top: var(--payline-9); }
+.payline-10 { top: var(--payline-10); }
 
 .win-overlay {
     position: absolute;
@@ -356,14 +373,14 @@ body::before {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 15px;
+    gap: clamp(10px, 3vw, 15px);
     margin-top: 15px;
 }
 
 .bet-controls {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: clamp(8px, 2.5vw, 12px);
     background: linear-gradient(180deg, #4a3520 0%, #2a1f15 100%);
     border: 2px solid #8b5a2b;
     border-radius: 10px;
@@ -371,16 +388,16 @@ body::before {
 }
 
 .bet-display {
-    font-size: 1em;
+    font-size: clamp(0.95em, 2.8vw, 1em);
     color: #cd853f;
     letter-spacing: 1px;
-    min-width: 80px;
+    min-width: clamp(70px, 20vw, 80px);
     text-align: center;
 }
 
 .btn {
-    padding: 10px 20px;
-    font-size: 0.9em;
+    padding: clamp(9px, 2.8vw, 10px) clamp(18px, 5vw, 20px);
+    font-size: clamp(0.85em, 2.6vw, 0.9em);
     font-weight: bold;
     border: none;
     border-radius: 10px;
@@ -1044,7 +1061,7 @@ body::before {
 
 @keyframes symbolDrop {
     from {
-        transform: translateY(-120px);
+        transform: translateY(calc(var(--reel-size) * -1));
         opacity: 0.5;
     }
     to {
@@ -1059,7 +1076,7 @@ body::before {
 
 @keyframes symbolFill {
     from {
-        transform: translateY(-120px) scale(0.5);
+        transform: translateY(calc(var(--reel-size) * -1)) scale(0.5);
         opacity: 0;
     }
     to {
