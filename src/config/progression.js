@@ -1,4 +1,4 @@
-// Progression system configuration (levels, achievements, daily rewards)
+// Progression system configuration (levels, achievements, challenges)
 
 export const PROGRESSION_CONFIG = {
     levels: {
@@ -27,7 +27,7 @@ export const PROGRESSION_CONFIG = {
             10: { type: 'feature', value: 'turbo', credits: 1000 },
             15: { type: 'betIncrease', value: 500, credits: 1500 },
             20: { type: 'feature', value: 'cascade', credits: 2000 },
-            25: { type: 'dailyBonus', value: 1000, credits: 2500 },
+            25: { credits: 2500 },
             30: { type: 'betIncrease', value: 1000, credits: 3000 },
             35: { type: 'multiplier', value: 1.1, credits: 4000 },
             40: { type: 'betIncrease', value: 2000, credits: 5000 },
@@ -72,22 +72,6 @@ export const PROGRESSION_CONFIG = {
         { id: 'explorer', name: 'Explorer', description: 'Unlock all features', icon: '🗺️', reward: 3000, check: (stats) => stats.level >= 20 },
         { id: 'perfectionist', name: 'Perfectionist', description: 'Unlock all achievements', icon: '🏆', reward: 5000, check: (stats, lastWin, bet, credits, achievements) => achievements.filter(a => a.unlocked).length >= 19 }
     ],
-
-    dailyRewards: {
-        // Consecutive day rewards
-        rewards: [
-            { day: 1, credits: 100, description: 'Welcome back!' },
-            { day: 2, credits: 150, description: 'Day 2 streak!' },
-            { day: 3, credits: 200, description: 'Building momentum!' },
-            { day: 4, credits: 300, description: 'Keep it up!' },
-            { day: 5, credits: 500, description: '5 day streak!' },
-            { day: 6, credits: 750, description: 'Almost there!' },
-            { day: 7, credits: 1000, description: 'Week complete!', bonus: 'freeSpins', bonusValue: 5 }
-        ],
-
-        // Resets if more than 24 hours since last claim
-        streakTimeout: 86400000 // 24 hours in ms
-    },
 
     dailyChallenges: {
         // 3 challenges refresh daily

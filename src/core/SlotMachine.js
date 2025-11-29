@@ -9,7 +9,7 @@ import { BonusGame } from '../features/BonusGame.js';
 import { Cascade } from '../features/Cascade.js';
 import { LevelSystem } from '../progression/LevelSystem.js';
 import { Achievements } from '../progression/Achievements.js';
-import { DailyRewards } from '../progression/DailyRewards.js';
+import { DailyChallenges } from '../progression/DailyChallenges.js';
 import { Statistics } from '../progression/Statistics.js';
 import { Autoplay } from '../features/Autoplay.js';
 import { TurboMode } from '../features/TurboMode.js';
@@ -64,7 +64,7 @@ export class SlotMachine {
         // Phase 3: Initialize progression systems
         this.levelSystem = new LevelSystem(this);
         this.achievements = new Achievements(this);
-        this.dailyRewards = new DailyRewards(this);
+        this.dailyChallenges = new DailyChallenges(this);
         this.statistics = new Statistics(this);
 
         // Phase 4: Initialize advanced features
@@ -93,12 +93,7 @@ export class SlotMachine {
 
         // Phase 3: Initialize progression UI
         this.levelSystem.updateUI();
-        this.dailyRewards.updateChallengesUI();
-
-        // Check if can claim daily reward
-        if (this.dailyRewards.canClaimDailyReward()) {
-            this.showDailyRewardPrompt();
-        }
+        this.dailyChallenges.updateChallengesUI();
     }
 
     /**
@@ -116,7 +111,7 @@ export class SlotMachine {
             if (savedData.progression) {
                 this.levelSystem.init(savedData.progression.levelSystem);
                 this.achievements.init(savedData.progression.achievements);
-                this.dailyRewards.init(savedData.progression.dailyRewards);
+                this.dailyChallenges.init(savedData.progression.dailyChallenges || savedData.progression.dailyRewards);
                 this.statistics.init(savedData.progression.statistics);
             }
 
@@ -135,6 +130,9 @@ export class SlotMachine {
             }
 
             console.log('Game state loaded from localStorage');
+        } else {
+            // Initialize progression systems for new sessions
+            this.dailyChallenges.init();
         }
     }
 
@@ -151,7 +149,7 @@ export class SlotMachine {
             progression: {
                 levelSystem: this.levelSystem.getSaveData(),
                 achievements: this.achievements.getSaveData(),
-                dailyRewards: this.dailyRewards.getSaveData(),
+                dailyChallenges: this.dailyChallenges.getSaveData(),
                 statistics: this.statistics.getSaveData()
             },
             // Phase 4: Save advanced features data
@@ -341,7 +339,7 @@ export class SlotMachine {
 
         // Phase 3: Award spin XP
         this.levelSystem.awardXP('spin');
-        this.dailyRewards.updateChallengeProgress('play_spins', 1);
+        this.dailyChallenges.updateChallengeProgress('play_spins', 1);
 
         document.getElementById('spinBtn').disabled = true;
         this.clearWinningSymbols();
@@ -455,7 +453,7 @@ export class SlotMachine {
 
                 // Phase 3: Track scatter hits
                 this.statistics.recordFeatureTrigger('scatter', { count: winInfo.scatterCount });
-                this.dailyRewards.updateChallengeProgress('hit_scatters', winInfo.scatterCount);
+                this.dailyChallenges.updateChallengeProgress('hit_scatters', winInfo.scatterCount);
                 this.levelSystem.awardXP('scatter');
 
                 // Phase 4: Scatter sound and effects
@@ -488,7 +486,7 @@ export class SlotMachine {
             // Phase 3: Award win XP and track stats
             this.levelSystem.awardXP('win', totalWin);
             this.statistics.recordSpin(this.currentBet, totalWin, true);
-            this.dailyRewards.updateChallengeProgress('win_amount', totalWin);
+            this.dailyChallenges.updateChallengeProgress('win_amount', totalWin);
 
             // Check for big win
             const winMultiplier = totalWin / this.currentBet;
@@ -497,7 +495,7 @@ export class SlotMachine {
             }
 
             // Update daily challenges
-            this.dailyRewards.updateChallengeProgress('big_win', winMultiplier >= 50 ? 1 : 0);
+            this.dailyChallenges.updateChallengeProgress('big_win', winMultiplier >= 50 ? 1 : 0);
 
             this.updateDisplay();
         } else {
@@ -517,7 +515,7 @@ export class SlotMachine {
                 // Phase 3: Track free spins trigger
                 this.statistics.recordFeatureTrigger('freeSpins');
                 this.levelSystem.awardXP('freeSpins');
-                this.dailyRewards.updateChallengeProgress('trigger_freespins', 1);
+                this.dailyChallenges.updateChallengeProgress('trigger_freespins', 1);
 
                 // Phase 4: Free spins trigger sound
                 this.soundManager.playFreeSpinsTrigger();
@@ -536,7 +534,7 @@ export class SlotMachine {
             // Phase 3: Track bonus trigger
             this.statistics.recordFeatureTrigger('bonus');
             this.levelSystem.awardXP('bonus');
-            this.dailyRewards.updateChallengeProgress('trigger_bonus', 1);
+            this.dailyChallenges.updateChallengeProgress('trigger_bonus', 1);
 
             // Phase 4: Bonus trigger sound
             this.soundManager.playBonusTrigger();
@@ -963,35 +961,6 @@ export class SlotMachine {
     }
 
     /**
-     * Phase 3: Show daily reward prompt
-     */
-    async showDailyRewardPrompt() {
-        // Wait a bit after page load
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        const overlay = document.getElementById('featureOverlay');
-        if (!overlay) return;
-
-        overlay.innerHTML = `
-            <div class="feature-transition">
-                <div class="feature-icon">🎁</div>
-                <h1 class="feature-title">DAILY REWARD</h1>
-                <div class="feature-details">
-                    <p class="daily-prompt">Your daily reward is ready!</p>
-                </div>
-                <button class="btn btn-claim-daily" id="claimDailyBtn">CLAIM REWARD</button>
-            </div>
-        `;
-        overlay.classList.add('show');
-
-        // Add click handler
-        document.getElementById('claimDailyBtn').addEventListener('click', async () => {
-            overlay.classList.remove('show');
-            await this.dailyRewards.claimDailyReward();
-        });
-    }
-
-    /**
      * Phase 3: Toggle statistics dashboard
      */
     toggleStats() {
@@ -1151,23 +1120,13 @@ export class SlotMachine {
                 `;
                 break;
 
-            case 'daily':
-                const canClaim = this.dailyRewards.canClaimDailyReward();
-                const streak = this.dailyRewards.currentStreak;
-
+            case 'challenges':
                 html = `
-                    <h3 style="color: #ffd700; margin-bottom: 20px;">📅 Daily Rewards & Challenges</h3>
-                    <div style="text-align: center; margin: 20px 0;">
-                        <p style="font-size: 1.2em; color: #ffd700; margin-bottom: 15px;">Current Streak: ${streak} days</p>
-                        ${canClaim ?
-                            '<button class="btn-claim-reward" onclick="window.game.dailyRewards.claimDailyReward()">Claim Daily Reward</button>' :
-                            '<p style="color: #b0bec5;">Come back tomorrow for your next reward!</p>'
-                        }
-                    </div>
+                    <h3 style="color: #ffd700; margin-bottom: 20px;">📅 Daily Challenges</h3>
                     <div id="challengesListArea" style="margin-top: 30px;"></div>
                 `;
                 container.innerHTML = html;
-                this.dailyRewards.updateChallengesUI();
+                this.dailyChallenges.updateChallengesUI();
                 return;
         }
 
@@ -1227,7 +1186,7 @@ export class SlotMachine {
         // Clear all subsystems
         this.levelSystem = new LevelSystem(this);
         this.achievements = new Achievements(this);
-        this.dailyRewards = new DailyRewards(this);
+        this.dailyChallenges = new DailyChallenges(this);
         this.statistics = new Statistics(this);
         this.spinHistory.clear();
 
