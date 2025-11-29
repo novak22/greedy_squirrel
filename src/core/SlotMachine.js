@@ -1,9 +1,12 @@
-// Main SlotMachine class with Phase 1 enhancements
+// Main SlotMachine class with Phase 1 & 2 enhancements
 import { SYMBOLS, getAllSymbolEmojis } from '../config/symbols.js';
 import { GAME_CONFIG } from '../config/game.js';
 import { RNG } from '../utils/RNG.js';
 import { Storage } from '../utils/Storage.js';
 import { PaylineEvaluator } from './PaylineEvaluator.js';
+import { FreeSpins } from '../features/FreeSpins.js';
+import { BonusGame } from '../features/BonusGame.js';
+import { Cascade } from '../features/Cascade.js';
 
 export class SlotMachine {
     constructor() {
@@ -35,8 +38,15 @@ export class SlotMachine {
             totalWon: 0,
             biggestWin: 0,
             scatterHits: 0,
-            bonusHits: 0
+            bonusHits: 0,
+            freeSpinsTriggers: 0,
+            cascadeWins: 0
         };
+
+        // Phase 2: Initialize features
+        this.freeSpins = new FreeSpins(this);
+        this.bonusGame = new BonusGame(this);
+        this.cascade = new Cascade(this);
 
         // Load saved data
         this.loadGameState();
@@ -145,19 +155,32 @@ export class SlotMachine {
     async spin() {
         if (this.isSpinning) return;
 
-        if (this.credits < this.currentBet) {
+        // Check if in bonus game (can't spin during bonus)
+        if (this.bonusGame.isActive()) return;
+
+        // Free spins mode - don't deduct credits
+        const isFreeSpin = this.freeSpins.isActive();
+
+        if (!isFreeSpin && this.credits < this.currentBet) {
             this.showMessage('INSUFFICIENT CREDITS');
             return;
         }
 
         this.isSpinning = true;
-        this.credits -= this.currentBet;
+
+        // Only deduct bet if not in free spins
+        if (!isFreeSpin) {
+            this.credits -= this.currentBet;
+        }
+
         this.lastWin = 0;
         this.updateDisplay();
 
         // Update statistics
         this.stats.totalSpins++;
-        this.stats.totalWagered += this.currentBet;
+        if (!isFreeSpin) {
+            this.stats.totalWagered += this.currentBet;
+        }
 
         document.getElementById('spinBtn').disabled = true;
         this.clearWinningSymbols();
@@ -172,37 +195,101 @@ export class SlotMachine {
         await Promise.all(spinPromises);
 
         const result = this.getReelResult();
-        const winInfo = PaylineEvaluator.evaluateWins(result, this.currentBet);
+        let winInfo = PaylineEvaluator.evaluateWins(result, this.currentBet);
         const bonusInfo = PaylineEvaluator.checkBonusTrigger(result);
 
-        if (winInfo.totalWin > 0) {
-            this.credits += winInfo.totalWin;
-            this.lastWin = winInfo.totalWin;
-            this.stats.totalWon += winInfo.totalWin;
+        let totalWin = 0;
 
-            if (winInfo.totalWin > this.stats.biggestWin) {
-                this.stats.biggestWin = winInfo.totalWin;
+        if (winInfo.totalWin > 0) {
+            // Apply free spins multiplier if active
+            if (isFreeSpin) {
+                const originalWin = winInfo.totalWin;
+                winInfo.totalWin = this.freeSpins.applyMultiplier(winInfo.totalWin);
+                this.freeSpins.addWin(winInfo.totalWin);
             }
 
-            this.updateDisplay();
+            totalWin = winInfo.totalWin;
 
             this.highlightWinningSymbols(winInfo.winningPositions);
             this.showWinningPaylines(winInfo.winningLines);
 
             // Build win message
             let message = `WIN: ${winInfo.totalWin}`;
+            if (isFreeSpin) {
+                message += `\n✨ ${this.freeSpins.multiplier}x MULTIPLIER!`;
+            }
             if (winInfo.hasScatterWin) {
                 message += `\n⭐ ${winInfo.scatterCount} SCATTERS!`;
                 this.stats.scatterHits++;
             }
 
             await this.showMessage(message);
+
+            // Phase 2: Check for cascading wins (if enabled)
+            if (this.cascade.enabled) {
+                const cascadeWins = await this.cascade.executeCascade(winInfo.winningPositions);
+                if (cascadeWins > 0) {
+                    totalWin += cascadeWins;
+                    this.stats.cascadeWins++;
+                }
+            }
         }
 
-        // Check for bonus trigger (Phase 2 will handle this)
-        if (bonusInfo.triggered) {
+        // Add total wins to credits
+        if (totalWin > 0) {
+            this.credits += totalWin;
+            this.lastWin = totalWin;
+            this.stats.totalWon += totalWin;
+
+            if (totalWin > this.stats.biggestWin) {
+                this.stats.biggestWin = totalWin;
+            }
+
+            this.updateDisplay();
+        }
+
+        // Phase 2: Check for Free Spins trigger
+        if (winInfo.hasScatterWin && this.freeSpins.shouldTrigger(winInfo.scatterCount)) {
+            if (isFreeSpin) {
+                // Re-trigger during free spins
+                await this.freeSpins.retrigger(winInfo.scatterCount);
+            } else {
+                // Initial trigger
+                this.stats.freeSpinsTriggers++;
+                await this.freeSpins.trigger(winInfo.scatterCount);
+
+                // Execute free spins
+                await this.executeFreeSpins();
+            }
+        }
+
+        // Phase 2: Check for Bonus trigger
+        if (bonusInfo.triggered && !isFreeSpin) {
             this.stats.bonusHits++;
-            await this.showMessage('🎁 BONUS TRIGGERED!\n(Coming in Phase 2)');
+            const bonusCount = bonusInfo.bonusLines[0].count;
+            await this.bonusGame.trigger(bonusCount);
+
+            const bonusWin = await this.bonusGame.end();
+            if (bonusWin > 0) {
+                this.credits += bonusWin;
+                this.lastWin += bonusWin;
+                this.stats.totalWon += bonusWin;
+
+                if (bonusWin > this.stats.biggestWin) {
+                    this.stats.biggestWin = bonusWin;
+                }
+
+                this.updateDisplay();
+                await this.showMessage(`BONUS WIN: ${bonusWin}`);
+            }
+        }
+
+        // Handle free spins countdown
+        if (isFreeSpin) {
+            const hasMoreSpins = await this.freeSpins.executeSpin();
+            if (!hasMoreSpins) {
+                const freeSpinsTotal = await this.freeSpins.end();
+            }
         }
 
         // Save game state after each spin
@@ -211,12 +298,29 @@ export class SlotMachine {
         this.isSpinning = false;
         document.getElementById('spinBtn').disabled = false;
 
-        if (this.credits === 0) {
+        if (this.credits === 0 && !isFreeSpin) {
             await this.showMessage('GAME OVER\nResetting to 1000 credits');
             this.credits = GAME_CONFIG.initialCredits;
             this.updateDisplay();
             this.saveGameState();
         }
+    }
+
+    /**
+     * Execute all free spins
+     */
+    async executeFreeSpins() {
+        while (this.freeSpins.isActive() && this.freeSpins.remainingSpins > 0) {
+            await this.spin();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }
+
+    /**
+     * Evaluate wins without displaying (used by cascade feature)
+     */
+    async evaluateWinsWithoutDisplay(result) {
+        return PaylineEvaluator.evaluateWins(result, this.currentBet);
     }
 
     spinReel(reelIndex, duration) {
