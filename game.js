@@ -8,6 +8,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Expose to window for debugging (optional)
     window.game = game;
 
+    const cleanupTimers = () => game.cleanupTimers();
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            cleanupTimers();
+        }
+    });
+
+    window.addEventListener('beforeunload', () => {
+        cleanupTimers();
+    });
+
     console.log('🐿️ Greedy Squirrel - Phase 2 Loaded');
     console.log('Features: FREE SPINS (3+ scatters), BONUS GAME (3+ bonus symbols), Cascading Wins (optional)');
     console.log('Phase 1: WILD symbols, SCATTER pays, Weighted RNG, Auto-save');
