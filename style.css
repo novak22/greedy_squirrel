@@ -493,6 +493,46 @@ body::before {
     font-size: 1.1em;
 }
 
+.paylines-info .scatter-note {
+    color: #cd853f;
+    font-size: 0.95em;
+    margin-top: 10px;
+    font-style: italic;
+}
+
+.special-symbols-section,
+.regular-symbols-section {
+    margin-bottom: 30px;
+}
+
+.special-symbols-section h3,
+.regular-symbols-section h3 {
+    color: #cd853f;
+    font-size: 1.5em;
+    margin-bottom: 15px;
+    text-align: center;
+    text-shadow: 0 0 15px rgba(205, 133, 63, 0.6);
+}
+
+.paytable-item.special {
+    background: linear-gradient(135deg, #5a4020 0%, #3a2f15 100%);
+    border: 2px solid #cd853f;
+    box-shadow: 0 0 15px rgba(205, 133, 63, 0.3);
+}
+
+.paytable-item.special .symbol-name {
+    color: #cd853f;
+    font-size: 1em;
+    font-weight: bold;
+}
+
+.paytable-item .symbol-desc {
+    color: #999;
+    font-size: 0.8em;
+    margin-top: 5px;
+    font-style: italic;
+}
+
 @media (max-width: 768px) {
     .game-container {
         padding: 10px;

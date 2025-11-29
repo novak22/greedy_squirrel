@@ -1,0 +1,69 @@
+// Weighted Random Number Generator
+import { getSymbolsForReel } from '../config/symbols.js';
+
+export class RNG {
+    /**
+     * Generate weighted random symbol for a specific reel
+     * @param {number} reelIndex - The reel index (0-4)
+     * @returns {string} - Symbol emoji
+     */
+    static getWeightedSymbol(reelIndex) {
+        const availableSymbols = getSymbolsForReel(reelIndex);
+
+        // Calculate total weight
+        const totalWeight = availableSymbols.reduce((sum, symbol) => sum + symbol.weight, 0);
+
+        // Generate random number between 0 and totalWeight
+        let random = Math.random() * totalWeight;
+
+        // Select symbol based on weight
+        for (const symbol of availableSymbols) {
+            random -= symbol.weight;
+            if (random <= 0) {
+                return symbol.emoji;
+            }
+        }
+
+        // Fallback (should never reach here)
+        return availableSymbols[0].emoji;
+    }
+
+    /**
+     * Generate a complete reel strip with weighted symbols
+     * @param {number} reelIndex - The reel index (0-4)
+     * @param {number} length - Length of the reel strip
+     * @returns {Array<string>} - Array of symbol emojis
+     */
+    static generateReelStrip(reelIndex, length) {
+        const strip = [];
+        for (let i = 0; i < length; i++) {
+            strip.push(this.getWeightedSymbol(reelIndex));
+        }
+        return strip;
+    }
+
+    /**
+     * Get random position on reel strip
+     * @param {number} stripLength - Length of the reel strip
+     * @returns {number} - Random position
+     */
+    static getRandomPosition(stripLength) {
+        return Math.floor(Math.random() * stripLength);
+    }
+
+    /**
+     * Get symbols from reel strip at a given position
+     * @param {Array<string>} reelStrip - The reel strip
+     * @param {number} position - Starting position
+     * @param {number} count - Number of symbols to get
+     * @returns {Array<string>} - Array of visible symbols
+     */
+    static getSymbolsAtPosition(reelStrip, position, count) {
+        const symbols = [];
+        for (let i = 0; i < count; i++) {
+            const index = (position + i) % reelStrip.length;
+            symbols.push(reelStrip[index]);
+        }
+        return symbols;
+    }
+}
