@@ -1187,13 +1187,25 @@ body::before {
     }
 
     .controls {
-        flex-direction: column;
-        gap: 10px;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+
+    .bet-controls {
+        gap: 8px;
+        padding: 6px 12px;
+        flex-shrink: 1;
     }
 
     .btn-spin {
-        padding: 10px 25px;
+        padding: 10px 22px;
         font-size: 1em;
+        flex-shrink: 0;
+    }
+
+    .btn-max {
+        flex-shrink: 0;
     }
 
     .paytable-grid {
@@ -2026,8 +2038,14 @@ body::before {
 /* Responsive Styles for Phase 4 */
 @media (max-width: 768px) {
     .advanced-controls {
-        flex-direction: column;
-        gap: 8px;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 6px;
+    }
+
+    .advanced-controls .btn-small {
+        padding: 8px 12px;
+        font-size: 0.9em;
     }
 
     .settings-content {
@@ -2967,7 +2985,12 @@ body::before {
     }
 
     .advanced-controls {
-        gap: 8px;
+        gap: 6px;
+    }
+
+    .advanced-controls .btn-small {
+        padding: 8px 12px;
+        font-size: 0.9em;
     }
 
     /* Optimize level display for mobile */
@@ -3120,7 +3143,27 @@ body::before {
     }
 
     .advanced-controls {
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        gap: 4px;
+    }
+
+    .advanced-controls .btn-small {
+        padding: 6px 10px;
+        font-size: 0.8em;
+    }
+
+    .controls {
+        gap: 6px;
+    }
+
+    .bet-controls {
+        padding: 5px 10px;
+        gap: 6px;
+    }
+
+    .btn-spin {
+        padding: 10px 18px;
+        font-size: 1.05em;
     }
 }
 
