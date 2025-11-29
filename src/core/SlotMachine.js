@@ -741,6 +741,8 @@ export class SlotMachine {
      * @returns {Promise<void>}
      */
     async handleFeatureTriggers(winInfo, bonusInfo, isFreeSpin) {
+        let shouldExecuteFreeSpins = false;
+
         // Check for Free Spins trigger
         if (winInfo.hasScatterWin && this.freeSpins.shouldTrigger(winInfo.scatterCount)) {
             if (isFreeSpin) {
@@ -758,8 +760,8 @@ export class SlotMachine {
 
                 await this.freeSpins.trigger(winInfo.scatterCount);
 
-                // Execute free spins
-                await this.executeFreeSpins();
+                // Signal to execute free spins after this spin completes
+                shouldExecuteFreeSpins = true;
             }
         }
 
@@ -786,6 +788,8 @@ export class SlotMachine {
                 await this.showMessage(`BONUS WIN: ${bonusWin}`);
             }
         }
+
+        return shouldExecuteFreeSpins;
     }
 
     /**
@@ -797,9 +801,16 @@ export class SlotMachine {
      * @returns {Promise<void>}
      */
     async finalizeSpin(totalWin, winInfo, bonusInfo, isFreeSpin) {
+        if (this.debugMode) {
+            console.log('[DEBUG] finalizeSpin - isFreeSpin:', isFreeSpin, 'remaining before:', this.freeSpins.remainingSpins);
+        }
+
         // Handle free spins countdown
         if (isFreeSpin) {
             const hasMoreSpins = await this.freeSpins.executeSpin();
+            if (this.debugMode) {
+                console.log('[DEBUG] After executeSpin - hasMoreSpins:', hasMoreSpins, 'remaining:', this.freeSpins.remainingSpins);
+            }
             if (!hasMoreSpins) {
                 await this.freeSpins.end();
             }
@@ -906,9 +917,14 @@ export class SlotMachine {
 
             this.updateCreditsAndStats(totalWin);
 
-            await this.handleFeatureTriggers(winInfo, bonusInfo, isFreeSpin);
+            const shouldExecuteFreeSpins = await this.handleFeatureTriggers(winInfo, bonusInfo, isFreeSpin);
 
             await this.finalizeSpin(totalWin, winInfo, bonusInfo, isFreeSpin);
+
+            // Execute free spins AFTER the triggering spin completes
+            if (shouldExecuteFreeSpins) {
+                await this.executeFreeSpins();
+            }
 
             // Emit spin end event
             this.events.emit(GAME_EVENTS.SPIN_END, {
