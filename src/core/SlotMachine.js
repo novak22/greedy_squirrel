@@ -130,6 +130,9 @@ export class SlotMachine {
             }
 
             console.log('Game state loaded from localStorage');
+        } else {
+            // Initialize progression systems for new sessions
+            this.dailyChallenges.init();
         }
     }
 
