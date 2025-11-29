@@ -3129,6 +3129,11 @@ body::before {
     }
 }
 
+/* Hide the level slider from the game interface */
+.level-display {
+    display: none !important;
+}
+
 /* Very small screens (iPhone SE, etc.) */
 @media (max-width: 375px) {
     .game-header h1 {
