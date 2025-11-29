@@ -52,7 +52,10 @@ export const GAME_CONFIG = {
         winCounterFast: 500,    // Win counter animation (turbo)
         winCounterNormal: 1000, // Win counter animation (normal)
         winCounterStepsFast: 10,   // Number of steps in counter (turbo)
-        winCounterStepsNormal: 20  // Number of steps in counter (normal)
+        winCounterStepsNormal: 20,  // Number of steps in counter (normal)
+        reelStopping: 300,      // Reel deceleration animation duration
+        anticipationDisplay: 1500, // How long to show anticipation message
+        anticipationHighlight: 2000 // How long anticipation symbols glow
     },
 
     // UI timings
@@ -74,6 +77,15 @@ export const GAME_CONFIG = {
     soundTickFrequency: 3,  // Play tick sound every N steps
     soundTickBaseFrequency: 400,  // Base frequency for tick sound
     soundTickFrequencyStep: 20,   // Frequency increase per step
+
+    // Win anticipation settings
+    anticipation: {
+        enabled: true,
+        triggerChance: 0.25,    // 25% chance to trigger anticipation effects
+        flukeChance: 0.15,      // 15% of anticipations are "near misses"
+        dramaticDelayHigh: 800, // Extra delay for high-intensity anticipation (ms)
+        dramaticDelayMedium: 400 // Extra delay for medium-intensity anticipation (ms)
+    },
 
     // localStorage key
     storageKey: 'greedy_squirrel_save'

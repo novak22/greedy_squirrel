@@ -1,12 +1,15 @@
 // Win Anticipation System - Near-miss effects and dramatic reel reveals
+import { GAME_CONFIG } from '../config/game.js';
+import { getHighValueSymbols, SYMBOLS } from '../config/symbols.js';
 
 export class WinAnticipation {
     constructor(slotMachine) {
         this.game = slotMachine;
-        this.enabled = true;
+        this.timerManager = slotMachine.timerManager;
+        this.enabled = GAME_CONFIG.anticipation.enabled;
         this.anticipationActive = false;
-        this.triggerChance = 0.25; // 25% chance to even consider anticipation
-        this.flukeChance = 0.15; // 15% of anticipations are "flukes" (false excitement)
+        this.triggerChance = GAME_CONFIG.anticipation.triggerChance;
+        this.flukeChance = GAME_CONFIG.anticipation.flukeChance;
     }
 
     /**
@@ -77,7 +80,7 @@ export class WinAnticipation {
         let count = 0;
         for (let reel = 0; reel < stoppedReels; reel++) {
             for (let row = 0; row < 3; row++) {
-                if (result[reel] && result[reel][row] === '⭐') {
+                if (result[reel] && result[reel][row] === SYMBOLS.SCATTER.emoji) {
                     count++;
                 }
             }
@@ -91,10 +94,10 @@ export class WinAnticipation {
     countBonusOnPayline(result, stoppedReels) {
         // Check main payline (middle row) for bonus symbols
         let count = 0;
-        const bonusReels = [0, 2, 4]; // Bonus appears on reels 1, 3, 5
+        const bonusReels = SYMBOLS.BONUS.allowedReels;
 
         for (let i = 0; i < stoppedReels; i++) {
-            if (bonusReels.includes(i) && result[i] && result[i][1] === '🎁') {
+            if (bonusReels.includes(i) && result[i] && result[i][1] === SYMBOLS.BONUS.emoji) {
                 count++;
             }
         }
@@ -106,7 +109,7 @@ export class WinAnticipation {
      */
     checkBigWinPotential(result, stoppedReels) {
         // Check main payline for matching high-value symbols
-        const highValueSymbols = ['👑', '💎', '🌰', '🥜'];
+        const highValueSymbols = getHighValueSymbols();
 
         if (stoppedReels >= 2) {
             const firstSymbol = result[0][1]; // Middle row of first reel
@@ -118,7 +121,7 @@ export class WinAnticipation {
             }
 
             // Check if we have a wild that could lead to a match
-            if (firstSymbol === '🃏' || secondSymbol === '🃏') {
+            if (firstSymbol === SYMBOLS.WILD.emoji || secondSymbol === SYMBOLS.WILD.emoji) {
                 return true;
             }
         }
@@ -134,14 +137,14 @@ export class WinAnticipation {
 
         // Check main payline (middle row) for 4+ matching symbols
         const payline = finalResult.map(reel => reel[1]);
-        const highValueSymbols = ['👑', '💎', '🌰', '🥜'];
+        const highValueSymbols = getHighValueSymbols();
 
         // Count consecutive matches from left
         let matches = 1;
         let currentSymbol = payline[0];
 
         for (let i = 1; i < payline.length; i++) {
-            if (payline[i] === currentSymbol || payline[i] === '🃏' || currentSymbol === '🃏') {
+            if (payline[i] === currentSymbol || payline[i] === SYMBOLS.WILD.emoji || currentSymbol === SYMBOLS.WILD.emoji) {
                 matches++;
             } else {
                 break;
@@ -185,9 +188,9 @@ export class WinAnticipation {
             overlay.className = `win-overlay ${className} show`;
 
             // Clear after a moment
-            setTimeout(() => {
+            this.timerManager.setTimeout(() => {
                 overlay.classList.remove('show', className);
-            }, 1500);
+            }, GAME_CONFIG.animations.anticipationDisplay, 'anticipation');
         }
 
         // Highlight relevant symbols
@@ -202,8 +205,8 @@ export class WinAnticipation {
      */
     highlightAnticipationSymbols(type) {
         const symbols = {
-            'scatter': '⭐',
-            'bonus': '🎁',
+            'scatter': SYMBOLS.SCATTER.emoji,
+            'bonus': SYMBOLS.BONUS.emoji,
             'bigwin': null // Will highlight matching symbols
         };
 
@@ -224,11 +227,11 @@ export class WinAnticipation {
         });
 
         // Remove anticipation class after effect
-        setTimeout(() => {
+        this.timerManager.setTimeout(() => {
             document.querySelectorAll('.symbol.anticipation').forEach(s => {
                 s.classList.remove('anticipation');
             });
-        }, 2000);
+        }, GAME_CONFIG.animations.anticipationHighlight, 'anticipation');
     }
 
     /**
@@ -240,44 +243,12 @@ export class WinAnticipation {
 
         switch (intensity) {
             case 'high':
-                return 800; // Significant slow-down
+                return GAME_CONFIG.anticipation.dramaticDelayHigh;
             case 'medium':
-                return 400; // Moderate slow-down
+                return GAME_CONFIG.anticipation.dramaticDelayMedium;
             default:
                 return 0;
         }
-    }
-
-    /**
-     * Show near-miss effect
-     * Called when anticipation was high but didn't result in the feature
-     */
-    showNearMiss(missType) {
-        const overlay = document.getElementById('winOverlay');
-        if (!overlay) return;
-
-        let message = '';
-        switch (missType) {
-            case 'scatter':
-                message = '⭐ SO CLOSE!';
-                break;
-            case 'bonus':
-                message = '🎁 ALMOST!';
-                break;
-            case 'bigwin':
-                message = '💔 NEXT TIME!';
-                break;
-        }
-
-        overlay.textContent = message;
-        overlay.className = 'win-overlay near-miss show';
-
-        setTimeout(() => {
-            overlay.classList.remove('show', 'near-miss');
-        }, 1200);
-
-        // Play near-miss sound
-        this.game.soundManager.playTone(400, 0.2, 'sawtooth');
     }
 
     /**

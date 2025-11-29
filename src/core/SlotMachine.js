@@ -1,9 +1,10 @@
 // Main SlotMachine class with Phase 1, 2, 3 & 4 enhancements
-import { SYMBOLS, getAllSymbolEmojis } from '../config/symbols.js';
+import { SYMBOLS, getAllSymbolEmojis, getPremiumSymbols } from '../config/symbols.js';
 import { GAME_CONFIG } from '../config/game.js';
 import { RNG } from '../utils/RNG.js';
 import { Storage } from '../utils/Storage.js';
 import { PaylineEvaluator } from './PaylineEvaluator.js';
+import { EventBus, GAME_EVENTS } from './EventBus.js';
 import { FreeSpins } from '../features/FreeSpins.js';
 import { BonusGame } from '../features/BonusGame.js';
 import { Cascade } from '../features/Cascade.js';
@@ -24,7 +25,9 @@ import { TimerManager } from '../utils/TimerManager.js';
 
 export class SlotMachine {
     constructor() {
+        // Core systems
         this.timerManager = new TimerManager();
+        this.events = new EventBus();
 
         // Game configuration
         this.reelCount = GAME_CONFIG.reelCount;
@@ -46,18 +49,6 @@ export class SlotMachine {
 
         this.isSpinning = false;
         this.reelPositions = [0, 0, 0, 0, 0];
-
-        // Statistics tracking
-        this.stats = {
-            totalSpins: 0,
-            totalWagered: 0,
-            totalWon: 0,
-            biggestWin: 0,
-            scatterHits: 0,
-            bonusHits: 0,
-            freeSpinsTriggers: 0,
-            cascadeWins: 0
-        };
 
         // Initialize bonus features
         this.freeSpins = new FreeSpins(this);
@@ -89,13 +80,36 @@ export class SlotMachine {
         this.buyBonus = new BuyBonus(this);
         this.winAnticipation = new WinAnticipation(this);
 
+        // DOM element cache (populated in init)
+        this.dom = {};
+
         // Load saved data
         this.loadGameState();
 
         this.init();
     }
 
+    /**
+     * Backward compatibility: expose statistics through .stats property
+     * This maintains the existing API while delegating to Statistics class
+     */
+    get stats() {
+        return {
+            totalSpins: this.statistics.allTime.totalSpins,
+            totalWagered: this.statistics.allTime.totalWagered,
+            totalWon: this.statistics.allTime.totalWon,
+            biggestWin: this.statistics.allTime.biggestWin,
+            scatterHits: this.statistics.allTime.scatterHits,
+            bonusHits: this.statistics.allTime.bonusHits,
+            freeSpinsTriggers: this.statistics.allTime.freeSpinsTriggers,
+            cascadeWins: this.statistics.allTime.cascadeWins
+        };
+    }
+
     init() {
+        // Cache frequently accessed DOM elements
+        this.cacheDOM();
+
         this.updateDisplay();
         this.createReels();
         this.attachEventListeners();
@@ -103,6 +117,48 @@ export class SlotMachine {
         // Initialize progression UI
         this.levelSystem.updateUI();
         this.dailyChallenges.updateChallengesUI();
+    }
+
+    /**
+     * Cache frequently accessed DOM elements for performance
+     */
+    cacheDOM() {
+        this.dom = {
+            // Display elements
+            credits: document.getElementById('credits'),
+            bet: document.getElementById('bet'),
+            betDisplay: document.getElementById('betDisplay'),
+            win: document.getElementById('win'),
+
+            // Control elements
+            spinBtn: document.getElementById('spinBtn'),
+            increaseBet: document.getElementById('increaseBet'),
+            decreaseBet: document.getElementById('decreaseBet'),
+            maxBet: document.getElementById('maxBet'),
+
+            // Overlay elements
+            winOverlay: document.getElementById('winOverlay'),
+            featureOverlay: document.getElementById('featureOverlay'),
+
+            // Modal elements
+            paytableModal: document.getElementById('paytableModal'),
+            statsModal: document.getElementById('statsModal'),
+
+            // Advanced controls
+            autoplayBtn: document.getElementById('autoplayBtn'),
+            turboBtn: document.getElementById('turboBtn'),
+            autoCollectBtn: document.getElementById('autoCollectBtn'),
+            autoplayCounter: document.getElementById('autoplayCounter'),
+
+            // Reel containers (cache these for frequent access)
+            reels: [
+                document.getElementById('reel-0'),
+                document.getElementById('reel-1'),
+                document.getElementById('reel-2'),
+                document.getElementById('reel-3'),
+                document.getElementById('reel-4')
+            ]
+        };
     }
 
     /**
@@ -114,7 +170,7 @@ export class SlotMachine {
             this.credits = savedData.credits || GAME_CONFIG.initialCredits;
             this.currentBet = savedData.currentBet || GAME_CONFIG.betOptions[0];
             this.currentBetIndex = savedData.currentBetIndex || 0;
-            this.stats = savedData.stats || this.stats;
+            // Note: stats are now handled by Statistics class, not duplicated here
 
             // Load progression data
             if (savedData.progression) {
@@ -154,7 +210,7 @@ export class SlotMachine {
             credits: this.credits,
             currentBet: this.currentBet,
             currentBetIndex: this.currentBetIndex,
-            stats: this.stats,
+            // Note: stats are now saved via progression.statistics
             // Save progression data
             progression: {
                 levelSystem: this.levelSystem.getSaveData(),
@@ -180,7 +236,7 @@ export class SlotMachine {
 
     createReels() {
         for (let i = 0; i < this.reelCount; i++) {
-            const reel = document.getElementById(`reel-${i}`);
+            const reel = this.dom.reels[i];
             if (!reel) {
                 console.error(`Reel element not found: reel-${i}`);
                 continue;
@@ -213,12 +269,15 @@ export class SlotMachine {
     }
 
     attachEventListeners() {
-        document.getElementById('spinBtn').addEventListener('click', () => this.spin());
-        document.getElementById('increaseBet').addEventListener('click', () => this.changeBet(1));
-        document.getElementById('decreaseBet').addEventListener('click', () => this.changeBet(-1));
-        document.getElementById('maxBet').addEventListener('click', () => this.setMaxBet());
-        document.getElementById('paytableBtn').addEventListener('click', () => this.togglePaytable(true));
-        document.getElementById('closePaytable').addEventListener('click', () => this.togglePaytable(false));
+        if (this.dom.spinBtn) this.dom.spinBtn.addEventListener('click', () => this.spin());
+        if (this.dom.increaseBet) this.dom.increaseBet.addEventListener('click', () => this.changeBet(1));
+        if (this.dom.decreaseBet) this.dom.decreaseBet.addEventListener('click', () => this.changeBet(-1));
+        if (this.dom.maxBet) this.dom.maxBet.addEventListener('click', () => this.setMaxBet());
+
+        const paytableBtn = document.getElementById('paytableBtn');
+        const closePaytable = document.getElementById('closePaytable');
+        if (paytableBtn) paytableBtn.addEventListener('click', () => this.togglePaytable(true));
+        if (closePaytable) closePaytable.addEventListener('click', () => this.togglePaytable(false));
 
         // Stats button and modal
         const statsBtn = document.getElementById('statsBtn');
@@ -303,31 +362,25 @@ export class SlotMachine {
     }
 
     updateDisplay() {
-        const creditsEl = document.getElementById('credits');
-        const betEl = document.getElementById('bet');
-        const betDisplayEl = document.getElementById('betDisplay');
-        const winEl = document.getElementById('win');
-
-        if (creditsEl) creditsEl.textContent = this.credits;
-        if (betEl) betEl.textContent = this.currentBet;
-        if (betDisplayEl) betDisplayEl.textContent = this.currentBet;
-        if (winEl) winEl.textContent = this.lastWin;
+        if (this.dom.credits) this.dom.credits.textContent = this.credits;
+        if (this.dom.bet) this.dom.bet.textContent = this.currentBet;
+        if (this.dom.betDisplay) this.dom.betDisplay.textContent = this.currentBet;
+        if (this.dom.win) this.dom.win.textContent = this.lastWin;
     }
 
     /**
      * Update auto collect toggle UI
      */
     updateAutoCollectUI() {
-        const autoCollectBtn = document.getElementById('autoCollectBtn');
-        if (!autoCollectBtn) return;
+        if (!this.dom.autoCollectBtn) return;
 
         if (this.autoCollectEnabled) {
-            autoCollectBtn.classList.add('active');
+            this.dom.autoCollectBtn.classList.add('active');
         } else {
-            autoCollectBtn.classList.remove('active');
+            this.dom.autoCollectBtn.classList.remove('active');
         }
 
-        autoCollectBtn.textContent = 'COLLECT';
+        this.dom.autoCollectBtn.textContent = 'COLLECT';
     }
 
     changeBet(direction) {
@@ -421,18 +474,13 @@ export class SlotMachine {
         this.lastWin = 0;
         this.updateDisplay();
 
-        // Update statistics
-        this.stats.totalSpins++;
-        if (!isFreeSpin) {
-            this.stats.totalWagered += this.currentBet;
-        }
+        // Statistics are now tracked via this.statistics.recordSpin()
 
         // Award spin XP
         this.levelSystem.awardXP('spin');
         this.dailyChallenges.updateChallengeProgress('play_spins', 1);
 
-        const spinBtn = document.getElementById('spinBtn');
-        if (spinBtn) spinBtn.disabled = true;
+        if (this.dom.spinBtn) this.dom.spinBtn.disabled = true;
 
         this.clearWinningSymbols();
         this.hidePaylines();
@@ -564,11 +612,26 @@ export class SlotMachine {
 
             totalWin = winInfo.totalWin;
 
+            // Emit win event
+            const winMultiplier = winInfo.totalWin / this.currentBet;
+            this.events.emit(GAME_EVENTS.WIN, {
+                amount: winInfo.totalWin,
+                multiplier: winMultiplier,
+                positions: winInfo.winningPositions,
+                lines: winInfo.winningLines
+            });
+
+            // Check for big/mega wins
+            if (winMultiplier >= GAME_CONFIG.winThresholds.mega) {
+                this.events.emit(GAME_EVENTS.MEGA_WIN, { amount: winInfo.totalWin, multiplier: winMultiplier });
+            } else if (winMultiplier >= GAME_CONFIG.winThresholds.big) {
+                this.events.emit(GAME_EVENTS.BIG_WIN, { amount: winInfo.totalWin, multiplier: winMultiplier });
+            }
+
             this.highlightWinningSymbols(winInfo.winningPositions);
             this.showWinningPaylines(winInfo.winningLines);
 
             // Play win sound and visual effects
-            const winMultiplier = winInfo.totalWin / this.currentBet;
             this.soundManager.playWin(winMultiplier);
             this.visualEffects.showWinCelebration(winInfo.totalWin, winMultiplier);
 
@@ -584,7 +647,6 @@ export class SlotMachine {
             }
             if (winInfo.hasScatterWin) {
                 message += `\n⭐ ${winInfo.scatterCount} SCATTERS!`;
-                this.stats.scatterHits++;
 
                 // Track scatter hits
                 this.statistics.recordFeatureTrigger('scatter', { count: winInfo.scatterCount });
@@ -603,7 +665,7 @@ export class SlotMachine {
                 const cascadeWins = await this.cascade.executeCascade(winInfo.winningPositions);
                 if (cascadeWins > 0) {
                     totalWin += cascadeWins;
-                    this.stats.cascadeWins++;
+                    // Cascade wins tracked via this.statistics
                 }
             }
         }
@@ -619,11 +681,6 @@ export class SlotMachine {
         if (totalWin > 0) {
             this.credits += totalWin;
             this.lastWin = totalWin;
-            this.stats.totalWon += totalWin;
-
-            if (totalWin > this.stats.biggestWin) {
-                this.stats.biggestWin = totalWin;
-            }
 
             // Award win XP and track stats
             this.levelSystem.awardXP('win', totalWin);
@@ -663,8 +720,6 @@ export class SlotMachine {
                 await this.freeSpins.retrigger(winInfo.scatterCount);
             } else {
                 // Initial trigger
-                this.stats.freeSpinsTriggers++;
-
                 // Track free spins trigger
                 this.statistics.recordFeatureTrigger('freeSpins');
                 this.levelSystem.awardXP('freeSpins');
@@ -682,8 +737,6 @@ export class SlotMachine {
 
         // Check for Bonus trigger
         if (bonusInfo.triggered && !isFreeSpin) {
-            this.stats.bonusHits++;
-
             // Track bonus trigger
             this.statistics.recordFeatureTrigger('bonus');
             this.levelSystem.awardXP('bonus');
@@ -699,11 +752,7 @@ export class SlotMachine {
             if (bonusWin > 0) {
                 this.credits += bonusWin;
                 this.lastWin += bonusWin;
-                this.stats.totalWon += bonusWin;
-
-                if (bonusWin > this.stats.biggestWin) {
-                    this.stats.biggestWin = bonusWin;
-                }
+                // Bonus wins tracked via Statistics class
 
                 this.updateDisplay();
                 await this.showMessage(`BONUS WIN: ${bonusWin}`);
@@ -776,8 +825,7 @@ export class SlotMachine {
         this.saveGameState();
 
         this.isSpinning = false;
-        const spinBtn = document.getElementById('spinBtn');
-        if (spinBtn) spinBtn.disabled = false;
+        if (this.dom.spinBtn) this.dom.spinBtn.disabled = false;
 
         if (this.credits === 0 && !isFreeSpin) {
             await this.showMessage('GAME OVER\nResetting to 1000 credits');
@@ -795,22 +843,70 @@ export class SlotMachine {
 
         const isFreeSpin = this.freeSpins.isActive();
 
-        this.initializeSpin(isFreeSpin);
+        // Create checkpoint for error recovery
+        const checkpoint = {
+            credits: this.credits,
+            lastWin: this.lastWin,
+            isSpinning: this.isSpinning
+        };
 
-        const reelData = this.prepareReelResults();
-        await this.executeReelSpin(reelData);
+        try {
+            this.initializeSpin(isFreeSpin);
 
-        const result = this.getReelResult();
-        let winInfo = PaylineEvaluator.evaluateWins(result, this.currentBet);
-        const bonusInfo = PaylineEvaluator.checkBonusTrigger(result);
+            // Emit spin start event
+            this.events.emit(GAME_EVENTS.SPIN_START, {
+                bet: this.currentBet,
+                credits: this.credits,
+                isFreeSpin
+            });
 
-        let totalWin = await this.processWins(winInfo, isFreeSpin);
+            const reelData = this.prepareReelResults();
+            await this.executeReelSpin(reelData);
 
-        this.updateCreditsAndStats(totalWin);
+            const result = this.getReelResult();
+            let winInfo = PaylineEvaluator.evaluateWins(result, this.currentBet);
+            const bonusInfo = PaylineEvaluator.checkBonusTrigger(result);
 
-        await this.handleFeatureTriggers(winInfo, bonusInfo, isFreeSpin);
+            let totalWin = await this.processWins(winInfo, isFreeSpin);
 
-        await this.finalizeSpin(totalWin, winInfo, bonusInfo, isFreeSpin);
+            this.updateCreditsAndStats(totalWin);
+
+            await this.handleFeatureTriggers(winInfo, bonusInfo, isFreeSpin);
+
+            await this.finalizeSpin(totalWin, winInfo, bonusInfo, isFreeSpin);
+
+            // Emit spin end event
+            this.events.emit(GAME_EVENTS.SPIN_END, {
+                bet: this.currentBet,
+                win: totalWin,
+                credits: this.credits,
+                winInfo,
+                isFreeSpin
+            });
+
+        } catch (error) {
+            console.error('Spin failed with error:', error);
+
+            // Restore state from checkpoint
+            this.credits = checkpoint.credits;
+            this.lastWin = checkpoint.lastWin;
+            this.isSpinning = false;
+
+            // Re-enable spin button
+            if (this.dom.spinBtn) this.dom.spinBtn.disabled = false;
+
+            // Clear any stuck animations
+            this.cleanupTimers();
+            this.clearWinningSymbols();
+            this.hidePaylines();
+
+            // Notify user
+            await this.showMessage('ERROR: SPIN FAILED\nBET REFUNDED');
+
+            // Update display to reflect restored state
+            this.updateDisplay();
+            this.saveGameState();
+        }
     }
 
     /**
@@ -818,14 +914,13 @@ export class SlotMachine {
      */
     async executeFreeSpins() {
         // Disable manual spinning during free spins
-        const spinBtn = document.getElementById('spinBtn');
-        const originalText = spinBtn ? spinBtn.textContent : '';
+        const originalText = this.dom.spinBtn ? this.dom.spinBtn.textContent : '';
 
         while (this.freeSpins.isActive() && this.freeSpins.remainingSpins > 0) {
             // Update button text to show auto-spinning
-            if (spinBtn) {
-                spinBtn.textContent = 'AUTO SPIN';
-                spinBtn.disabled = true;
+            if (this.dom.spinBtn) {
+                this.dom.spinBtn.textContent = 'AUTO SPIN';
+                this.dom.spinBtn.disabled = true;
             }
 
             await this.spin();
@@ -835,9 +930,9 @@ export class SlotMachine {
         }
 
         // Restore button state
-        if (spinBtn) {
-            spinBtn.textContent = originalText;
-            spinBtn.disabled = false;
+        if (this.dom.spinBtn) {
+            this.dom.spinBtn.textContent = originalText;
+            this.dom.spinBtn.disabled = false;
         }
     }
 
@@ -952,7 +1047,7 @@ export class SlotMachine {
      */
     spinReel(reelIndex, duration, predeterminedPosition = null) {
         return new Promise((resolve) => {
-            const reel = document.getElementById(`reel-${reelIndex}`);
+            const reel = this.dom.reels[reelIndex];
             if (!reel) {
                 console.error(`Reel not found: reel-${reelIndex}`);
                 resolve();
@@ -1013,7 +1108,7 @@ export class SlotMachine {
                 this.timerManager.setTimeout(() => {
                     reel.classList.remove('stopping');
                     resolve();
-                }, 300, 'reels'); // Match CSS stopping animation duration
+                }, GAME_CONFIG.animations.reelStopping, 'reels');
             }, duration, 'reels');
         });
     }
@@ -1026,7 +1121,7 @@ export class SlotMachine {
         const result = [];
 
         for (let i = 0; i < this.reelCount; i++) {
-            const reel = document.getElementById(`reel-${i}`);
+            const reel = this.dom.reels[i];
             const symbols = reel.querySelectorAll('.symbol');
             const reelSymbols = [];
 
@@ -1049,10 +1144,12 @@ export class SlotMachine {
 
         winningPositions.forEach(pos => {
             const [reel, row] = pos.split('-').map(Number);
-            const reelEl = document.getElementById(`reel-${reel}`);
-            const symbols = reelEl.querySelectorAll('.symbol');
-            if (symbols[row]) {
-                symbols[row].classList.add('winning');
+            const reelEl = this.dom.reels[reel];
+            if (reelEl) {
+                const symbols = reelEl.querySelectorAll('.symbol');
+                if (symbols[row]) {
+                    symbols[row].classList.add('winning');
+                }
             }
         });
     }
@@ -1071,13 +1168,13 @@ export class SlotMachine {
         symbolElement.classList.remove('premium', 'scatter');
 
         // Premium symbols (high-value symbols)
-        const premiumSymbols = ['👑', '💎', '🌰', '🥜'];
+        const premiumSymbols = getPremiumSymbols();
         if (premiumSymbols.includes(symbolText)) {
             symbolElement.classList.add('premium');
         }
 
         // Scatter symbol
-        if (symbolText === '⭐') {
+        if (symbolText === SYMBOLS.SCATTER.emoji) {
             symbolElement.classList.add('scatter');
         }
     }
@@ -1099,7 +1196,7 @@ export class SlotMachine {
 
     showMessage(message, winAmount = 0) {
         return new Promise((resolve) => {
-            const overlay = document.getElementById('winOverlay');
+            const overlay = this.dom.winOverlay;
 
             // Prevent overlapping counter intervals from previous messages
             if (this.winCounterInterval) {
@@ -1163,11 +1260,12 @@ export class SlotMachine {
     }
 
     togglePaytable(show) {
-        const modal = document.getElementById('paytableModal');
+        if (!this.dom.paytableModal) return;
+
         if (show) {
-            modal.classList.add('show');
+            this.dom.paytableModal.classList.add('show');
         } else {
-            modal.classList.remove('show');
+            this.dom.paytableModal.classList.remove('show');
         }
     }
 
@@ -1432,9 +1530,8 @@ export class SlotMachine {
             this.autoplay.updateUI();
             this.isSpinning = false;
 
-            const spinBtn = document.getElementById('spinBtn');
-            if (spinBtn) {
-                spinBtn.disabled = false;
+            if (this.dom.spinBtn) {
+                this.dom.spinBtn.disabled = false;
             }
         }
     }
@@ -1452,19 +1549,7 @@ export class SlotMachine {
         this.currentBetIndex = 0;
         this.lastWin = 0;
 
-        // Reset stats
-        this.stats = {
-            totalSpins: 0,
-            totalWagered: 0,
-            totalWon: 0,
-            biggestWin: 0,
-            scatterHits: 0,
-            bonusHits: 0,
-            freeSpinsTriggers: 0,
-            cascadeWins: 0
-        };
-
-        // Clear all subsystems
+        // Clear all subsystems (stats are managed by Statistics class)
         this.levelSystem = new LevelSystem(this);
         this.achievements = new Achievements(this);
         this.dailyChallenges = new DailyChallenges(this);

@@ -10,6 +10,17 @@ export class PaylineEvaluator {
      * @returns {Object} - Win information
      */
     static evaluateWins(result, betAmount) {
+        // Input validation
+        if (!result || !Array.isArray(result)) {
+            throw new Error('Invalid result: must be a 2D array of symbols');
+        }
+        if (result.length === 0 || !Array.isArray(result[0])) {
+            throw new Error('Invalid result: must contain reel arrays');
+        }
+        if (typeof betAmount !== 'number' || betAmount <= 0) {
+            throw new Error(`Invalid bet amount: ${betAmount}. Must be a positive number`);
+        }
+
         let totalWin = 0;
         const winningPositions = new Set();
         const winningLines = [];
@@ -101,10 +112,23 @@ export class PaylineEvaluator {
         const scatterEmoji = SYMBOLS.SCATTER.emoji;
         const bonusEmoji = SYMBOLS.BONUS.emoji;
 
-        // Find first non-wild, non-scatter, non-bonus symbol
-        // DESIGN DECISION: Wilds are substitutes only, they do not have their own payout value.
-        // A payline containing only wilds, scatters, or bonus symbols does not pay.
-        // This is intentional game design to balance the RTP.
+        /**
+         * CRITICAL GAME DESIGN RULE: Wild Symbol Substitution Logic
+         *
+         * Wilds are SUBSTITUTES ONLY - they do not have their own payout value.
+         * A payline containing ONLY wilds, scatters, or bonus symbols does NOT pay.
+         *
+         * This is intentional game design to balance RTP and matches industry standards.
+         *
+         * Example:
+         * - [WILD, CROWN, CROWN, CROWN, CROWN] = PAYS (wild substitutes for crown)
+         * - [WILD, WILD, WILD, WILD, WILD] = DOES NOT PAY (no base symbol)
+         *
+         * To change this behavior:
+         * 1. Add payouts to SYMBOLS.WILD in symbols.js
+         * 2. Modify this logic to allow wild-only wins
+         * 3. Update RTP calculations accordingly
+         */
         let baseSymbol = null;
         for (const symbol of symbols) {
             if (symbol !== wildEmoji && symbol !== scatterEmoji && symbol !== bonusEmoji) {

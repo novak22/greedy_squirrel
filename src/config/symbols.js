@@ -40,6 +40,7 @@ export const SYMBOLS = {
         emoji: '👑',
         type: SYMBOL_TYPES.REGULAR,
         name: 'Golden Crown',
+        tier: 'premium',
         weight: 10,
         payouts: {
             5: 200,
@@ -51,6 +52,7 @@ export const SYMBOLS = {
         emoji: '💎',
         type: SYMBOL_TYPES.REGULAR,
         name: 'Diamond',
+        tier: 'premium',
         weight: 12,
         payouts: {
             5: 150,
@@ -62,6 +64,7 @@ export const SYMBOLS = {
         emoji: '🌰',
         type: SYMBOL_TYPES.REGULAR,
         name: 'Premium Acorn',
+        tier: 'premium',
         weight: 15,
         payouts: {
             5: 100,
@@ -73,6 +76,7 @@ export const SYMBOLS = {
         emoji: '🥜',
         type: SYMBOL_TYPES.REGULAR,
         name: 'Peanuts',
+        tier: 'premium',
         weight: 15,
         payouts: {
             5: 100,
@@ -144,4 +148,18 @@ export function getSymbolsForReel(reelIndex) {
         }
         return symbol.allowedReels.includes(reelIndex);
     });
+}
+
+// Get premium symbol emojis
+export function getPremiumSymbols() {
+    return Object.values(SYMBOLS)
+        .filter(s => s.tier === 'premium')
+        .map(s => s.emoji);
+}
+
+// Get high-value symbol emojis (for big win detection)
+export function getHighValueSymbols() {
+    return Object.values(SYMBOLS)
+        .filter(s => s.type === SYMBOL_TYPES.REGULAR && s.tier === 'premium')
+        .map(s => s.emoji);
 }

@@ -78,6 +78,9 @@ export class Cascade {
                 totalWins += cascadeWin;
                 this.totalCascadeWins += cascadeWin;
 
+                // Track cascade in statistics
+                this.game.statistics.recordFeatureTrigger('cascade');
+
                 // Highlight new wins
                 this.game.highlightWinningSymbols(winInfo.winningPositions);
                 this.game.showWinningPaylines(winInfo.winningLines);

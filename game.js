@@ -1,6 +1,7 @@
 // Main entry point for Greedy Squirrel slot machine
 // Features: Free Spins, Bonus Game, Cascading Wins, Progression System
 import { SlotMachine } from './src/core/SlotMachine.js';
+import { GAME_EVENTS } from './src/core/EventBus.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const game = new SlotMachine();
@@ -14,6 +15,21 @@ document.addEventListener('DOMContentLoaded', () => {
         cleanupTimers();
     });
 
+    // Example: Subscribe to game events for debugging/analytics
+    if (window.location.search.includes('debug')) {
+        game.events.on(GAME_EVENTS.WIN, (data) => {
+            console.log('🎰 WIN:', data.amount, `(${data.multiplier.toFixed(1)}x)`);
+        });
+
+        game.events.on(GAME_EVENTS.BIG_WIN, (data) => {
+            console.log('💰 BIG WIN!', data.amount, `(${data.multiplier.toFixed(1)}x)`);
+        });
+
+        game.events.on(GAME_EVENTS.MEGA_WIN, (data) => {
+            console.log('🔥 MEGA WIN!!!', data.amount, `(${data.multiplier.toFixed(1)}x)`);
+        });
+    }
+
     console.log('🐿️ Greedy Squirrel - Game Loaded');
     console.log('Features: FREE SPINS (3+ scatters), BONUS GAME (3+ bonus symbols), Cascading Wins (optional)');
     console.log('Core: WILD symbols, SCATTER pays, Weighted RNG, Auto-save');
@@ -23,4 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('- Hit 3+ 🎁 BONUS on payline for Pick-Me game!');
     console.log('- Enable cascades: window.game.cascade.setEnabled(true)');
     console.log('- Check stats: window.game.stats');
+    console.log('- Enable debug mode: Add ?debug to URL');
+    console.log('- Access EventBus: window.game.events');
 });
