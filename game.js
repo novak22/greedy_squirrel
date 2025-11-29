@@ -39,6 +39,13 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('- Hit 3+ 🎁 BONUS on payline for Pick-Me game!');
     console.log('- Enable cascades: window.game.cascade.setEnabled(true)');
     console.log('- Check stats: window.game.stats');
-    console.log('- Enable debug mode: Add ?debug to URL');
+    console.log('- Enable debug mode: Add ?debug=true to URL');
     console.log('- Access EventBus: window.game.events');
+
+    if (game.debugMode) {
+        console.log('\n🔧 DEBUG MODE ENABLED');
+        console.log('Force next spin result with:');
+        console.log('  game.debugNextSpin = [[\'⭐\',\'⭐\',\'⭐\'], [\'⭐\',\'⭐\',\'⭐\'], [\'⭐\',\'⭐\',\'⭐\'], [\'🌰\',\'🌰\',\'🌰\'], [\'🌰\',\'🌰\',\'🌰\']]');
+        console.log('\nSymbols: 🃏 (wild), ⭐ (scatter), 🎁 (bonus), 👑, 💎, 🌰, 🥜, 🌻, 🍄, 🌲, 🍂');
+    }
 });

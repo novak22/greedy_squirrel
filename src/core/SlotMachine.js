@@ -76,6 +76,10 @@ export class SlotMachine {
         // Gamble settings
         this.autoCollectEnabled = false;
 
+        // Debug mode (enable with ?debug=true in URL)
+        this.debugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
+        this.debugNextSpin = null; // Format: [['🌰','🌰','🌰'], ['🌰','🌰','🌰'], ...]
+
         // Track active timers to avoid overlapping animations
         this.winCounterInterval = null;
 
@@ -507,6 +511,21 @@ export class SlotMachine {
      * @returns {number} return.anticipationTriggerReel - Reel index where anticipation triggers
      */
     prepareReelResults() {
+        // Debug mode: use forced symbols if set
+        if (this.debugMode && this.debugNextSpin) {
+            console.log('[DEBUG] Using forced spin:', this.debugNextSpin);
+            const predeterminedSymbols = this.debugNextSpin;
+            this.debugNextSpin = null; // Clear after use
+
+            return {
+                reelPositions: [0, 0, 0, 0, 0],
+                predeterminedSymbols,
+                shouldTriggerAnticipation: false,
+                anticipationConfig: null,
+                anticipationTriggerReel: -1
+            };
+        }
+
         // Pre-generate all reel positions for anticipation peeking
         const reelPositions = [];
         for (let i = 0; i < this.reelCount; i++) {
@@ -919,17 +938,29 @@ export class SlotMachine {
         // Disable manual spinning during free spins
         const originalText = this.dom.spinBtn ? this.dom.spinBtn.textContent : '';
 
-        while (this.freeSpins.isActive() && this.freeSpins.remainingSpins > 0) {
-            // Update button text to show auto-spinning
-            if (this.dom.spinBtn) {
-                this.dom.spinBtn.textContent = 'AUTO SPIN';
-                this.dom.spinBtn.disabled = true;
+        try {
+            while (this.freeSpins.isActive() && this.freeSpins.remainingSpins > 0) {
+                // Update button text to show auto-spinning
+                if (this.dom.spinBtn) {
+                    this.dom.spinBtn.textContent = 'AUTO SPIN';
+                    this.dom.spinBtn.disabled = true;
+                }
+
+                await this.spin();
+
+                // Safety: if spin didn't decrement remaining spins, break to avoid infinite loop
+                if (this.freeSpins.remainingSpins === this.freeSpins.totalSpins) {
+                    console.error('Free spins stuck - breaking loop');
+                    await this.freeSpins.end();
+                    break;
+                }
+
+                // Short delay between free spins for visibility
+                await new Promise(resolve => setTimeout(resolve, GAME_CONFIG.animations.freeSpinDelay));
             }
-
-            await this.spin();
-
-            // Short delay between free spins for visibility
-            await new Promise(resolve => setTimeout(resolve, GAME_CONFIG.animations.freeSpinDelay));
+        } catch (error) {
+            console.error('Error during free spins execution:', error);
+            await this.freeSpins.end();
         }
 
         // Restore button state
