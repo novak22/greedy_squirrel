@@ -27,6 +27,12 @@ export class SpinHistory {
         if (this.history.length > this.maxHistory) {
             this.history.pop();
         }
+
+        // If the panel is currently visible, update it immediately so players see
+        // new spins without reopening the history.
+        if (this.isVisible) {
+            this.renderHistory();
+        }
     }
 
     /**
