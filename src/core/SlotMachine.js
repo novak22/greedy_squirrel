@@ -5,6 +5,8 @@ import { RNG } from '../utils/RNG.js';
 import { Storage } from '../utils/Storage.js';
 import { PaylineEvaluator } from './PaylineEvaluator.js';
 import { EventBus, GAME_EVENTS } from './EventBus.js';
+import { StateManager, createInitialState } from './StateManager.js';
+import { UIController } from '../ui/UIController.js';
 import { FreeSpins } from '../features/FreeSpins.js';
 import { BonusGame } from '../features/BonusGame.js';
 import { Cascade } from '../features/Cascade.js';
@@ -28,6 +30,7 @@ export class SlotMachine {
         // Core systems
         this.timerManager = new TimerManager();
         this.events = new EventBus();
+        this.stateManager = new StateManager(createInitialState());
 
         // Game configuration
         this.reelCount = GAME_CONFIG.reelCount;
@@ -40,15 +43,14 @@ export class SlotMachine {
             this.reelStrips.push(RNG.generateReelStrip(i, this.symbolsPerReel));
         }
 
-        // Game state
-        this.credits = GAME_CONFIG.initialCredits;
-        this.currentBet = GAME_CONFIG.betOptions[0];
-        this.betOptions = GAME_CONFIG.betOptions;
-        this.currentBetIndex = 0;
-        this.lastWin = 0;
-
-        this.isSpinning = false;
-        this.reelPositions = [0, 0, 0, 0, 0];
+        // Game state is now managed by StateManager via getters/setters
+        // Initialize state with config defaults
+        this.stateManager.setState('game.credits', GAME_CONFIG.initialCredits);
+        this.stateManager.setState('game.currentBet', GAME_CONFIG.betOptions[0]);
+        this.stateManager.setState('game.currentBetIndex', 0);
+        this.stateManager.setState('game.lastWin', 0);
+        this.stateManager.setState('game.isSpinning', false);
+        this.stateManager.setState('game.reelPositions', [0, 0, 0, 0, 0]);
 
         // Initialize bonus features
         this.freeSpins = new FreeSpins(this);
@@ -106,9 +108,64 @@ export class SlotMachine {
         };
     }
 
+    /**
+     * Backward compatibility: State getters/setters that delegate to StateManager
+     * This allows gradual migration while maintaining existing API
+     */
+    get credits() {
+        return this.stateManager.getState('game.credits');
+    }
+
+    set credits(value) {
+        this.stateManager.setState('game.credits', value);
+    }
+
+    get currentBet() {
+        return this.stateManager.getState('game.currentBet');
+    }
+
+    set currentBet(value) {
+        this.stateManager.setState('game.currentBet', value);
+    }
+
+    get currentBetIndex() {
+        return this.stateManager.getState('game.currentBetIndex');
+    }
+
+    set currentBetIndex(value) {
+        this.stateManager.setState('game.currentBetIndex', value);
+    }
+
+    get lastWin() {
+        return this.stateManager.getState('game.lastWin');
+    }
+
+    set lastWin(value) {
+        this.stateManager.setState('game.lastWin', value);
+    }
+
+    get isSpinning() {
+        return this.stateManager.getState('game.isSpinning');
+    }
+
+    set isSpinning(value) {
+        this.stateManager.setState('game.isSpinning', value);
+    }
+
+    get reelPositions() {
+        return this.stateManager.getState('game.reelPositions');
+    }
+
+    set reelPositions(value) {
+        this.stateManager.setState('game.reelPositions', value);
+    }
+
     init() {
         // Cache frequently accessed DOM elements
         this.cacheDOM();
+
+        // Initialize UIController (handles all UI updates via StateManager)
+        this.ui = new UIController(this.stateManager, this.events, this.dom);
 
         this.updateDisplay();
         this.createReels();
