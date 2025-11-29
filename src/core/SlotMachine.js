@@ -361,23 +361,36 @@ export class SlotMachine {
             return RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], pos, this.rowCount);
         });
 
-        // Phase 5: Spin reels sequentially for anticipation effects
-        for (let i = 0; i < this.reelCount; i++) {
-            // Phase 4: Use turbo mode timing if active
-            let duration = this.turboMode.getReelSpinTime(i);
+        // Phase 5: Pre-check if we should do anticipation (before spinning any reels)
+        // This determines if we spin sequentially (with anticipation) or in parallel (fast)
+        let shouldDoAnticipation = false;
+        let anticipationData = null;
+        let anticipationReel = -1;
 
-            // Phase 5: Check for anticipation before final reels
-            if (i >= 2 && i < this.reelCount - 1) {
-                const partialResult = this.getReelResult();
-                const anticipation = this.winAnticipation.checkAnticipation(i, partialResult, finalResult);
+        // Quick check: will anticipation trigger on any reel?
+        for (let checkReel = 2; checkReel < this.reelCount - 1 && !shouldDoAnticipation; checkReel++) {
+            // Build partial result as if we've stopped checkReel reels
+            const partialForCheck = finalResult.slice(0, checkReel);
+            const check = this.winAnticipation.checkAnticipation(checkReel, partialForCheck, finalResult);
+            if (check) {
+                shouldDoAnticipation = true;
+                anticipationReel = checkReel;
+                anticipationData = check;
+                break;
+            }
+        }
 
-                if (anticipation) {
-                    // Add dramatic delay for remaining reels
-                    const extraDelay = this.winAnticipation.getDramaticDelay(anticipation.intensity);
+        if (shouldDoAnticipation) {
+            // Sequential spinning with anticipation effects
+            for (let i = 0; i < this.reelCount; i++) {
+                let duration = this.turboMode.getReelSpinTime(i);
+
+                // Apply anticipation effects at the predetermined reel
+                if (i === anticipationReel) {
+                    const extraDelay = this.winAnticipation.getDramaticDelay(anticipationData.intensity);
                     duration += extraDelay;
 
-                    // Show anticipation effects
-                    this.winAnticipation.applyAnticipationEffects(anticipation, anticipation.intensity);
+                    this.winAnticipation.applyAnticipationEffects(anticipationData, anticipationData.intensity);
 
                     // Add visual glow to remaining reels
                     for (let j = i; j < this.reelCount; j++) {
@@ -385,13 +398,21 @@ export class SlotMachine {
                         if (reel) reel.classList.add('dramatic-slow');
                     }
                 }
+
+                await this.spinReel(i, duration, predeterminedPositions[i]);
+
+                // Remove dramatic-slow class after reel stops
+                const reel = document.getElementById(`reel-${i}`);
+                if (reel) reel.classList.remove('dramatic-slow');
             }
-
-            await this.spinReel(i, duration, predeterminedPositions[i]);
-
-            // Remove dramatic-slow class after reel stops
-            const reel = document.getElementById(`reel-${i}`);
-            if (reel) reel.classList.remove('dramatic-slow');
+        } else {
+            // Fast parallel spinning (no anticipation)
+            const spinPromises = [];
+            for (let i = 0; i < this.reelCount; i++) {
+                const duration = this.turboMode.getReelSpinTime(i);
+                spinPromises.push(this.spinReel(i, duration, predeterminedPositions[i]));
+            }
+            await Promise.all(spinPromises);
         }
 
         const result = this.getReelResult();
