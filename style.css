@@ -3133,25 +3133,90 @@ body::before {
     }
 
     .game-container {
-        padding: 8px;
+        padding: 6px;
         border-width: 2px;
     }
 
     /* Scale down all buttons */
     .btn {
-        padding: 8px 14px;
-        font-size: 0.75em;
-    }
-
-    .btn-small {
-        padding: 6px 10px;
+        padding: 7px 10px;
         font-size: 0.7em;
     }
 
+    .btn-small {
+        padding: 6px 8px;
+        font-size: 0.65em;
+        white-space: nowrap;
+    }
+
     .btn-spin {
-        padding: 10px 16px;
-        font-size: 1em;
-        min-height: 45px;
+        padding: 10px 14px;
+        font-size: 0.95em;
+        min-height: 42px;
+    }
+
+    .btn-bet {
+        padding: 7px 12px;
+        min-width: 35px;
+    }
+
+    .btn-max {
+        padding: 7px 10px;
+        font-size: 0.65em;
+    }
+
+    /* Controls layout fixes */
+    .controls {
+        gap: 6px;
+        margin-top: 8px;
+    }
+
+    .bet-controls {
+        gap: 6px;
+        padding: 5px 8px;
+    }
+
+    .bet-display {
+        font-size: 0.8em;
+        min-width: 60px;
+    }
+
+    /* Advanced controls fixes */
+    .advanced-controls {
+        gap: 4px;
+        margin-top: 8px;
+        position: relative;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .advanced-controls .btn-small {
+        padding: 6px 7px;
+        font-size: 0.6em;
+        flex: 0 1 auto;
+    }
+
+    /* Autoplay counter positioning fix */
+    .autoplay-counter {
+        position: fixed;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        font-size: 0.75em;
+        padding: 4px 10px;
+    }
+
+    /* Paytable toggle */
+    .paytable-toggle {
+        gap: 4px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+    }
+
+    .paytable-toggle .btn-small {
+        padding: 6px 7px;
+        font-size: 0.6em;
     }
 
     /* Gamble/Double-up screen scaling */
@@ -3358,8 +3423,12 @@ body::before {
         --symbol-font-size: calc(var(--reel-size) * 0.3);
     }
 
+    .game-container {
+        padding: 5px;
+    }
+
     .game-header h1 {
-        font-size: 1.2em;
+        font-size: 1.1em;
         letter-spacing: 1px;
     }
 
@@ -3378,41 +3447,65 @@ body::before {
         gap: var(--reel-gap);
     }
 
+    /* Extra small buttons */
+    .btn {
+        padding: 6px 8px;
+        font-size: 0.65em;
+    }
+
+    .btn-small {
+        padding: 5px 6px;
+        font-size: 0.55em;
+    }
+
     .btn-spin {
-        min-height: 45px;
-        font-size: 1em;
+        min-height: 40px;
+        padding: 8px 12px;
+        font-size: 0.85em;
+    }
+
+    .btn-bet {
+        padding: 6px 10px;
+        min-width: 32px;
+    }
+
+    .btn-max {
+        padding: 6px 8px;
+        font-size: 0.6em;
     }
 
     .bet-display {
-        font-size: 0.85em;
+        font-size: 0.75em;
+        min-width: 55px;
+    }
+
+    .controls {
+        gap: 4px;
+    }
+
+    .bet-controls {
+        padding: 4px 6px;
+        gap: 4px;
     }
 
     .paytable-toggle {
         flex-wrap: wrap;
+        gap: 3px;
+    }
+
+    .paytable-toggle .btn-small {
+        padding: 5px 6px;
+        font-size: 0.55em;
     }
 
     .advanced-controls {
-        flex-wrap: nowrap;
-        gap: 4px;
+        flex-wrap: wrap;
+        gap: 3px;
     }
 
     .advanced-controls .btn-small {
-        padding: 5px 8px;
-        font-size: 0.65em;
-    }
-
-    .controls {
-        gap: 6px;
-    }
-
-    .bet-controls {
-        padding: 5px 10px;
-        gap: 6px;
-    }
-
-    .btn-spin {
-        padding: 8px 14px;
-        font-size: 0.95em;
+        padding: 5px 5px;
+        font-size: 0.55em;
     }
 
     /* Extra scaling for gamble screen on very small devices */
