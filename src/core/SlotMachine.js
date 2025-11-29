@@ -164,72 +164,33 @@ export class SlotMachine {
      */
     loadGameState() {
         const savedData = Storage.load();
-        if (savedData) {
-            this.state.setCredits(savedData.credits || GAME_CONFIG.initialCredits);
-            this.state.setCurrentBet(savedData.currentBet || GAME_CONFIG.betOptions[0]);
-            this.state.setCurrentBetIndex(savedData.currentBetIndex || 0);
-            // Note: stats are now handled by Statistics class, not duplicated here
+        this.state.setCredits(savedData.credits);
+        this.state.setCurrentBet(savedData.currentBet);
+        this.state.setCurrentBetIndex(savedData.currentBetIndex);
 
-            // Load progression data
-            if (savedData.progression) {
-                this.levelSystem.init(savedData.progression.levelSystem);
-                this.achievements.init(savedData.progression.achievements);
-                this.dailyChallenges.init(savedData.progression.dailyChallenges || savedData.progression.dailyRewards);
-                this.statistics.init(savedData.progression.statistics);
-            }
+        this.levelSystem.init(savedData.progression.levelSystem);
+        this.achievements.init(savedData.progression.achievements);
+        this.dailyChallenges.init(savedData.progression.dailyChallenges);
+        this.statistics.init(savedData.progression.statistics);
 
-            // Load advanced features data
-            if (savedData.phase4) {
-                this.soundManager.init(savedData.phase4.sound);
-                this.visualEffects.init(savedData.phase4.visualEffects);
-                this.turboMode.init(savedData.phase4.turboMode);
-                this.autoplay.init(savedData.phase4.autoplay);
-                this.cascade.init(savedData.phase4.cascade);
-            }
+        this.soundManager.init(savedData.phase4.sound);
+        this.visualEffects.init(savedData.phase4.visualEffects);
+        this.turboMode.init(savedData.phase4.turboMode);
+        this.autoplay.init(savedData.phase4.autoplay);
+        this.cascade.init(savedData.phase4.cascade);
 
-            // Load spin history and gamble settings
-            if (savedData.phase5) {
-                this.spinHistory.init(savedData.phase5.spinHistory);
-                this.autoCollectEnabled = savedData.phase5.autoCollectEnabled || false;
-            }
+        this.spinHistory.init(savedData.phase5.spinHistory);
+        this.autoCollectEnabled = savedData.phase5.autoCollectEnabled;
 
-            Logger.info('Game state loaded from localStorage');
-        } else {
-            // Initialize progression systems for new sessions
-            this.dailyChallenges.init();
-        }
+        Logger.info('Game state loaded from localStorage');
     }
 
     /**
      * Save game state to localStorage
      */
     saveGameState() {
-        Storage.save({
-            credits: this.state.getCredits(),
-            currentBet: this.state.getCurrentBet(),
-            currentBetIndex: this.state.getCurrentBetIndex(),
-            // Note: stats are now saved via progression.statistics
-            // Save progression data
-            progression: {
-                levelSystem: this.levelSystem.getSaveData(),
-                achievements: this.achievements.getSaveData(),
-                dailyChallenges: this.dailyChallenges.getSaveData(),
-                statistics: this.statistics.getSaveData()
-            },
-            // Save advanced features data
-            phase4: {
-                sound: this.soundManager.getSaveData(),
-                visualEffects: this.visualEffects.getSaveData(),
-                turboMode: this.turboMode.getSaveData(),
-                autoplay: this.autoplay.getSaveData(),
-                cascade: this.cascade.getSaveData()
-            },
-            // Save spin history and gamble settings
-            phase5: {
-                spinHistory: this.spinHistory.getSaveData(),
-                autoCollectEnabled: this.autoCollectEnabled
-            }
-        });
+        const payload = Storage.createSavePayload(this);
+        Storage.save(payload);
     }
 
     createReels() {
