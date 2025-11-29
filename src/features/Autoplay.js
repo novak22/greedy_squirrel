@@ -4,11 +4,10 @@ export class Autoplay {
     constructor(slotMachine) {
         this.game = slotMachine;
         this.isActive = false;
-        this.remainingSpins = 0;
 
         // Autoplay settings
         this.settings = {
-            spins: 10,                    // Number of spins to play
+            spins: 10,                    // Legacy: preferred spin count (autoplay now runs until stopped)
             stopOnWin: false,             // Stop if any win occurs
             stopOnBigWin: true,           // Stop if win > X * bet
             bigWinMultiplier: 50,         // What counts as a big win
@@ -29,7 +28,6 @@ export class Autoplay {
         if (this.isActive) return;
 
         this.isActive = true;
-        this.remainingSpins = this.settings.spins;
         this.startingBalance = this.game.credits;
 
         this.updateUI();
@@ -43,7 +41,6 @@ export class Autoplay {
         if (!this.isActive) return;
 
         this.isActive = false;
-        this.remainingSpins = 0;
 
         this.updateUI();
 
@@ -56,7 +53,7 @@ export class Autoplay {
      * Execute next spin in autoplay sequence
      */
     async executeNextSpin() {
-        if (!this.isActive || this.remainingSpins <= 0) {
+        if (!this.isActive) {
             this.stop();
             return;
         }
@@ -72,7 +69,6 @@ export class Autoplay {
             return;
         }
 
-        this.remainingSpins--;
         this.updateUI();
 
         // Execute spin
@@ -84,7 +80,7 @@ export class Autoplay {
         }
 
         // Continue to next spin if still active
-        if (this.isActive && this.remainingSpins > 0) {
+        if (this.isActive) {
             // Delay before next spin (reduced in turbo mode)
             const delay = this.game.turboMode ? 500 : 1000;
             setTimeout(() => this.executeNextSpin(), delay);
@@ -146,8 +142,8 @@ export class Autoplay {
         }
 
         if (autoplayCounter) {
-            if (this.isActive && this.remainingSpins > 0) {
-                autoplayCounter.textContent = `Auto: ${this.remainingSpins}`;
+            if (this.isActive) {
+                autoplayCounter.textContent = 'Auto: ∞';
                 autoplayCounter.style.display = 'block';
             } else {
                 autoplayCounter.style.display = 'none';
