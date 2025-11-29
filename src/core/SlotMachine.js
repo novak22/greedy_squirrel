@@ -1,4 +1,4 @@
-// Main SlotMachine class with Phase 1, 2 & 3 enhancements
+// Main SlotMachine class with Phase 1, 2, 3 & 4 enhancements
 import { SYMBOLS, getAllSymbolEmojis } from '../config/symbols.js';
 import { GAME_CONFIG } from '../config/game.js';
 import { RNG } from '../utils/RNG.js';
@@ -11,6 +11,11 @@ import { LevelSystem } from '../progression/LevelSystem.js';
 import { Achievements } from '../progression/Achievements.js';
 import { DailyRewards } from '../progression/DailyRewards.js';
 import { Statistics } from '../progression/Statistics.js';
+import { Autoplay } from '../features/Autoplay.js';
+import { TurboMode } from '../features/TurboMode.js';
+import { VisualEffects } from '../effects/VisualEffects.js';
+import { SoundManager } from '../audio/SoundManager.js';
+import { Settings } from '../ui/Settings.js';
 
 export class SlotMachine {
     constructor() {
@@ -58,6 +63,13 @@ export class SlotMachine {
         this.dailyRewards = new DailyRewards(this);
         this.statistics = new Statistics(this);
 
+        // Phase 4: Initialize advanced features
+        this.soundManager = new SoundManager();
+        this.visualEffects = new VisualEffects(this);
+        this.autoplay = new Autoplay(this);
+        this.turboMode = new TurboMode(this);
+        this.settings = new Settings(this);
+
         // Load saved data
         this.loadGameState();
 
@@ -98,6 +110,13 @@ export class SlotMachine {
                 this.statistics.init(savedData.progression.statistics);
             }
 
+            // Phase 4: Load advanced features data
+            if (savedData.phase4) {
+                this.soundManager.init(savedData.phase4.sound);
+                this.visualEffects.init(savedData.phase4.visualEffects);
+                this.turboMode.init(savedData.phase4.turboMode);
+            }
+
             console.log('Game state loaded from localStorage');
         }
     }
@@ -117,6 +136,12 @@ export class SlotMachine {
                 achievements: this.achievements.getSaveData(),
                 dailyRewards: this.dailyRewards.getSaveData(),
                 statistics: this.statistics.getSaveData()
+            },
+            // Phase 4: Save advanced features data
+            phase4: {
+                sound: this.soundManager.getSaveData(),
+                visualEffects: this.visualEffects.getSaveData(),
+                turboMode: this.turboMode.getSaveData()
             }
         });
     }
@@ -167,8 +192,33 @@ export class SlotMachine {
             });
         });
 
+        // Phase 4: Advanced controls
+        const autoplayBtn = document.getElementById('autoplayBtn');
+        if (autoplayBtn) {
+            autoplayBtn.addEventListener('click', () => {
+                this.soundManager.playClick();
+                if (this.autoplay.isActive) {
+                    this.autoplay.stop();
+                } else {
+                    this.autoplay.start();
+                }
+            });
+        }
+
+        const turboBtn = document.getElementById('turboBtn');
+        if (turboBtn) {
+            turboBtn.addEventListener('click', () => {
+                this.soundManager.playClick();
+                this.turboMode.toggle();
+                this.updateTurboUI();
+            });
+        }
+
+        // Phase 4: Settings
+        this.settings.attachEventListeners();
+
         document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && !this.isSpinning) {
+            if (e.code === 'Space' && !this.isSpinning && !this.autoplay.isActive) {
                 e.preventDefault();
                 this.spin();
             }
@@ -185,6 +235,8 @@ export class SlotMachine {
     changeBet(direction) {
         if (this.isSpinning) return;
 
+        this.soundManager.playClick();
+
         this.currentBetIndex += direction;
 
         if (this.currentBetIndex < 0) {
@@ -199,6 +251,8 @@ export class SlotMachine {
 
     setMaxBet() {
         if (this.isSpinning) return;
+
+        this.soundManager.playClick();
 
         this.currentBetIndex = this.betOptions.length - 1;
         this.currentBet = this.betOptions[this.currentBetIndex];
@@ -220,6 +274,9 @@ export class SlotMachine {
         }
 
         this.isSpinning = true;
+
+        // Phase 4: Play spin sound
+        this.soundManager.playReelSpin();
 
         // Only deduct bet if not in free spins
         if (!isFreeSpin) {
@@ -246,7 +303,9 @@ export class SlotMachine {
         const spinPromises = [];
 
         for (let i = 0; i < this.reelCount; i++) {
-            spinPromises.push(this.spinReel(i, GAME_CONFIG.spinDurations[i]));
+            // Phase 4: Use turbo mode timing if active
+            const duration = this.turboMode.getReelSpinTime(i);
+            spinPromises.push(this.spinReel(i, duration));
         }
 
         await Promise.all(spinPromises);
@@ -270,6 +329,11 @@ export class SlotMachine {
             this.highlightWinningSymbols(winInfo.winningPositions);
             this.showWinningPaylines(winInfo.winningLines);
 
+            // Phase 4: Play win sound and visual effects
+            const winMultiplier = winInfo.totalWin / this.currentBet;
+            this.soundManager.playWin(winMultiplier);
+            this.visualEffects.showWinCelebration(winInfo.totalWin, winMultiplier);
+
             // Build win message
             let message = `WIN: ${winInfo.totalWin}`;
             if (isFreeSpin) {
@@ -283,6 +347,9 @@ export class SlotMachine {
                 this.statistics.recordFeatureTrigger('scatter', { count: winInfo.scatterCount });
                 this.dailyRewards.updateChallengeProgress('hit_scatters', winInfo.scatterCount);
                 this.levelSystem.awardXP('scatter');
+
+                // Phase 4: Scatter sound and effects
+                this.soundManager.playScatter();
             }
 
             await this.showMessage(message);
@@ -341,6 +408,9 @@ export class SlotMachine {
                 this.levelSystem.awardXP('freeSpins');
                 this.dailyRewards.updateChallengeProgress('trigger_freespins', 1);
 
+                // Phase 4: Free spins trigger sound
+                this.soundManager.playFreeSpinsTrigger();
+
                 await this.freeSpins.trigger(winInfo.scatterCount);
 
                 // Execute free spins
@@ -356,6 +426,9 @@ export class SlotMachine {
             this.statistics.recordFeatureTrigger('bonus');
             this.levelSystem.awardXP('bonus');
             this.dailyRewards.updateChallengeProgress('trigger_bonus', 1);
+
+            // Phase 4: Bonus trigger sound
+            this.soundManager.playBonusTrigger();
 
             const bonusCount = bonusInfo.bonusLines[0].count;
             await this.bonusGame.trigger(bonusCount);
@@ -520,10 +593,13 @@ export class SlotMachine {
             overlay.textContent = message;
             overlay.classList.add('show');
 
+            // Phase 4: Use turbo mode timing for messages
+            const duration = this.turboMode.getMessageDelay();
+
             setTimeout(() => {
                 overlay.classList.remove('show');
                 resolve();
-            }, GAME_CONFIG.messageDisplayDuration);
+            }, duration);
         });
     }
 
@@ -542,6 +618,15 @@ export class SlotMachine {
     async showLevelUpMessage(level, reward) {
         const overlay = document.getElementById('featureOverlay');
         if (!overlay) return;
+
+        // Phase 4: Level up sound and visual effects
+        this.soundManager.playLevelUp();
+        this.visualEffects.showLevelUpEffect();
+
+        // Unlock turbo mode at level 10
+        if (level === 10 && reward?.type === 'feature' && reward?.value === 'turbo') {
+            this.turboMode.unlock();
+        }
 
         let rewardText = '';
         if (reward) {
@@ -777,5 +862,18 @@ export class SlotMachine {
         }
 
         container.innerHTML = html;
+    }
+
+    /**
+     * Phase 4: Update turbo mode UI
+     */
+    updateTurboUI() {
+        const container = document.querySelector('.game-container');
+        if (this.turboMode.isActive) {
+            container.classList.add('turbo-mode');
+        } else {
+            container.classList.remove('turbo-mode');
+        }
+        this.saveGameState();
     }
 }

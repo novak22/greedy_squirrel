@@ -83,6 +83,15 @@
             <button class="btn btn-small" id="paytableBtn">PAYTABLE</button>
             <!-- Phase 3: Stats Button -->
             <button class="btn btn-small" id="statsBtn">STATS</button>
+            <!-- Phase 4: Settings Button -->
+            <button class="btn btn-small" id="settingsBtn">⚙️</button>
+        </div>
+
+        <!-- Phase 4: Advanced Controls -->
+        <div class="advanced-controls">
+            <button class="btn btn-small" id="autoplayBtn">AUTOPLAY</button>
+            <button class="btn btn-small" id="turboBtn">🚀 TURBO</button>
+            <div class="autoplay-counter" id="autoplayCounter" style="display: none;"></div>
         </div>
     </div>
 
@@ -223,6 +232,86 @@
 
             <div id="statsContentArea" class="stats-content-area">
                 <!-- Dynamically populated by game -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Phase 4: Settings Modal -->
+    <div class="settings-modal" id="settingsModal">
+        <div class="settings-content">
+            <button class="close-btn" id="closeSettings">&times;</button>
+            <h2>SETTINGS</h2>
+
+            <div class="settings-section">
+                <h3>🔊 Audio</h3>
+                <div class="setting-item">
+                    <label for="soundEnabled">Master Sound</label>
+                    <input type="checkbox" id="soundEnabled" class="toggle-switch" checked>
+                </div>
+                <div class="setting-item">
+                    <label for="musicEnabled">Music</label>
+                    <input type="checkbox" id="musicEnabled" class="toggle-switch" checked>
+                </div>
+                <div class="setting-item">
+                    <label for="effectsEnabled">Sound Effects</label>
+                    <input type="checkbox" id="effectsEnabled" class="toggle-switch" checked>
+                </div>
+                <div class="setting-item">
+                    <label for="volumeSlider">Volume: <span id="volumeSliderValue">50%</span></label>
+                    <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="0.5">
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>✨ Visual Effects</h3>
+                <div class="setting-item">
+                    <label for="particlesEnabled">Particle Effects</label>
+                    <input type="checkbox" id="particlesEnabled" class="toggle-switch" checked>
+                </div>
+                <div class="setting-item">
+                    <label for="animationsEnabled">Animations</label>
+                    <input type="checkbox" id="animationsEnabled" class="toggle-switch" checked>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>🤖 Autoplay Settings</h3>
+                <div class="setting-item">
+                    <label for="autoplaySpins">Number of Spins</label>
+                    <input type="number" id="autoplaySpins" min="1" max="1000" value="10">
+                </div>
+                <div class="setting-item">
+                    <label for="stopOnWin">Stop on Any Win</label>
+                    <input type="checkbox" id="stopOnWin" class="toggle-switch">
+                </div>
+                <div class="setting-item">
+                    <label for="stopOnBigWin">Stop on Big Win</label>
+                    <input type="checkbox" id="stopOnBigWin" class="toggle-switch" checked>
+                </div>
+                <div class="setting-item">
+                    <label for="bigWinMultiplier">Big Win Multiplier</label>
+                    <input type="number" id="bigWinMultiplier" min="1" value="50">
+                </div>
+                <div class="setting-item">
+                    <label for="stopOnFeature">Stop on Feature Trigger</label>
+                    <input type="checkbox" id="stopOnFeature" class="toggle-switch">
+                </div>
+                <div class="setting-item">
+                    <label for="stopOnBalance">Stop on Balance Increase</label>
+                    <input type="checkbox" id="stopOnBalance" class="toggle-switch">
+                </div>
+                <div class="setting-item">
+                    <label for="balanceIncrease">Balance Increase Target</label>
+                    <input type="number" id="balanceIncrease" min="1" value="1000">
+                </div>
+                <div class="setting-item">
+                    <label for="stopOnBalanceLow">Stop on Low Balance</label>
+                    <input type="checkbox" id="stopOnBalanceLow" class="toggle-switch" checked>
+                </div>
+                <div class="setting-item">
+                    <label for="balanceLowLimit">Low Balance Limit</label>
+                    <input type="number" id="balanceLowLimit" min="0" value="100">
+                </div>
             </div>
         </div>
     </div>
