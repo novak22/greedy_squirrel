@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Greedy Squirrel - Slot Machine</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>🐿️ GREEDY SQUIRREL 🐿️</h1>
+            <div class="info-panel">
+                <div class="info-item">
+                    <span class="label">CREDITS</span>
+                    <span class="value" id="credits">1000</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">BET</span>
+                    <span class="value" id="bet">10</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">WIN</span>
+                    <span class="value" id="win">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="slot-machine">
+            <div class="reels-container">
+                <div class="reel" id="reel-0">
+                    <div class="symbol-container"></div>
+                </div>
+                <div class="reel" id="reel-1">
+                    <div class="symbol-container"></div>
+                </div>
+                <div class="reel" id="reel-2">
+                    <div class="symbol-container"></div>
+                </div>
+                <div class="reel" id="reel-3">
+                    <div class="symbol-container"></div>
+                </div>
+                <div class="reel" id="reel-4">
+                    <div class="symbol-container"></div>
+                </div>
+            </div>
+
+            <div class="paylines">
+                <div class="payline payline-1"></div>
+                <div class="payline payline-2"></div>
+                <div class="payline payline-3"></div>
+                <div class="payline payline-4"></div>
+                <div class="payline payline-5"></div>
+                <div class="payline payline-6"></div>
+                <div class="payline payline-7"></div>
+                <div class="payline payline-8"></div>
+                <div class="payline payline-9"></div>
+                <div class="payline payline-10"></div>
+            </div>
+
+            <div class="win-overlay" id="winOverlay"></div>
+        </div>
+
+        <div class="controls">
+            <div class="bet-controls">
+                <button class="btn btn-bet" id="decreaseBet">-</button>
+                <span class="bet-display">BET: <span id="betDisplay">10</span></span>
+                <button class="btn btn-bet" id="increaseBet">+</button>
+            </div>
+
+            <button class="btn btn-spin" id="spinBtn">
+                <span class="spin-text">SPIN</span>
+            </button>
+
+            <button class="btn btn-max" id="maxBet">MAX BET</button>
+        </div>
+
+        <div class="paytable-toggle">
+            <button class="btn btn-small" id="paytableBtn">PAYTABLE</button>
+        </div>
+    </div>
+
+    <div class="paytable-modal" id="paytableModal">
+        <div class="paytable-content">
+            <button class="close-btn" id="closePaytable">&times;</button>
+            <h2>PAYTABLE</h2>
+            <div class="paytable-grid">
+                <div class="paytable-item">
+                    <div class="symbol-display">👑</div>
+                    <div class="payouts">5x: 200 | 4x: 40 | 3x: 10</div>
+                    <div class="symbol-name">Golden Crown</div>
+                </div>
+                <div class="paytable-item">
+                    <div class="symbol-display">💎</div>
+                    <div class="payouts">5x: 150 | 4x: 30 | 3x: 8</div>
+                    <div class="symbol-name">Diamond</div>
+                </div>
+                <div class="paytable-item">
+                    <div class="symbol-display">🌰</div>
+                    <div class="payouts">5x: 100 | 4x: 25 | 3x: 5</div>
+                    <div class="symbol-name">Premium Acorn</div>
+                </div>
+                <div class="paytable-item">
+                    <div class="symbol-display">🥜</div>
+                    <div class="payouts">5x: 100 | 4x: 25 | 3x: 5</div>
+                    <div class="symbol-name">Peanuts</div>
+                </div>
+                <div class="paytable-item">
+                    <div class="symbol-display">🌻</div>
+                    <div class="payouts">5x: 80 | 4x: 20 | 3x: 4</div>
+                    <div class="symbol-name">Sunflower Seeds</div>
+                </div>
+                <div class="paytable-item">
+                    <div class="symbol-display">🍄</div>
+                    <div class="payouts">5x: 60 | 4x: 15 | 3x: 3</div>
+                    <div class="symbol-name">Mushroom</div>
+                </div>
+                <div class="paytable-item">
+                    <div class="symbol-display">🌲</div>
+                    <div class="payouts">5x: 40 | 4x: 10 | 3x: 2</div>
+                    <div class="symbol-name">Pine Cone</div>
+                </div>
+                <div class="paytable-item">
+                    <div class="symbol-display">🍂</div>
+                    <div class="payouts">5x: 20 | 4x: 8 | 3x: 2</div>
+                    <div class="symbol-name">Autumn Leaf</div>
+                </div>
+            </div>
+            <div class="paylines-info">
+                <h3>10 PAYLINES</h3>
+                <p>Win from left to right on active paylines</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
