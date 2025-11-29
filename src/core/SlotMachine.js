@@ -329,9 +329,19 @@ export class SlotMachine {
 
         const proposedBet = this.betOptions[newIndex];
         const increment = proposedBet - this.currentBet;
+        const maxIncrement = this.getMaxBetIncrement();
 
-        if (increment > 0 && increment >= this.getMaxBetIncrement()) {
-            this.showMessage('BET INCREASE LIMITED TO 10% OF BALANCE');
+        if (increment > 0 && increment >= maxIncrement) {
+            const targetIndex = this.findHighestBetWithinIncrement(maxIncrement);
+
+            if (targetIndex === this.currentBetIndex) {
+                this.showMessage('BET INCREASE LIMITED TO 10% OF BALANCE');
+                return;
+            }
+
+            this.currentBetIndex = targetIndex;
+            this.currentBet = this.betOptions[targetIndex];
+            this.updateDisplay();
             return;
         }
 
