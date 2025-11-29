@@ -5,10 +5,10 @@
 }
 
 :root {
-    --reel-size: clamp(80px, 17vw, 120px);
-    --reel-gap: clamp(6px, 1.5vw, 10px);
-    --machine-padding: clamp(10px, 2vw, 15px);
-    --symbol-font-size: clamp(2.5em, 5vw, 4em);
+    --reel-size: clamp(72px, min(16vw, 20vh), 100px);
+    --reel-gap: clamp(6px, 1vw, 9px);
+    --machine-padding: clamp(8px, 1.6vw, 12px);
+    --symbol-font-size: calc(var(--reel-size) * 0.35);
     --payline-1: calc(var(--reel-size) * 0.5);
     --payline-2: 0px;
     --payline-3: calc(var(--reel-size) * 1);
@@ -21,6 +21,24 @@
     --payline-10: calc(var(--reel-size) * 0.3083);
 }
 
+@media (max-height: 820px) {
+    :root {
+        --reel-size: clamp(68px, min(15vw, 18vh), 92px);
+        --machine-padding: clamp(6px, 1.2vw, 10px);
+    }
+
+    .game-header h1 {
+        font-size: clamp(1.4em, 3.5vw, 1.8em);
+    }
+
+    .btn,
+    .btn-spin,
+    .btn-small {
+        padding-top: clamp(8px, 1.5vh, 10px);
+        padding-bottom: clamp(8px, 1.5vh, 10px);
+    }
+}
+
 body {
     font-family: 'Arial', sans-serif;
     background: linear-gradient(135deg, #1a3a1a 0%, #2d5016 50%, #1a3a1a 100%);
@@ -31,7 +49,7 @@ body {
     color: #fff;
     overflow-x: hidden;
     overflow-y: auto;
-    padding: clamp(6px, 1.2vw, 10px) 0;
+    padding: clamp(4px, 1vh, 8px) 0;
 }
 
 body::before {
@@ -64,7 +82,7 @@ body::before {
 
 .game-header {
     text-align: center;
-    margin-bottom: 15px;
+    margin-bottom: clamp(8px, 1.6vh, 12px);
 }
 
 .game-header h1 {
@@ -87,8 +105,8 @@ body::before {
 .info-panel {
     display: flex;
     justify-content: center;
-    gap: clamp(10px, 3vw, 15px);
-    margin-top: 10px;
+    gap: clamp(8px, 2.5vw, 12px);
+    margin-top: clamp(6px, 1vh, 10px);
 }
 
 .info-item {
@@ -98,8 +116,8 @@ body::before {
     background: linear-gradient(180deg, #4a3520 0%, #2a1f15 100%);
     border: 2px solid #8b5a2b;
     border-radius: 10px;
-    padding: clamp(6px, 2vw, 8px) clamp(12px, 3vw, 15px);
-    min-width: clamp(85px, 20vw, 100px);
+    padding: clamp(6px, 1.8vw, 8px) clamp(10px, 2.5vw, 14px);
+    min-width: clamp(80px, 18vw, 96px);
     box-shadow: 0 0 15px rgba(139, 90, 43, 0.3);
 }
 
@@ -123,7 +141,7 @@ body::before {
     border: 4px solid #8b5a2b;
     border-radius: 15px;
     padding: var(--machine-padding);
-    margin: 15px 0;
+    margin: clamp(10px, 1.8vh, 14px) 0;
     box-shadow:
         inset 0 0 30px rgba(0, 0, 0, 0.8),
         0 0 30px rgba(139, 90, 43, 0.4);
@@ -373,8 +391,8 @@ body::before {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: clamp(10px, 3vw, 15px);
-    margin-top: 15px;
+    gap: clamp(10px, 3vw, 14px);
+    margin-top: clamp(10px, 1.8vh, 14px);
 }
 
 .bet-controls {
@@ -1822,7 +1840,7 @@ body::before {
     display: flex;
     justify-content: center;
     gap: 10px;
-    margin-top: 15px;
+    margin-top: clamp(10px, 1.6vh, 13px);
     align-items: center;
 }
 
