@@ -3212,3 +3212,108 @@ body::before {
         -webkit-overflow-scrolling: touch;
     }
 }
+
+/* ============================================
+   PHASE 5: WIN ANTICIPATION SYSTEM STYLES
+   ============================================ */
+
+/* Anticipation symbol highlight */
+.symbol.anticipation {
+    animation: anticipationPulse 0.6s ease-in-out infinite;
+    box-shadow:
+        0 0 30px rgba(255, 215, 0, 0.8),
+        0 0 50px rgba(255, 215, 0, 0.5),
+        inset 0 0 20px rgba(255, 215, 0, 0.3);
+    z-index: 5;
+    position: relative;
+}
+
+@keyframes anticipationPulse {
+    0%, 100% {
+        transform: scale(1);
+        filter: brightness(1.2) drop-shadow(0 0 10px rgba(255, 215, 0, 0.8));
+    }
+    50% {
+        transform: scale(1.15);
+        filter: brightness(1.5) drop-shadow(0 0 20px rgba(255, 215, 0, 1));
+    }
+}
+
+/* Anticipation overlay messages */
+.win-overlay.anticipation-scatter {
+    color: #ffd700;
+    text-shadow:
+        0 0 30px rgba(255, 215, 0, 1),
+        0 0 50px rgba(255, 215, 0, 0.8),
+        0 0 70px rgba(255, 215, 0, 0.6);
+    animation: anticipationFlash 0.5s ease-in-out infinite;
+}
+
+.win-overlay.anticipation-bonus {
+    color: #ff6b6b;
+    text-shadow:
+        0 0 30px rgba(255, 107, 107, 1),
+        0 0 50px rgba(255, 107, 107, 0.8),
+        0 0 70px rgba(255, 107, 107, 0.6);
+    animation: anticipationFlash 0.5s ease-in-out infinite;
+}
+
+.win-overlay.anticipation-bigwin {
+    color: #4caf50;
+    text-shadow:
+        0 0 30px rgba(76, 175, 80, 1),
+        0 0 50px rgba(76, 175, 80, 0.8),
+        0 0 70px rgba(76, 175, 80, 0.6);
+    animation: anticipationFlash 0.5s ease-in-out infinite;
+}
+
+@keyframes anticipationFlash {
+    0%, 100% {
+        opacity: 0.8;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.05);
+    }
+}
+
+/* Near-miss effect */
+.win-overlay.near-miss {
+    color: #ff9800;
+    text-shadow:
+        0 0 30px rgba(255, 152, 0, 1),
+        0 0 50px rgba(255, 152, 0, 0.8),
+        0 0 70px rgba(255, 152, 0, 0.6);
+    animation: nearMissShake 0.4s ease-in-out;
+}
+
+@keyframes nearMissShake {
+    0%, 100% {
+        transform: translate(-50%, -50%);
+    }
+    25% {
+        transform: translate(-55%, -50%);
+    }
+    75% {
+        transform: translate(-45%, -50%);
+    }
+}
+
+/* Dramatic reel slow-down visual indicator */
+.reel.dramatic-slow {
+    animation: dramaticGlow 1s ease-in-out infinite;
+}
+
+@keyframes dramaticGlow {
+    0%, 100% {
+        box-shadow:
+            0 0 15px rgba(255, 215, 0, 0.3),
+            inset 0 0 15px rgba(255, 215, 0, 0.1);
+    }
+    50% {
+        box-shadow:
+            0 0 30px rgba(255, 215, 0, 0.6),
+            inset 0 0 30px rgba(255, 215, 0, 0.2);
+    }
+}

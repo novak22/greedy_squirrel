@@ -19,6 +19,7 @@ import { Settings } from '../ui/Settings.js';
 import { SpinHistory } from '../ui/SpinHistory.js';
 import { Gamble } from '../features/Gamble.js';
 import { BuyBonus } from '../features/BuyBonus.js';
+import { WinAnticipation } from '../features/WinAnticipation.js';
 
 export class SlotMachine {
     constructor() {
@@ -73,10 +74,11 @@ export class SlotMachine {
         this.turboMode = new TurboMode(this);
         this.settings = new Settings(this);
 
-        // Phase 5: Initialize spin history, gamble, and buy bonus
+        // Phase 5: Initialize spin history, gamble, buy bonus, and win anticipation
         this.spinHistory = new SpinHistory(20);
         this.gamble = new Gamble(this);
         this.buyBonus = new BuyBonus(this);
+        this.winAnticipation = new WinAnticipation(this);
 
         // Load saved data
         this.loadGameState();
@@ -341,15 +343,41 @@ export class SlotMachine {
         this.clearWinningSymbols();
         this.hidePaylines();
 
-        const spinPromises = [];
+        // Phase 5: Reset anticipation state
+        this.winAnticipation.reset();
 
+        // Phase 5: Spin reels sequentially for anticipation effects
         for (let i = 0; i < this.reelCount; i++) {
             // Phase 4: Use turbo mode timing if active
-            const duration = this.turboMode.getReelSpinTime(i);
-            spinPromises.push(this.spinReel(i, duration));
-        }
+            let duration = this.turboMode.getReelSpinTime(i);
 
-        await Promise.all(spinPromises);
+            // Phase 5: Check for anticipation before final reels
+            if (i >= 2 && i < this.reelCount - 1) {
+                const partialResult = this.getReelResult();
+                const anticipation = this.winAnticipation.checkAnticipation(i, partialResult);
+
+                if (anticipation) {
+                    // Add dramatic delay for remaining reels
+                    const extraDelay = this.winAnticipation.getDramaticDelay(anticipation.intensity);
+                    duration += extraDelay;
+
+                    // Show anticipation effects
+                    this.winAnticipation.applyAnticipationEffects(anticipation, anticipation.intensity);
+
+                    // Add visual glow to remaining reels
+                    for (let j = i; j < this.reelCount; j++) {
+                        const reel = document.getElementById(`reel-${j}`);
+                        if (reel) reel.classList.add('dramatic-slow');
+                    }
+                }
+            }
+
+            await this.spinReel(i, duration);
+
+            // Remove dramatic-slow class after reel stops
+            const reel = document.getElementById(`reel-${i}`);
+            if (reel) reel.classList.remove('dramatic-slow');
+        }
 
         const result = this.getReelResult();
         let winInfo = PaylineEvaluator.evaluateWins(result, this.currentBet);
