@@ -19,6 +19,7 @@ export class Autoplay {
         };
 
         this.startingBalance = 0;
+        this.nextSpinTimeout = null;
     }
 
     /**
@@ -29,6 +30,7 @@ export class Autoplay {
 
         this.isActive = true;
         this.startingBalance = this.game.credits;
+        this.clearNextSpinTimeout();
 
         this.updateUI();
         this.executeNextSpin();
@@ -38,10 +40,10 @@ export class Autoplay {
      * Stop autoplay
      */
     stop(reason = '') {
-        if (!this.isActive) return;
+        if (!this.isActive && !this.nextSpinTimeout) return;
 
         this.isActive = false;
-
+        this.clearNextSpinTimeout();
         this.updateUI();
 
         if (reason) {
@@ -83,9 +85,23 @@ export class Autoplay {
         if (this.isActive) {
             // Delay before next spin (reduced in turbo mode)
             const delay = this.game.turboMode ? 500 : 1000;
-            setTimeout(() => this.executeNextSpin(), delay);
+            this.clearNextSpinTimeout();
+            this.nextSpinTimeout = setTimeout(() => {
+                this.nextSpinTimeout = null;
+                this.executeNextSpin();
+            }, delay);
         } else {
             this.stop();
+        }
+    }
+
+    /**
+     * Clear any scheduled spin timeout
+     */
+    clearNextSpinTimeout() {
+        if (this.nextSpinTimeout) {
+            clearTimeout(this.nextSpinTimeout);
+            this.nextSpinTimeout = null;
         }
     }
 
