@@ -259,4 +259,24 @@ export class Cascade {
             container.classList.remove('active');
         }
     }
+
+    /**
+     * Get save data for persistence
+     */
+    getSaveData() {
+        return {
+            enabled: this.enabled
+        };
+    }
+
+    /**
+     * Load saved data
+     */
+    init(data) {
+        if (!data) return;
+
+        if (typeof data.enabled !== 'undefined') {
+            this.enabled = data.enabled;
+        }
+    }
 }

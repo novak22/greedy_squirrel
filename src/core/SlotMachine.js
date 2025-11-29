@@ -125,6 +125,8 @@ export class SlotMachine {
                 this.soundManager.init(savedData.phase4.sound);
                 this.visualEffects.init(savedData.phase4.visualEffects);
                 this.turboMode.init(savedData.phase4.turboMode);
+                this.autoplay.init(savedData.phase4.autoplay);
+                this.cascade.init(savedData.phase4.cascade);
             }
 
             // Phase 5: Load spin history
@@ -156,7 +158,9 @@ export class SlotMachine {
             phase4: {
                 sound: this.soundManager.getSaveData(),
                 visualEffects: this.visualEffects.getSaveData(),
-                turboMode: this.turboMode.getSaveData()
+                turboMode: this.turboMode.getSaveData(),
+                autoplay: this.autoplay.getSaveData(),
+                cascade: this.cascade.getSaveData()
             },
             // Phase 5: Save spin history
             phase5: {

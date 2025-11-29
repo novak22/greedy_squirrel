@@ -168,4 +168,24 @@ export class Autoplay {
     getSettings() {
         return { ...this.settings };
     }
+
+    /**
+     * Get save data for persistence
+     */
+    getSaveData() {
+        return {
+            settings: { ...this.settings }
+        };
+    }
+
+    /**
+     * Load saved data
+     */
+    init(data) {
+        if (!data) return;
+
+        if (data.settings) {
+            this.settings = { ...this.settings, ...data.settings };
+        }
+    }
 }
