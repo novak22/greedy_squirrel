@@ -190,21 +190,26 @@ export class PaylineEvaluator {
         const details = [];
 
         // Check if scatter count meets minimum for payout
-        if (scatterCount >= 3 && SYMBOLS.SCATTER.payouts[scatterCount]) {
-            const payout = SYMBOLS.SCATTER.payouts[scatterCount];
-            totalWin = payout * betAmount;
+        if (scatterCount >= 3) {
+            // Use max payout if count exceeds defined payouts
+            const payoutKey = Math.min(scatterCount, 5);
+            const payout = SYMBOLS.SCATTER.payouts[payoutKey];
 
-            // Mark all scatter positions as winning
-            scatterPositions.forEach(pos => {
-                winningPositions.add(`${pos.reel}-${pos.row}`);
-            });
+            if (payout) {
+                totalWin = payout * betAmount;
 
-            details.push({
-                type: 'scatter',
-                symbol: scatterEmoji,
-                count: scatterCount,
-                win: totalWin
-            });
+                // Mark all scatter positions as winning
+                scatterPositions.forEach(pos => {
+                    winningPositions.add(`${pos.reel}-${pos.row}`);
+                });
+
+                details.push({
+                    type: 'scatter',
+                    symbol: scatterEmoji,
+                    count: scatterCount,
+                    win: totalWin
+                });
+            }
         }
 
         return { totalWin, winningPositions, details, count: scatterCount };
