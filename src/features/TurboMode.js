@@ -78,7 +78,7 @@ export class TurboMode {
         } else {
             turboBtn.style.opacity = '1';
             turboBtn.style.cursor = 'pointer';
-            turboBtn.textContent = this.isActive ? '🚀 TURBO ON' : '🚀 TURBO';
+            turboBtn.textContent = '🚀 TURBO';
             turboBtn.classList.toggle('active', this.isActive);
         }
     }

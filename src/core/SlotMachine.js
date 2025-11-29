@@ -307,12 +307,12 @@ export class SlotMachine {
         if (!autoCollectBtn) return;
 
         if (this.autoCollectEnabled) {
-            autoCollectBtn.textContent = 'AUTO COLLECT: ON';
             autoCollectBtn.classList.add('active');
         } else {
-            autoCollectBtn.textContent = 'AUTO COLLECT: OFF';
             autoCollectBtn.classList.remove('active');
         }
+
+        autoCollectBtn.textContent = 'COLLECT';
     }
 
     changeBet(direction) {

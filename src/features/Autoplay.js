@@ -171,7 +171,7 @@ export class Autoplay {
         const autoplayCounter = document.getElementById('autoplayCounter');
 
         if (autoplayBtn) {
-            autoplayBtn.textContent = this.isActive ? 'STOP AUTO' : 'AUTOPLAY';
+            autoplayBtn.textContent = 'PLAY';
             autoplayBtn.classList.toggle('active', this.isActive);
         }
 
