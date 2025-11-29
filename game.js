@@ -3,11 +3,17 @@
 import { SlotMachine } from './src/core/SlotMachine.js';
 import { GAME_EVENTS } from './src/core/EventBus.js';
 import { Logger } from './src/utils/Logger.js';
+import { assertValidConfigs } from './src/config/validation.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize logger based on URL parameter
     const debugMode = window.location.search.includes('debug');
     Logger.init(debugMode);
+
+    const configErrors = assertValidConfigs(Logger);
+    if (configErrors.length) {
+        throw new Error('Game configuration validation failed. Check console for details.');
+    }
 
     const game = new SlotMachine();
 
