@@ -4,11 +4,10 @@ import { GAME_CONFIG } from '../config/game.js';
 import { FEATURES_CONFIG } from '../config/features.js';
 import { RNG } from '../utils/RNG.js';
 import { Storage } from '../utils/Storage.js';
-import { PaylineEvaluator } from './PaylineEvaluator.js';
 import { EventBus, GAME_EVENTS } from './EventBus.js';
 import { StateManager, createInitialState } from './StateManager.js';
 import { GameState } from './GameState.js';
-import { UIController } from '../ui/UIController.js';
+import { UIFacade } from '../ui/UIFacade.js';
 import { FreeSpins } from '../features/FreeSpins.js';
 import { BonusGame } from '../features/BonusGame.js';
 import { Cascade } from '../features/Cascade.js';
@@ -19,7 +18,6 @@ import { Statistics } from '../progression/Statistics.js';
 import { Autoplay } from '../features/Autoplay.js';
 import { TurboMode } from '../features/TurboMode.js';
 import { VisualEffects } from '../effects/VisualEffects.js';
-import { formatNumber } from '../utils/formatters.js';
 import { SoundManager } from '../audio/SoundManager.js';
 import { Settings } from '../ui/Settings.js';
 import { SpinHistory } from '../ui/SpinHistory.js';
@@ -28,6 +26,8 @@ import { BuyBonus } from '../features/BuyBonus.js';
 import { WinAnticipation } from '../features/WinAnticipation.js';
 import { TimerManager } from '../utils/TimerManager.js';
 import { Logger } from '../utils/Logger.js';
+import { SpinEngine } from './SpinEngine.js';
+import { FeatureManager } from './FeatureManager.js';
 
 export class SlotMachine {
     constructor() {
@@ -95,6 +95,68 @@ export class SlotMachine {
         // DOM element cache (populated in init)
         this.dom = {};
 
+        this.uiFacade = new UIFacade({
+            stateManager: this.stateManager,
+            eventBus: this.events,
+            timerManager: this.timerManager,
+            turboMode: this.turboMode,
+            soundManager: this.soundManager,
+            state: this.state,
+            reelStrips: this.reelStrips,
+            reelCount: this.reelCount,
+            rowCount: this.rowCount,
+            symbolsPerReel: this.symbolsPerReel
+        });
+
+        this.featureManager = new FeatureManager({
+            freeSpins: this.freeSpins,
+            bonusGame: this.bonusGame,
+            statistics: this.statistics,
+            levelSystem: this.levelSystem,
+            dailyChallenges: this.dailyChallenges,
+            soundManager: this.soundManager,
+            state: this.state,
+            achievements: this.achievements,
+            gamble: this.gamble,
+            spinHistory: this.spinHistory,
+            cascade: this.cascade,
+            uiFacade: this.uiFacade,
+            saveGameState: () => this.saveGameState(),
+            executeSpin: () => this.spin(),
+            autoCollectEnabledRef: () => this.autoCollectEnabled,
+            offerGamble: (winAmount) => this.offerGamble(winAmount)
+        });
+
+        this.spinEngine = new SpinEngine({
+            state: this.state,
+            events: this.events,
+            freeSpins: this.freeSpins,
+            bonusGame: this.bonusGame,
+            cascade: this.cascade,
+            levelSystem: this.levelSystem,
+            dailyChallenges: this.dailyChallenges,
+            statistics: this.statistics,
+            gamble: this.gamble,
+            achievements: this.achievements,
+            turboMode: this.turboMode,
+            visualEffects: this.visualEffects,
+            winAnticipation: this.winAnticipation,
+            timerManager: this.timerManager,
+            soundManager: this.soundManager,
+            reelStrips: this.reelStrips,
+            reelCount: this.reelCount,
+            rowCount: this.rowCount,
+            symbolsPerReel: this.symbolsPerReel,
+            uiFacade: this.uiFacade,
+            featureManager: this.featureManager,
+            saveGameState: () => this.saveGameState(),
+            showMessage: (...args) => this.uiFacade.showMessage(...args),
+            updateDisplay: () => this.uiFacade.updateDisplay(),
+            cleanupTimers: (label) => this.cleanupTimers(label),
+            clearWinningSymbols: () => this.uiFacade.clearWinningSymbols(),
+            hidePaylines: () => this.uiFacade.hidePaylines()
+        });
+
         // Load saved data
         this.loadGameState();
 
@@ -102,14 +164,11 @@ export class SlotMachine {
     }
 
     init() {
-        // Cache frequently accessed DOM elements
-        this.cacheDOM();
+        this.uiFacade.init();
+        this.dom = this.uiFacade.dom;
 
-        // Initialize UIController (handles all UI updates via StateManager)
-        this.ui = new UIController(this.stateManager, this.events, this.dom);
-
-        this.updateDisplay();
-        this.createReels();
+        this.uiFacade.updateDisplay();
+        this.uiFacade.createReels();
         this.attachEventListeners();
 
         // Initialize progression UI
@@ -121,42 +180,8 @@ export class SlotMachine {
      * Cache frequently accessed DOM elements for performance
      */
     cacheDOM() {
-        this.dom = {
-            // Display elements
-            credits: document.getElementById('credits'),
-            bet: document.getElementById('bet'),
-            betDisplay: document.getElementById('betDisplay'),
-            win: document.getElementById('win'),
-
-            // Control elements
-            spinBtn: document.getElementById('spinBtn'),
-            increaseBet: document.getElementById('increaseBet'),
-            decreaseBet: document.getElementById('decreaseBet'),
-            maxBet: document.getElementById('maxBet'),
-
-            // Overlay elements
-            winOverlay: document.getElementById('winOverlay'),
-            featureOverlay: document.getElementById('featureOverlay'),
-
-            // Modal elements
-            paytableModal: document.getElementById('paytableModal'),
-            statsModal: document.getElementById('statsModal'),
-
-            // Advanced controls
-            autoplayBtn: document.getElementById('autoplayBtn'),
-            turboBtn: document.getElementById('turboBtn'),
-            autoCollectBtn: document.getElementById('autoCollectBtn'),
-            autoplayCounter: document.getElementById('autoplayCounter'),
-
-            // Reel containers (cache these for frequent access)
-            reels: [
-                document.getElementById('reel-0'),
-                document.getElementById('reel-1'),
-                document.getElementById('reel-2'),
-                document.getElementById('reel-3'),
-                document.getElementById('reel-4')
-            ]
-        };
+        this.uiFacade.cacheDOM();
+        this.dom = this.uiFacade.dom;
     }
 
     /**
@@ -233,37 +258,7 @@ export class SlotMachine {
     }
 
     createReels() {
-        for (let i = 0; i < this.reelCount; i++) {
-            const reel = this.dom.reels[i];
-            if (!reel) {
-                Logger.error(`Reel element not found: reel-${i}`);
-                continue;
-            }
-
-            const container = reel.querySelector('.symbol-container');
-            if (!container) {
-                Logger.error(`Symbol container not found in reel-${i}`);
-                continue;
-            }
-
-            container.innerHTML = '';
-
-            // Display initial symbols from reel strip
-            const position = RNG.getRandomPosition(this.symbolsPerReel);
-            this.state.setReelPosition(i, position);
-            const symbols = RNG.getSymbolsAtPosition(this.reelStrips[i], position, this.rowCount);
-
-            for (let j = 0; j < this.rowCount; j++) {
-                const symbol = document.createElement('div');
-                symbol.className = 'symbol';
-                symbol.textContent = symbols[j];
-
-                // Apply special classes to initial symbols
-                this.applySymbolClasses(symbol, symbols[j]);
-
-                container.appendChild(symbol);
-            }
-        }
+        this.uiFacade.createReels();
     }
 
     attachEventListeners() {
@@ -357,25 +352,14 @@ export class SlotMachine {
     }
 
     updateDisplay() {
-        if (this.dom.credits) this.dom.credits.textContent = formatNumber(this.state.getCredits());
-        if (this.dom.bet) this.dom.bet.textContent = formatNumber(this.state.getCurrentBet());
-        if (this.dom.betDisplay) this.dom.betDisplay.textContent = formatNumber(this.state.getCurrentBet());
-        if (this.dom.win) this.dom.win.textContent = formatNumber(this.state.getLastWin());
+        this.uiFacade.updateDisplay();
     }
 
     /**
      * Update auto collect toggle UI
      */
     updateAutoCollectUI() {
-        if (!this.dom.autoCollectBtn) return;
-
-        if (this.autoCollectEnabled) {
-            this.dom.autoCollectBtn.classList.add('active');
-        } else {
-            this.dom.autoCollectBtn.classList.remove('active');
-        }
-
-        this.dom.autoCollectBtn.textContent = 'COLLECT';
+        this.uiFacade.updateAutoCollectUI(this.autoCollectEnabled);
     }
 
     changeBet(direction) {
@@ -439,16 +423,7 @@ export class SlotMachine {
      * @returns {boolean} True if spin can proceed, false otherwise
      */
     canSpin() {
-        if (this.state.isSpinning()) return false;
-        if (this.bonusGame.isActive()) return false;
-
-        const isFreeSpin = this.freeSpins.isActive();
-        if (!isFreeSpin && this.state.getCredits() < this.state.getCurrentBet()) {
-            this.showMessage('INSUFFICIENT CREDITS');
-            return false;
-        }
-
-        return true;
+        return this.spinEngine.canSpin();
     }
 
     /**
@@ -456,32 +431,7 @@ export class SlotMachine {
      * @param {boolean} isFreeSpin - Whether this is a free spin (no bet deduction)
      */
     initializeSpin(isFreeSpin) {
-        this.state.setSpinning(true);
-
-        // Play spin sound
-        this.soundManager.playReelSpin();
-
-        // Only deduct bet if not in free spins
-        if (!isFreeSpin) {
-            this.state.deductCredits(this.state.getCurrentBet());
-        }
-
-        this.state.setLastWin(0);
-        this.updateDisplay();
-
-        // Statistics are now tracked via this.statistics.recordSpin()
-
-        // Award spin XP
-        this.levelSystem.awardXP('spin');
-        this.dailyChallenges.updateChallengeProgress('play_spins', 1);
-
-        if (this.dom.spinBtn) this.dom.spinBtn.disabled = true;
-
-        this.clearWinningSymbols();
-        this.hidePaylines();
-
-        // Reset anticipation state
-        this.winAnticipation.reset();
+        this.spinEngine.initializeSpin(isFreeSpin);
     }
 
     /**
@@ -494,113 +444,11 @@ export class SlotMachine {
      * @returns {number} return.anticipationTriggerReel - Reel index where anticipation triggers
      */
     prepareReelResults() {
-        // Debug mode: use forced symbols if set
-        if (this.debugMode && this.debugNextSpin) {
-            Logger.debug('Using forced spin:', this.debugNextSpin);
-            const predeterminedSymbols = this.debugNextSpin;
-            this.debugNextSpin = null; // Clear after use
-
-            return {
-                reelPositions: [0, 0, 0, 0, 0],
-                predeterminedSymbols,
-                shouldTriggerAnticipation: false,
-                anticipationConfig: null,
-                anticipationTriggerReel: -1
-            };
-        }
-
-        // Pre-generate all reel positions for anticipation peeking
-        const reelPositions = [];
-        for (let i = 0; i < this.reelCount; i++) {
-            reelPositions.push(RNG.getRandomPosition(this.symbolsPerReel));
-        }
-
-        // Calculate predetermined symbols for anticipation system to analyze
-        const predeterminedSymbols = reelPositions.map((pos, reelIndex) => {
-            return RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], pos, this.rowCount);
-        });
-
-        // Pre-check if we should trigger anticipation effects (before spinning any reels)
-        let shouldTriggerAnticipation = false;
-        let anticipationConfig = null;
-        let anticipationTriggerReel = -1;
-
-        // Quick check: will anticipation trigger on any reel?
-        for (let reelIndex = 2; reelIndex < this.reelCount - 1 && !shouldTriggerAnticipation; reelIndex++) {
-            const stoppedReelsSymbols = predeterminedSymbols.slice(0, reelIndex);
-            const anticipationCheck = this.winAnticipation.checkAnticipation(reelIndex, stoppedReelsSymbols, predeterminedSymbols);
-            if (anticipationCheck) {
-                shouldTriggerAnticipation = true;
-                anticipationTriggerReel = reelIndex;
-                anticipationConfig = anticipationCheck;
-                break;
-            }
-        }
-
-        return {
-            reelPositions,
-            predeterminedSymbols,
-            shouldTriggerAnticipation,
-            anticipationConfig,
-            anticipationTriggerReel
-        };
+        return this.spinEngine.prepareReelResults();
     }
 
     /**
-     * Spin reels with optional anticipation effects
-     * @param {Object} reelData - Data from prepareReelResults()
-     * @param {number[]} reelData.reelPositions - Predetermined positions for each reel
-     * @param {boolean} reelData.shouldTriggerAnticipation - Whether to apply anticipation effects
-     * @param {Object} reelData.anticipationConfig - Anticipation configuration data
-     * @param {number} reelData.anticipationTriggerReel - Reel where anticipation triggers
-     * @returns {Promise<void>}
-     */
-    async executeReelSpin(reelData) {
-        const {
-            reelPositions,
-            predeterminedSymbols,
-            shouldTriggerAnticipation,
-            anticipationConfig,
-            anticipationTriggerReel
-        } = reelData;
-
-        if (shouldTriggerAnticipation) {
-            // Sequential spinning with anticipation effects
-            for (let i = 0; i < this.reelCount; i++) {
-                let duration = this.turboMode.getReelSpinTime(i);
-
-                // Apply anticipation effects at the predetermined reel
-                if (i === anticipationTriggerReel) {
-                    const extraDelay = this.winAnticipation.getDramaticDelay(anticipationConfig.intensity);
-                    duration += extraDelay;
-
-                    this.winAnticipation.applyAnticipationEffects(anticipationConfig, anticipationConfig.intensity);
-
-                    // Add visual glow to remaining reels
-                    for (let j = i; j < this.reelCount; j++) {
-                        const reel = document.getElementById(`reel-${j}`);
-                        if (reel) reel.classList.add('dramatic-slow');
-                    }
-                }
-
-                await this.spinReel(i, duration, reelPositions[i], predeterminedSymbols ? predeterminedSymbols[i] : null);
-
-                // Remove dramatic-slow class after reel stops
-                const reel = document.getElementById(`reel-${i}`);
-                if (reel) reel.classList.remove('dramatic-slow');
-            }
-        } else {
-            // Fast parallel spinning (no anticipation)
-            const spinPromises = [];
-            for (let i = 0; i < this.reelCount; i++) {
-                const duration = this.turboMode.getReelSpinTime(i);
-                spinPromises.push(this.spinReel(i, duration, reelPositions[i], predeterminedSymbols ? predeterminedSymbols[i] : null));
-            }
-            await Promise.all(spinPromises);
-        }
-    }
-
-    /**
+     * Process wins and apply effects    /**
      * Process wins and apply effects
      * @param {Object} winInfo - Win information from PaylineEvaluator
      * @param {number} winInfo.totalWin - Total win amount
@@ -612,76 +460,7 @@ export class SlotMachine {
      * @returns {Promise<number>} Total win amount including cascades
      */
     async processWins(winInfo, isFreeSpin) {
-        let totalWin = 0;
-
-        if (winInfo.totalWin > 0) {
-            // Apply free spins multiplier if active
-            if (isFreeSpin) {
-                winInfo.totalWin = this.freeSpins.applyMultiplier(winInfo.totalWin);
-                this.freeSpins.addWin(winInfo.totalWin);
-            }
-
-            totalWin = winInfo.totalWin;
-
-            // Emit win event
-            const winMultiplier = winInfo.totalWin / this.state.getCurrentBet();
-            this.events.emit(GAME_EVENTS.WIN, {
-                amount: winInfo.totalWin,
-                multiplier: winMultiplier,
-                positions: winInfo.winningPositions,
-                lines: winInfo.winningLines
-            });
-
-            // Check for big/mega wins
-            if (winMultiplier >= GAME_CONFIG.winThresholds.mega) {
-                this.events.emit(GAME_EVENTS.MEGA_WIN, { amount: winInfo.totalWin, multiplier: winMultiplier });
-            } else if (winMultiplier >= GAME_CONFIG.winThresholds.big) {
-                this.events.emit(GAME_EVENTS.BIG_WIN, { amount: winInfo.totalWin, multiplier: winMultiplier });
-            }
-
-            this.highlightWinningSymbols(winInfo.winningPositions);
-            this.showWinningPaylines(winInfo.winningLines);
-
-            // Play win sound and visual effects
-            this.soundManager.playWin(winMultiplier);
-            this.visualEffects.showWinCelebration(winInfo.totalWin, winMultiplier);
-
-            // Screen shake for mega wins
-            if (winMultiplier >= GAME_CONFIG.winThresholds.mega) {
-                this.triggerScreenShake();
-            }
-
-            // Build win message
-            let message = `WIN: ${formatNumber(winInfo.totalWin)}`;
-            if (isFreeSpin) {
-                message += `\n✨ ${this.freeSpins.multiplier}x MULTIPLIER!`;
-            }
-            if (winInfo.hasScatterWin) {
-                message += `\n⭐ ${winInfo.scatterCount} SCATTERS!`;
-
-                // Track scatter hits
-                this.statistics.recordFeatureTrigger('scatter', { count: winInfo.scatterCount });
-                this.dailyChallenges.updateChallengeProgress('hit_scatters', winInfo.scatterCount);
-                this.levelSystem.awardXP('scatter');
-
-                // Scatter sound and effects
-                this.soundManager.playScatter();
-            }
-
-            // Pass win amount for counter animation
-            await this.showMessage(message, winInfo.totalWin);
-
-            // Check for cascading wins (if enabled)
-            if (this.cascade.enabled) {
-                const cascadeWins = await this.cascade.executeCascade(winInfo.winningPositions);
-                if (cascadeWins > 0) {
-                    totalWin += cascadeWins;
-                    // Cascade wins tracked via this.statistics
-                }
-            }
-        }
-
-        return totalWin;
+        return this.spinEngine.processWins(winInfo, isFreeSpin);
     }
 
     /**
@@ -689,29 +468,7 @@ export class SlotMachine {
      * @param {number} totalWin - Total win amount to add to credits
      */
     updateCreditsAndStats(totalWin) {
-        if (totalWin > 0) {
-            this.state.addCredits(totalWin);
-            this.state.setLastWin(totalWin);
-
-            // Award win XP and track stats
-            this.levelSystem.awardXP('win', totalWin);
-            this.statistics.recordSpin(this.state.getCurrentBet(), totalWin, true);
-            this.dailyChallenges.updateChallengeProgress('win_amount', totalWin);
-
-            // Check for big win
-            const winMultiplier = totalWin / this.state.getCurrentBet();
-            if (winMultiplier >= GAME_CONFIG.winThresholds.mega) {
-                this.levelSystem.awardXP('bigWin');
-            }
-
-            // Update daily challenges
-            this.dailyChallenges.updateChallengeProgress('big_win', winMultiplier >= GAME_CONFIG.winThresholds.big ? 1 : 0);
-
-            this.updateDisplay();
-        } else {
-            // Track loss
-            this.statistics.recordSpin(this.state.getCurrentBet(), 0, false);
-        }
+        return this.spinEngine.updateCreditsAndStats(totalWin);
     }
 
     /**
@@ -724,55 +481,7 @@ export class SlotMachine {
      * @returns {Promise<void>}
      */
     async handleFeatureTriggers(winInfo, bonusInfo, isFreeSpin) {
-        let shouldExecuteFreeSpins = false;
-
-        // Check for Free Spins trigger
-        if (winInfo.hasScatterWin && this.freeSpins.shouldTrigger(winInfo.scatterCount)) {
-            if (isFreeSpin) {
-                // Re-trigger during free spins
-                await this.freeSpins.retrigger(winInfo.scatterCount);
-            } else {
-                // Initial trigger
-                // Track free spins trigger
-                this.statistics.recordFeatureTrigger('freeSpins');
-                this.levelSystem.awardXP('freeSpins');
-                this.dailyChallenges.updateChallengeProgress('trigger_freespins', 1);
-
-                // Free spins trigger sound
-                this.soundManager.playFreeSpinsTrigger();
-
-                await this.freeSpins.trigger(winInfo.scatterCount);
-
-                // Signal to execute free spins after this spin completes
-                shouldExecuteFreeSpins = true;
-            }
-        }
-
-        // Check for Bonus trigger
-        if (bonusInfo.triggered && !isFreeSpin) {
-            // Track bonus trigger
-            this.statistics.recordFeatureTrigger('bonus');
-            this.levelSystem.awardXP('bonus');
-            this.dailyChallenges.updateChallengeProgress('trigger_bonus', 1);
-
-            // Bonus trigger sound
-            this.soundManager.playBonusTrigger();
-
-            const bonusCount = bonusInfo.bonusLines[0].count;
-            await this.bonusGame.trigger(bonusCount);
-
-            const bonusWin = await this.bonusGame.end();
-            if (bonusWin > 0) {
-                this.state.addCredits(bonusWin);
-                this.state.setLastWin(this.state.getLastWin() + bonusWin);
-                // Bonus wins tracked via Statistics class
-
-                this.updateDisplay();
-                await this.showMessage(`BONUS WIN: ${formatNumber(bonusWin)}`);
-            }
-        }
-
-        return shouldExecuteFreeSpins;
+        return this.featureManager.handleFeatureTriggers(winInfo, bonusInfo, isFreeSpin);
     }
 
     /**
@@ -782,203 +491,23 @@ export class SlotMachine {
      * @param {Object} bonusInfo - Bonus trigger information
      * @param {boolean} isFreeSpin - Whether this was a free spin
      * @returns {Promise<void>}
-     */
+    */
     async finalizeSpin(totalWin, winInfo, bonusInfo, isFreeSpin) {
-        Logger.debug('finalizeSpin - isFreeSpin:', isFreeSpin, 'remaining before:', this.freeSpins.remainingSpins);
-
-        // Handle free spins countdown
-        if (isFreeSpin) {
-            const hasMoreSpins = await this.freeSpins.executeSpin();
-            Logger.debug('After executeSpin - hasMoreSpins:', hasMoreSpins, 'remaining:', this.freeSpins.remainingSpins);
-            if (!hasMoreSpins) {
-                await this.freeSpins.end();
-            }
-        }
-
-        // Check achievements
-        this.achievements.checkAchievements(
-            this.statistics.allTime,
-            this.state.getLastWin(),
-            this.state.getCurrentBet(),
-            this.state.getCredits()
-        );
-
-        // Offer gamble on regular wins (not during free spins/bonus)
-        if (
-            totalWin > 0 &&
-            !isFreeSpin &&
-            !bonusInfo.triggered &&
-            this.gamble.canGamble(totalWin) &&
-            !this.autoCollectEnabled
-        ) {
-            // Remove the win from credits before gamble (already added in updateCreditsAndStats)
-            const currentCredits = this.state.getCredits();
-            this.state.setCredits(currentCredits - totalWin);
-            this.updateDisplay();
-
-            // Offer gamble
-            const gambleResult = await this.offerGamble(totalWin);
-
-            // Add gamble result back
-            this.state.setCredits(this.state.getCredits() + gambleResult);
-            totalWin = gambleResult;
-            this.state.setLastWin(gambleResult);
-            this.updateDisplay();
-
-            // Track gamble in statistics if they won more
-            if (gambleResult > 0) {
-                this.statistics.recordSpin(this.state.getCurrentBet(), gambleResult, true);
-            }
-        }
-
-        // Record spin in history
-        const features = [];
-        if (this.freeSpins.isActive()) features.push('freeSpins');
-        if (winInfo.hasScatterWin) features.push('scatter');
-        if (bonusInfo.triggered) features.push('bonus');
-        if (this.cascade.enabled && totalWin > winInfo.totalWin) features.push('cascade');
-
-        this.spinHistory.recordSpin(this.state.getCurrentBet(), totalWin, features);
-
-        // Save game state after each spin
-        this.saveGameState();
-
-        this.state.setSpinning(false);
-        if (this.dom.spinBtn) this.dom.spinBtn.disabled = false;
-
-        if (this.state.getCredits() === 0 && !isFreeSpin) {
-            await this.showMessage('GAME OVER\nResetting to 1000 credits');
-            this.state.setCredits(GAME_CONFIG.initialCredits);
-            this.updateDisplay();
-            this.saveGameState();
-        }
+        return this.featureManager.finalizeSpin(totalWin, winInfo, bonusInfo, isFreeSpin);
     }
 
     /**
      * Main spin method - orchestrates the entire spin process
      */
     async spin() {
-        if (!this.canSpin()) return;
-
-        const isFreeSpin = this.freeSpins.isActive();
-
-        // Create checkpoint for error recovery using GameState
-        const checkpoint = this.state.createCheckpoint();
-
-        try {
-            this.initializeSpin(isFreeSpin);
-
-            // Emit spin start event
-            this.events.emit(GAME_EVENTS.SPIN_START, {
-                bet: this.state.getCurrentBet(),
-                credits: this.state.getCredits(),
-                isFreeSpin
-            });
-
-            const reelData = this.prepareReelResults();
-            await this.executeReelSpin(reelData);
-
-            const result = this.getReelResult();
-
-            Logger.debug('Reel result:', result);
-
-            let winInfo = PaylineEvaluator.evaluateWins(result, this.state.getCurrentBet());
-            const bonusInfo = PaylineEvaluator.checkBonusTrigger(result);
-
-            Logger.debug('Win info:', winInfo);
-            Logger.debug('Scatter count:', winInfo.scatterCount);
-
-            let totalWin = await this.processWins(winInfo, isFreeSpin);
-
-            this.updateCreditsAndStats(totalWin);
-
-            const shouldExecuteFreeSpins = await this.handleFeatureTriggers(winInfo, bonusInfo, isFreeSpin);
-
-            await this.finalizeSpin(totalWin, winInfo, bonusInfo, isFreeSpin);
-
-            // Execute free spins AFTER the triggering spin completes
-            if (shouldExecuteFreeSpins) {
-                await this.executeFreeSpins();
-            }
-
-            // Emit spin end event
-            this.events.emit(GAME_EVENTS.SPIN_END, {
-                bet: this.state.getCurrentBet(),
-                win: totalWin,
-                credits: this.state.getCredits(),
-                winInfo,
-                isFreeSpin
-            });
-
-        } catch (error) {
-            Logger.error('Spin failed with error:', error);
-
-            // Restore state from checkpoint using GameState
-            this.state.restoreCheckpoint(checkpoint);
-
-            // Re-enable spin button
-            if (this.dom.spinBtn) this.dom.spinBtn.disabled = false;
-
-            // Clear any stuck animations
-            this.cleanupTimers();
-            this.clearWinningSymbols();
-            this.hidePaylines();
-
-            // Notify user
-            await this.showMessage('ERROR: SPIN FAILED\nBET REFUNDED');
-
-            // Update display to reflect restored state
-            this.updateDisplay();
-            this.saveGameState();
-        }
+        return this.spinEngine.spin();
     }
 
     /**
      * Execute all free spins
      */
     async executeFreeSpins() {
-        // Disable manual spinning during free spins
-        const originalText = this.dom.spinBtn ? this.dom.spinBtn.textContent : '';
-
-        Logger.debug('executeFreeSpins started - remaining:', this.freeSpins.remainingSpins);
-
-        try {
-            while (this.freeSpins.isActive() && this.freeSpins.remainingSpins > 0) {
-                Logger.debug('Free spin loop - remaining:', this.freeSpins.remainingSpins, 'isActive:', this.freeSpins.isActive());
-
-                // Update button text to show auto-spinning
-                if (this.dom.spinBtn) {
-                    this.dom.spinBtn.textContent = 'AUTO SPIN';
-                    this.dom.spinBtn.disabled = true;
-                }
-
-                // Track remaining spins before the spin to detect stuck state
-                const remainingBefore = this.freeSpins.remainingSpins;
-
-                await this.spin();
-
-                Logger.debug('After spin - remaining:', this.freeSpins.remainingSpins);
-
-                // Safety: if spin didn't decrement remaining spins, break to avoid infinite loop
-                if (this.freeSpins.remainingSpins === remainingBefore) {
-                    Logger.error('Free spins stuck - remainingSpins did not decrement. Breaking loop.');
-                    await this.freeSpins.end();
-                    break;
-                }
-
-                // Short delay between free spins for visibility
-                await new Promise(resolve => setTimeout(resolve, GAME_CONFIG.animations.freeSpinDelay));
-            }
-        } catch (error) {
-            Logger.error('Error during free spins execution:', error);
-            await this.freeSpins.end();
-        }
-
-        // Restore button state
-        if (this.dom.spinBtn) {
-            this.dom.spinBtn.textContent = originalText;
-            this.dom.spinBtn.disabled = false;
-        }
+        return this.featureManager.executeFreeSpins();
     }
 
     /**
@@ -1077,7 +606,7 @@ export class SlotMachine {
      * @returns {Promise<Object>} Win information from PaylineEvaluator
      */
     async evaluateWinsWithoutDisplay(result) {
-        return PaylineEvaluator.evaluateWins(result, this.state.getCurrentBet());
+        return this.spinEngine.evaluateWinsWithoutDisplay(result);
     }
 
     /**
@@ -1092,77 +621,7 @@ export class SlotMachine {
      * @returns {Promise<void>} Resolves when reel stops spinning
      */
     spinReel(reelIndex, duration, predeterminedPosition = null, predeterminedSymbols = null) {
-        return new Promise((resolve) => {
-            const reel = this.dom.reels[reelIndex];
-            if (!reel) {
-                Logger.error(`Reel not found: reel-${reelIndex}`);
-                resolve();
-                return;
-            }
-
-            const container = reel.querySelector('.symbol-container');
-            if (!container) {
-                Logger.error(`Symbol container not found in reel-${reelIndex}`);
-                resolve();
-                return;
-            }
-
-            const symbols = Array.from(container.querySelectorAll('.symbol'));
-            if (symbols.length === 0) {
-                Logger.error(`No symbols found in reel-${reelIndex}`);
-                resolve();
-                return;
-            }
-
-            // Start CSS spinning animation
-            reel.classList.add('spinning');
-
-            // Populate with random symbols for initial spin effect
-            const randomPosition = RNG.getRandomPosition(this.symbolsPerReel);
-            const randomSymbols = RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], randomPosition, this.rowCount);
-            symbols.forEach((symbol, index) => {
-                symbol.textContent = randomSymbols[index];
-            });
-
-            // Wait for spin duration, then stop
-            this.timerManager.setTimeout(() => {
-                // Remove spinning, add stopping class for deceleration effect
-                reel.classList.remove('spinning');
-                reel.classList.add('stopping');
-
-                // Set final position and symbols
-                let finalSymbols;
-                if (predeterminedSymbols) {
-                    // Debug mode: use forced symbols
-                    finalSymbols = predeterminedSymbols;
-                } else {
-                    const finalPosition = predeterminedPosition !== null ? predeterminedPosition : RNG.getRandomPosition(this.symbolsPerReel);
-                    this.state.setReelPosition(reelIndex, finalPosition);
-                    finalSymbols = RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], finalPosition, this.rowCount);
-                }
-
-                // Update to final symbols
-                for (let i = 0; i < this.rowCount; i++) {
-                    symbols[i].textContent = finalSymbols[i];
-
-                    // Add bounce animation and special classes
-                    symbols[i].classList.add('landed');
-                    this.timerManager.setTimeout(() => symbols[i].classList.remove('landed'), GAME_CONFIG.animations.symbolLanded, 'reels');
-
-                    // Add special classes for premium symbols
-                    this.applySymbolClasses(symbols[i], finalSymbols[i]);
-                }
-
-                // Play reel stop sound
-                this.soundManager.playReelStop();
-
-                // Remove stopping class after animation completes
-                this.timerManager.setTimeout(() => {
-                    reel.classList.remove('stopping');
-                    resolve();
-                }, GAME_CONFIG.animations.reelStopping, 'reels');
-            }, duration, 'reels');
-        });
+        return this.uiFacade.spinReel(reelIndex, duration, predeterminedPosition, predeterminedSymbols);
     }
 
     /**
@@ -1170,21 +629,7 @@ export class SlotMachine {
      * @returns {Array<Array<string>>} 2D array of symbols [reel][row]
      */
     getReelResult() {
-        const result = [];
-
-        for (let i = 0; i < this.reelCount; i++) {
-            const reel = this.dom.reels[i];
-            const symbols = reel.querySelectorAll('.symbol');
-            const reelSymbols = [];
-
-            for (let j = 0; j < this.rowCount; j++) {
-                reelSymbols.push(symbols[j].textContent);
-            }
-
-            result.push(reelSymbols);
-        }
-
-        return result;
+        return this.uiFacade.getReelResult();
     }
 
     /**
@@ -1192,133 +637,41 @@ export class SlotMachine {
      * @param {Set<string>} winningPositions - Set of position strings (e.g., "0-1", "2-3")
      */
     highlightWinningSymbols(winningPositions) {
-        this.clearWinningSymbols();
-
-        winningPositions.forEach(pos => {
-            const [reel, row] = pos.split('-').map(Number);
-            const reelEl = this.dom.reels[reel];
-            if (reelEl) {
-                const symbols = reelEl.querySelectorAll('.symbol');
-                if (symbols[row]) {
-                    symbols[row].classList.add('winning');
-                }
-            }
-        });
+        this.uiFacade.highlightWinningSymbols(winningPositions);
     }
 
     clearWinningSymbols() {
-        document.querySelectorAll('.symbol.winning').forEach(symbol => {
-            symbol.classList.remove('winning');
-        });
+        this.uiFacade.clearWinningSymbols();
     }
 
     /**
      * Phase 5: Apply special CSS classes to symbols based on their type
      */
     applySymbolClasses(symbolElement, symbolText) {
-        // Remove existing special classes
-        symbolElement.classList.remove('premium', 'scatter');
-
-        // Premium symbols (high-value symbols)
-        const premiumSymbols = getPremiumSymbols();
-        if (premiumSymbols.includes(symbolText)) {
-            symbolElement.classList.add('premium');
-        }
-
-        // Scatter symbol
-        if (symbolText === SYMBOLS.SCATTER.emoji) {
-            symbolElement.classList.add('scatter');
-        }
+        this.uiFacade.applySymbolClasses(symbolElement, symbolText);
     }
 
     showWinningPaylines(winningLines) {
-        winningLines.forEach(lineIndex => {
-            const payline = document.querySelector(`.payline-${lineIndex + 1}`);
-            if (payline) {
-                payline.classList.add('active');
-            }
-        });
+        this.uiFacade.showWinningPaylines(winningLines);
     }
 
     hidePaylines() {
-        document.querySelectorAll('.payline').forEach(line => {
-            line.classList.remove('active');
-        });
+        this.uiFacade.hidePaylines();
     }
 
     showMessage(message, winAmount = 0) {
-        return new Promise((resolve) => {
-            const overlay = this.dom.winOverlay;
-
-            // Prevent overlapping counter intervals from previous messages
-            if (this.winCounterInterval) {
-                this.cleanupTimers('win-counter');
-            }
-
-            // Win counter animation
-            if (winAmount > 0) {
-                this.animateWinCounter(overlay, winAmount, message);
-            } else {
-                overlay.textContent = message;
-            }
-
-            overlay.classList.add('show');
-
-            // Use turbo mode timing for messages
-            const duration = this.turboMode.getMessageDelay();
-
-            this.timerManager.setTimeout(() => {
-                overlay.classList.remove('show');
-                resolve();
-            }, duration, 'win-overlay');
-        });
+        return this.uiFacade.showMessage(message, winAmount);
     }
 
     /**
      * Phase 5: Animate win counter from 0 to final amount
      */
     animateWinCounter(overlay, finalAmount, baseMessage) {
-        const duration = this.turboMode.isActive ? GAME_CONFIG.animations.winCounterFast : GAME_CONFIG.animations.winCounterNormal;
-        const steps = this.turboMode.isActive ? GAME_CONFIG.animations.winCounterStepsFast : GAME_CONFIG.animations.winCounterStepsNormal;
-        const stepDuration = duration / steps;
-        const increment = finalAmount / steps;
-
-        let currentAmount = 0;
-        let step = 0;
-
-        this.winCounterInterval = this.timerManager.setInterval(() => {
-            step++;
-            currentAmount = Math.min(Math.floor(increment * step), finalAmount);
-
-            // Build message with current count (formatted)
-            let message = baseMessage.replace(/WIN: \d+/, `WIN: ${formatNumber(currentAmount)}`);
-            overlay.textContent = message;
-
-            // Play tick sound every few steps
-            if (step % GAME_CONFIG.soundTickFrequency === 0 && this.soundManager.effectsEnabled) {
-                this.soundManager.playTone(
-                    GAME_CONFIG.soundTickBaseFrequency + (step * GAME_CONFIG.soundTickFrequencyStep),
-                    0.03,
-                    'sine'
-                );
-            }
-
-            if (currentAmount >= finalAmount) {
-                this.timerManager.clearInterval(this.winCounterInterval);
-                this.winCounterInterval = null;
-                overlay.textContent = baseMessage; // Final message
-            }
-        }, stepDuration, 'win-counter');
+        this.uiFacade.animateWinCounter(overlay, finalAmount, baseMessage);
     }
 
     togglePaytable(show) {
-        if (!this.dom.paytableModal) return;
-
-        if (show) {
-            this.dom.paytableModal.classList.add('show');
-        } else {
-            this.dom.paytableModal.classList.remove('show');
-        }
+        this.uiFacade.togglePaytable(show);
     }
 
     /**
@@ -1538,12 +891,7 @@ export class SlotMachine {
      * Phase 4: Update turbo mode UI
      */
     updateTurboUI() {
-        const container = document.querySelector('.game-container');
-        if (this.turboMode.isActive) {
-            container.classList.add('turbo-mode');
-        } else {
-            container.classList.remove('turbo-mode');
-        }
+        this.uiFacade.updateTurboUI(this.turboMode.isActive);
         this.saveGameState();
     }
 
@@ -1551,12 +899,7 @@ export class SlotMachine {
      * Phase 5: Trigger screen shake effect for mega wins
      */
     triggerScreenShake() {
-        const container = document.querySelector('.game-container');
-        container.classList.add('screen-shake');
-
-        this.timerManager.setTimeout(() => {
-            container.classList.remove('screen-shake');
-        }, GAME_CONFIG.animations.screenShake, 'visual-effects');
+        this.uiFacade.triggerScreenShake();
     }
 
     /**
@@ -1571,6 +914,7 @@ export class SlotMachine {
 
         if (!label || label === 'win-counter') {
             this.winCounterInterval = null;
+            this.uiFacade.winCounterInterval = null;
         }
 
         // Timer cleanup notifications now handled by TimerManager.onClear() pattern
