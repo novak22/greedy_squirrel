@@ -1,5 +1,6 @@
 // Free Spins feature implementation
 import { FEATURES_CONFIG } from '../config/features.js';
+import { formatNumber } from '../utils/formatters.js';
 
 export class FreeSpins {
     constructor(game) {
@@ -63,9 +64,33 @@ export class FreeSpins {
             this.totalSpins += additionalSpins;
             this.retriggered++;
 
-            await this.game.showMessage(
-                `🎉 RETRIGGERED!\n+${additionalSpins} FREE SPINS\n${this.remainingSpins} SPINS REMAINING`
-            );
+            // Show retrigger popup that requires user click
+            const overlay = document.getElementById('featureOverlay');
+            if (overlay) {
+                overlay.innerHTML = `
+                    <div class="feature-transition">
+                        <div class="feature-icon">🎉</div>
+                        <h1 class="feature-title">RETRIGGERED!</h1>
+                        <div class="feature-details">
+                            <p class="spins-awarded">+${formatNumber(additionalSpins)} FREE SPINS</p>
+                            <p class="multiplier-info">${formatNumber(this.remainingSpins)} SPINS REMAINING</p>
+                        </div>
+                        <p class="feature-start">Click to continue...</p>
+                    </div>
+                `;
+                overlay.classList.add('show');
+
+                // Wait for user click
+                await new Promise(resolve => {
+                    const clickHandler = () => {
+                        overlay.removeEventListener('click', clickHandler);
+                        resolve();
+                    };
+                    overlay.addEventListener('click', clickHandler);
+                });
+
+                overlay.classList.remove('show');
+            }
 
             this.updateUI();
         }
@@ -140,18 +165,23 @@ export class FreeSpins {
                 <div class="feature-icon">⭐⭐⭐</div>
                 <h1 class="feature-title">FREE SPINS!</h1>
                 <div class="feature-details">
-                    <p class="spins-awarded">${spinsAwarded} FREE SPINS</p>
+                    <p class="spins-awarded">${formatNumber(spinsAwarded)} FREE SPINS</p>
                     <p class="multiplier-info">All wins × ${this.multiplier}</p>
-                    <p class="scatter-info">${scatterCount} SCATTERS landed!</p>
+                    <p class="scatter-info">${formatNumber(scatterCount)} SCATTERS landed!</p>
                 </div>
-                <p class="feature-start">Get ready...</p>
+                <p class="feature-start">Click to continue...</p>
             </div>
         `;
         overlay.classList.add('show');
 
-        await new Promise(resolve =>
-            setTimeout(resolve, FEATURES_CONFIG.freeSpins.transitionDuration)
-        );
+        // Wait for user click
+        await new Promise(resolve => {
+            const clickHandler = () => {
+                overlay.removeEventListener('click', clickHandler);
+                resolve();
+            };
+            overlay.addEventListener('click', clickHandler);
+        });
 
         overlay.classList.remove('show');
     }
@@ -169,11 +199,11 @@ export class FreeSpins {
                 <div class="summary-stats">
                     <div class="stat-item">
                         <span class="stat-label">Total Spins</span>
-                        <span class="stat-value">${this.totalSpins}</span>
+                        <span class="stat-value">${formatNumber(this.totalSpins)}</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Total Won</span>
-                        <span class="stat-value highlight">${this.totalWon}</span>
+                        <span class="stat-value highlight">${formatNumber(this.totalWon)}</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Multiplier</span>
@@ -182,18 +212,23 @@ export class FreeSpins {
                     ${this.retriggered > 0 ? `
                         <div class="stat-item">
                             <span class="stat-label">Retriggered</span>
-                            <span class="stat-value">${this.retriggered} times</span>
+                            <span class="stat-value">${formatNumber(this.retriggered)} times</span>
                         </div>
                     ` : ''}
                 </div>
-                <p class="feature-end">Returning to normal game...</p>
+                <p class="feature-end">Click to continue...</p>
             </div>
         `;
         overlay.classList.add('show');
 
-        await new Promise(resolve =>
-            setTimeout(resolve, FEATURES_CONFIG.freeSpins.celebrationDuration)
-        );
+        // Wait for user click
+        await new Promise(resolve => {
+            const clickHandler = () => {
+                overlay.removeEventListener('click', clickHandler);
+                resolve();
+            };
+            overlay.addEventListener('click', clickHandler);
+        });
 
         overlay.classList.remove('show');
     }
@@ -211,7 +246,7 @@ export class FreeSpins {
                     <div class="fs-icon">⭐</div>
                     <div class="fs-info">
                         <div class="fs-label">FREE SPINS</div>
-                        <div class="fs-count">${this.remainingSpins} / ${this.totalSpins}</div>
+                        <div class="fs-count">${formatNumber(this.remainingSpins)} / ${formatNumber(this.totalSpins)}</div>
                     </div>
                     <div class="fs-multiplier">${this.multiplier}x</div>
                 </div>

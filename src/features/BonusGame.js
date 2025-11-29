@@ -1,5 +1,6 @@
 // Pick-Me Bonus Game implementation
 import { FEATURES_CONFIG } from '../config/features.js';
+import { formatNumber } from '../utils/formatters.js';
 
 export class BonusGame {
     constructor(game) {
@@ -258,8 +259,8 @@ export class BonusGame {
         const remaining = document.querySelector('.picks-remaining');
         const total = document.getElementById('bonusTotalWon');
 
-        if (remaining) remaining.textContent = this.picksRemaining;
-        if (total) total.textContent = this.totalWon;
+        if (remaining) remaining.textContent = formatNumber(this.picksRemaining);
+        if (total) total.textContent = formatNumber(this.totalWon);
     }
 
     /**
@@ -285,11 +286,11 @@ export class BonusGame {
                 <div class="summary-stats">
                     <div class="stat-item">
                         <span class="stat-label">Total Picks</span>
-                        <span class="stat-value">${this.totalPicks}</span>
+                        <span class="stat-value">${formatNumber(this.totalPicks)}</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Total Won</span>
-                        <span class="stat-value highlight">${this.totalWon}</span>
+                        <span class="stat-value highlight">${formatNumber(this.totalWon)}</span>
                     </div>
                 </div>
                 <p class="feature-end">Returning to normal game...</p>

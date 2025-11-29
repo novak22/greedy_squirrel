@@ -13,6 +13,7 @@
 
 import { GAME_EVENTS } from '../core/EventBus.js';
 import { GAME_CONFIG } from '../config/game.js';
+import { formatNumber } from '../utils/formatters.js';
 
 export class UIController {
     constructor(stateManager, eventBus, domCache) {
@@ -31,18 +32,18 @@ export class UIController {
         // Game state subscriptions
         this.state.subscribe('game.credits', (credits) => {
             if (this.dom.credits) {
-                this.dom.credits.textContent = credits;
+                this.dom.credits.textContent = formatNumber(credits);
             }
         });
 
         this.state.subscribe('game.currentBet', (bet) => {
-            if (this.dom.bet) this.dom.bet.textContent = bet;
-            if (this.dom.betDisplay) this.dom.betDisplay.textContent = bet;
+            if (this.dom.bet) this.dom.bet.textContent = formatNumber(bet);
+            if (this.dom.betDisplay) this.dom.betDisplay.textContent = formatNumber(bet);
         });
 
         this.state.subscribe('game.lastWin', (win) => {
             if (this.dom.win) {
-                this.dom.win.textContent = win;
+                this.dom.win.textContent = formatNumber(win);
             }
         });
 
@@ -262,7 +263,7 @@ export class UIController {
             const interval = setInterval(() => {
                 currentStep++;
                 const currentAmount = Math.min(Math.floor(increment * currentStep), finalAmount);
-                element.textContent = `WIN: ${currentAmount}`;
+                element.textContent = `WIN: ${formatNumber(currentAmount)}`;
 
                 if (currentStep >= steps) {
                     clearInterval(interval);
@@ -347,7 +348,7 @@ export class UIController {
         if (!counter) return;
 
         if (remaining > 0) {
-            counter.textContent = `FREE SPINS: ${remaining}/${total}`;
+            counter.textContent = `FREE SPINS: ${formatNumber(remaining)}/${formatNumber(total)}`;
             counter.style.display = 'block';
         } else {
             counter.style.display = 'none';

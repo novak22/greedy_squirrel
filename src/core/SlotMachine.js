@@ -18,6 +18,7 @@ import { Statistics } from '../progression/Statistics.js';
 import { Autoplay } from '../features/Autoplay.js';
 import { TurboMode } from '../features/TurboMode.js';
 import { VisualEffects } from '../effects/VisualEffects.js';
+import { formatNumber } from '../utils/formatters.js';
 import { SoundManager } from '../audio/SoundManager.js';
 import { Settings } from '../ui/Settings.js';
 import { SpinHistory } from '../ui/SpinHistory.js';
@@ -374,10 +375,10 @@ export class SlotMachine {
     }
 
     updateDisplay() {
-        if (this.dom.credits) this.dom.credits.textContent = this.state.getCredits();
-        if (this.dom.bet) this.dom.bet.textContent = this.state.getCurrentBet();
-        if (this.dom.betDisplay) this.dom.betDisplay.textContent = this.state.getCurrentBet();
-        if (this.dom.win) this.dom.win.textContent = this.state.getLastWin();
+        if (this.dom.credits) this.dom.credits.textContent = formatNumber(this.state.getCredits());
+        if (this.dom.bet) this.dom.bet.textContent = formatNumber(this.state.getCurrentBet());
+        if (this.dom.betDisplay) this.dom.betDisplay.textContent = formatNumber(this.state.getCurrentBet());
+        if (this.dom.win) this.dom.win.textContent = formatNumber(this.state.getLastWin());
     }
 
     /**
@@ -669,7 +670,7 @@ export class SlotMachine {
             }
 
             // Build win message
-            let message = `WIN: ${winInfo.totalWin}`;
+            let message = `WIN: ${formatNumber(winInfo.totalWin)}`;
             if (isFreeSpin) {
                 message += `\n✨ ${this.freeSpins.multiplier}x MULTIPLIER!`;
             }
@@ -785,7 +786,7 @@ export class SlotMachine {
                 // Bonus wins tracked via Statistics class
 
                 this.updateDisplay();
-                await this.showMessage(`BONUS WIN: ${bonusWin}`);
+                await this.showMessage(`BONUS WIN: ${formatNumber(bonusWin)}`);
             }
         }
 
@@ -1318,8 +1319,8 @@ export class SlotMachine {
             step++;
             currentAmount = Math.min(Math.floor(increment * step), finalAmount);
 
-            // Build message with current count
-            let message = baseMessage.replace(/WIN: \d+/, `WIN: ${currentAmount}`);
+            // Build message with current count (formatted)
+            let message = baseMessage.replace(/WIN: \d+/, `WIN: ${formatNumber(currentAmount)}`);
             overlay.textContent = message;
 
             // Play tick sound every few steps
