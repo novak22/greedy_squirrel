@@ -18,6 +18,7 @@ import { SoundManager } from '../audio/SoundManager.js';
 import { Settings } from '../ui/Settings.js';
 import { SpinHistory } from '../ui/SpinHistory.js';
 import { Gamble } from '../features/Gamble.js';
+import { BuyBonus } from '../features/BuyBonus.js';
 
 export class SlotMachine {
     constructor() {
@@ -72,9 +73,10 @@ export class SlotMachine {
         this.turboMode = new TurboMode(this);
         this.settings = new Settings(this);
 
-        // Phase 5: Initialize spin history and gamble
+        // Phase 5: Initialize spin history, gamble, and buy bonus
         this.spinHistory = new SpinHistory(20);
         this.gamble = new Gamble(this);
+        this.buyBonus = new BuyBonus(this);
 
         // Load saved data
         this.loadGameState();
@@ -240,6 +242,9 @@ export class SlotMachine {
                 this.spinHistory.toggle();
             });
         }
+
+        // Phase 5: Buy Bonus
+        this.buyBonus.attachEventListeners();
 
         const closeHistory = document.getElementById('closeHistory');
         if (closeHistory) {

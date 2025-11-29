@@ -2657,3 +2657,239 @@ body::before {
         font-size: 3.5em;
     }
 }
+
+/* ============================================
+   PHASE 5: BUY BONUS FEATURE STYLES
+   ============================================ */
+
+/* Buy Bonus Modal */
+.buy-bonus-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.buy-bonus-modal.active {
+    display: flex;
+}
+
+.buy-bonus-content {
+    background: linear-gradient(180deg, #2a1f15 0%, #1a1410 100%);
+    border: 3px solid #8b5a2b;
+    border-radius: 20px;
+    padding: 40px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 0 50px rgba(139, 90, 43, 0.6);
+    text-align: center;
+}
+
+.buy-bonus-content h2 {
+    font-size: 2em;
+    color: #ffd700;
+    text-shadow:
+        0 0 20px rgba(255, 215, 0, 0.8),
+        2px 2px 4px rgba(0, 0, 0, 0.8);
+    margin-bottom: 25px;
+    letter-spacing: 2px;
+}
+
+/* Buy Bonus Info */
+.buy-bonus-info {
+    margin-bottom: 30px;
+    color: #cd853f;
+}
+
+.buy-bonus-info p {
+    margin-bottom: 15px;
+    font-size: 1.1em;
+    line-height: 1.5;
+}
+
+.buy-bonus-details {
+    font-size: 0.95em;
+    color: #b0bec5;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    border: 1px solid rgba(139, 90, 43, 0.3);
+}
+
+/* Cost Display */
+.buy-bonus-cost {
+    background: linear-gradient(135deg, #1a3a1a 0%, #2d5016 100%);
+    border: 2px solid #4caf50;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 30px rgba(76, 175, 80, 0.3);
+}
+
+.cost-label {
+    font-size: 0.9em;
+    color: #90ee90;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+}
+
+.cost-amount {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #fff;
+    text-shadow:
+        0 0 20px rgba(255, 255, 255, 0.8),
+        0 0 40px rgba(76, 175, 80, 0.6);
+    margin-bottom: 5px;
+}
+
+.cost-amount.insufficient {
+    color: #f44336;
+    text-shadow:
+        0 0 20px rgba(244, 67, 54, 0.8),
+        0 0 40px rgba(244, 67, 54, 0.6);
+}
+
+.cost-formula {
+    font-size: 0.85em;
+    color: #90ee90;
+    font-style: italic;
+}
+
+/* Balance Display */
+.buy-bonus-balance {
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.balance-label {
+    font-size: 0.9em;
+    color: #cd853f;
+    margin-bottom: 8px;
+}
+
+.balance-amount {
+    font-size: 1.8em;
+    font-weight: bold;
+}
+
+.balance-amount.sufficient {
+    color: #4caf50;
+}
+
+.balance-amount.insufficient {
+    color: #f44336;
+}
+
+/* Warning Message */
+.buy-bonus-warning {
+    background: rgba(244, 67, 54, 0.1);
+    border: 2px solid #f44336;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    color: #f44336;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+/* Buy Bonus Buttons */
+.buy-bonus-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-buy-bonus {
+    background: linear-gradient(135deg, #2d5016 0%, #1a3a1a 100%);
+    border: 3px solid #4caf50;
+    border-radius: 12px;
+    padding: 15px 40px;
+    font-size: 1.3em;
+    font-weight: bold;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+    letter-spacing: 2px;
+}
+
+.btn-buy-bonus:hover:not(.disabled) {
+    background: linear-gradient(135deg, #388e3c 0%, #2d5016 100%);
+    transform: translateY(-3px);
+    box-shadow:
+        0 8px 20px rgba(76, 175, 80, 0.6),
+        0 0 30px rgba(76, 175, 80, 0.5);
+}
+
+.btn-buy-bonus:active:not(.disabled) {
+    transform: translateY(-1px);
+}
+
+.btn-buy-bonus.disabled {
+    background: linear-gradient(135deg, #424242 0%, #212121 100%);
+    border-color: #616161;
+    color: #9e9e9e;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.btn-cancel-buy {
+    background: linear-gradient(135deg, #424242 0%, #212121 100%);
+    border: 3px solid #616161;
+    border-radius: 12px;
+    padding: 15px 40px;
+    font-size: 1.3em;
+    font-weight: bold;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+    letter-spacing: 2px;
+}
+
+.btn-cancel-buy:hover {
+    background: linear-gradient(135deg, #616161 0%, #424242 100%);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+}
+
+.btn-cancel-buy:active {
+    transform: translateY(-1px);
+}
+
+/* Mobile adjustments for buy bonus */
+@media (max-width: 768px) {
+    .buy-bonus-content {
+        padding: 25px;
+    }
+
+    .buy-bonus-content h2 {
+        font-size: 1.5em;
+    }
+
+    .cost-amount {
+        font-size: 2em;
+    }
+
+    .buy-bonus-buttons {
+        flex-direction: column;
+    }
+
+    .btn-buy-bonus,
+    .btn-cancel-buy {
+        width: 100%;
+        padding: 12px 20px;
+        font-size: 1.1em;
+    }
+}
