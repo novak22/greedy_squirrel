@@ -141,6 +141,20 @@ export class SlotMachine {
             // Modal elements
             paytableModal: document.getElementById('paytableModal'),
             statsModal: document.getElementById('statsModal'),
+            statsContentArea: document.getElementById('statsContentArea'),
+            statsTabs: Array.from(document.querySelectorAll('.stats-tab')),
+            paytableBtn: document.getElementById('paytableBtn'),
+            closePaytable: document.getElementById('closePaytable'),
+            statsBtn: document.getElementById('statsBtn'),
+            closeStats: document.getElementById('closeStats'),
+            historyBtn: document.getElementById('historyBtn'),
+            closeHistory: document.getElementById('closeHistory'),
+
+            // Containers
+            gameContainer: document.querySelector('.game-container'),
+            slotMachineContainer: document.querySelector('.slot-machine'),
+            paylines: Array.from(document.querySelectorAll('.payline')),
+            freeSpinsCounter: document.getElementById('freeSpinsCounter'),
 
             // Advanced controls
             autoplayBtn: document.getElementById('autoplayBtn'),
@@ -207,7 +221,7 @@ export class SlotMachine {
                 continue;
             }
 
-            container.innerHTML = '';
+            this.ui.clearElementContent(container);
 
             // Display initial symbols from reel strip
             const position = RNG.getRandomPosition(this.symbolsPerReel);
@@ -235,28 +249,15 @@ export class SlotMachine {
         this.events.on('bet:decrease', () => this.changeBet(-1));
         this.events.on('bet:max', () => this.setMaxBet());
 
-        // Stats modal (unique to SlotMachine, not in UIController)
-        const statsBtn = document.getElementById('statsBtn');
-        if (statsBtn) {
-            statsBtn.addEventListener('click', () => this.toggleStats());
-        }
-
-        const closeStats = document.getElementById('closeStats');
-        if (closeStats) {
-            closeStats.addEventListener('click', () => this.toggleStats());
-        }
-
-        // Stats tabs
-        document.querySelectorAll('.stats-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                this.updateStatsDisplay(tab.dataset.tab);
-            });
-        });
+        // Stats modal
+        this.ui.bindStatsControls(
+            () => this.toggleStats(),
+            (tab) => this.updateStatsDisplay(tab)
+        );
 
         // Autoplay and advanced controls (feature-specific, not duplicated)
-        const autoplayBtn = document.getElementById('autoplayBtn');
-        if (autoplayBtn) {
-            autoplayBtn.addEventListener('click', () => {
+        if (this.dom.autoplayBtn) {
+            this.dom.autoplayBtn.addEventListener('click', () => {
                 this.soundManager.playClick();
                 if (this.autoplay.isActive) {
                     this.autoplay.stop();
@@ -266,19 +267,18 @@ export class SlotMachine {
             });
         }
 
-        const turboBtn = document.getElementById('turboBtn');
-        if (turboBtn) {
-            turboBtn.addEventListener('click', () => {
+        if (this.dom.turboBtn) {
+            this.dom.turboBtn.addEventListener('click', () => {
                 this.soundManager.playClick();
                 this.turboMode.toggle();
-                this.updateTurboUI();
+                this.ui.updateTurboMode(this.turboMode.isActive);
+                this.saveGameState();
             });
         }
 
-        const autoCollectBtn = document.getElementById('autoCollectBtn');
-        if (autoCollectBtn) {
+        if (this.dom.autoCollectBtn) {
             this.updateAutoCollectUI();
-            autoCollectBtn.addEventListener('click', () => {
+            this.dom.autoCollectBtn.addEventListener('click', () => {
                 this.soundManager.playClick();
                 this.autoCollectEnabled = !this.autoCollectEnabled;
                 this.updateAutoCollectUI();
@@ -290,9 +290,8 @@ export class SlotMachine {
         this.settings.attachEventListeners();
 
         // History panel
-        const historyBtn = document.getElementById('historyBtn');
-        if (historyBtn) {
-            historyBtn.addEventListener('click', () => {
+        if (this.dom.historyBtn) {
+            this.dom.historyBtn.addEventListener('click', () => {
                 this.soundManager.playClick();
                 this.spinHistory.toggle();
             });
@@ -301,9 +300,8 @@ export class SlotMachine {
         // Buy Bonus feature
         this.buyBonus.attachEventListeners();
 
-        const closeHistory = document.getElementById('closeHistory');
-        if (closeHistory) {
-            closeHistory.addEventListener('click', () => {
+        if (this.dom.closeHistory) {
+            this.dom.closeHistory.addEventListener('click', () => {
                 this.soundManager.playClick();
                 this.spinHistory.hide();
             });
@@ -539,7 +537,7 @@ export class SlotMachine {
 
                     // Add visual glow to remaining reels
                     for (let j = i; j < this.reelCount; j++) {
-                        const reel = document.getElementById(`reel-${j}`);
+                        const reel = this.dom.reels[j];
                         if (reel) reel.classList.add('dramatic-slow');
                     }
                 }
@@ -547,7 +545,7 @@ export class SlotMachine {
                 await this.spinReel(i, duration, reelPositions[i], predeterminedSymbols ? predeterminedSymbols[i] : null);
 
                 // Remove dramatic-slow class after reel stops
-                const reel = document.getElementById(`reel-${i}`);
+                const reel = this.dom.reels[i];
                 if (reel) reel.classList.remove('dramatic-slow');
             }
         } else {
@@ -953,15 +951,7 @@ export class SlotMachine {
                 return;
             }
 
-            const overlay = document.getElementById('featureOverlay');
-            if (!overlay) {
-                resolve(winAmount);
-                return;
-            }
-
-            let autoCollectTimer = null;
-
-            overlay.innerHTML = `
+            const overlay = this.ui.showFeatureOverlay(`
                 <div class="gamble-container">
                     <h2 class="gamble-title">🎴 DOUBLE UP</h2>
 
@@ -986,9 +976,13 @@ export class SlotMachine {
                         </button>
                     </div>
                 </div>
-            `;
+            `);
+            if (!overlay) {
+                resolve(winAmount);
+                return;
+            }
 
-            overlay.classList.add('show');
+            let autoCollectTimer = null;
 
             const clearAutoCollect = () => {
                 if (autoCollectTimer) {
@@ -999,7 +993,7 @@ export class SlotMachine {
             };
 
             // Start auto-collect countdown
-            const timerDisplay = document.getElementById('gambleOfferTimer');
+            const timerDisplay = overlay.querySelector('#gambleOfferTimer');
             let timeLeft = FEATURES_CONFIG.gamble.offerTimeout;
             autoCollectTimer = this.timerManager.setInterval(() => {
                 timeLeft -= 1;
@@ -1009,23 +1003,23 @@ export class SlotMachine {
 
                 if (timeLeft <= 0) {
                     clearAutoCollect();
-                    overlay.classList.remove('show');
+                    this.ui.hideFeatureOverlay();
                     this.soundManager.playClick();
                     resolve(winAmount);
                 }
             }, 1000, 'gamble-offer');
 
-            document.getElementById('gambleAccept').addEventListener('click', async () => {
+            overlay.querySelector('#gambleAccept')?.addEventListener('click', async () => {
                 clearAutoCollect();
-                overlay.classList.remove('show');
+                this.ui.hideFeatureOverlay();
                 // start() now returns a promise that resolves with the final win amount
                 const finalAmount = await this.gamble.start(winAmount);
                 resolve(finalAmount);
             });
 
-            document.getElementById('gambleDecline').addEventListener('click', () => {
+            overlay.querySelector('#gambleDecline')?.addEventListener('click', () => {
                 clearAutoCollect();
-                overlay.classList.remove('show');
+                this.ui.hideFeatureOverlay();
                 this.soundManager.playClick();
                 resolve(winAmount);
             });
@@ -1153,24 +1147,11 @@ export class SlotMachine {
      * @param {Set<string>} winningPositions - Set of position strings (e.g., "0-1", "2-3")
      */
     highlightWinningSymbols(winningPositions) {
-        this.clearWinningSymbols();
-
-        winningPositions.forEach(pos => {
-            const [reel, row] = pos.split('-').map(Number);
-            const reelEl = this.dom.reels[reel];
-            if (reelEl) {
-                const symbols = reelEl.querySelectorAll('.symbol');
-                if (symbols[row]) {
-                    symbols[row].classList.add('winning');
-                }
-            }
-        });
+        this.ui.highlightWinningSymbols(winningPositions);
     }
 
     clearWinningSymbols() {
-        document.querySelectorAll('.symbol.winning').forEach(symbol => {
-            symbol.classList.remove('winning');
-        });
+        this.ui.clearWinningSymbols();
     }
 
     /**
@@ -1193,18 +1174,11 @@ export class SlotMachine {
     }
 
     showWinningPaylines(winningLines) {
-        winningLines.forEach(lineIndex => {
-            const payline = document.querySelector(`.payline-${lineIndex + 1}`);
-            if (payline) {
-                payline.classList.add('active');
-            }
-        });
+        this.ui.showWinningPaylines(winningLines);
     }
 
     hidePaylines() {
-        document.querySelectorAll('.payline').forEach(line => {
-            line.classList.remove('active');
-        });
+        this.ui.hidePaylines();
     }
 
     showMessage(message, winAmount = 0) {
@@ -1286,7 +1260,24 @@ export class SlotMachine {
      * Phase 3: Show level up message
      */
     async showLevelUpMessage(level, reward) {
-        const overlay = document.getElementById('featureOverlay');
+        let rewardText = '';
+        if (reward) {
+            rewardText = `<p class="level-reward">+${reward.credits} Credits</p>`;
+            if (reward.type === 'feature') {
+                rewardText += `<p class="level-unlock">✨ ${reward.value.toUpperCase()} UNLOCKED!</p>`;
+            }
+        }
+
+        const overlay = this.ui.showFeatureOverlay(`
+            <div class="feature-transition">
+                <div class="feature-icon">🎉</div>
+                <h1 class="feature-title">LEVEL UP!</h1>
+                <div class="feature-details">
+                    <p class="level-number-big">LEVEL ${level}</p>
+                    ${rewardText}
+                </div>
+            </div>
+        `);
         if (!overlay) return;
 
         // Level up sound and visual effects
@@ -1298,57 +1289,31 @@ export class SlotMachine {
             this.turboMode.unlock();
         }
 
-        let rewardText = '';
-        if (reward) {
-            rewardText = `<p class="level-reward">+${reward.credits} Credits</p>`;
-            if (reward.type === 'feature') {
-                rewardText += `<p class="level-unlock">✨ ${reward.value.toUpperCase()} UNLOCKED!</p>`;
-            }
-        }
-
-        overlay.innerHTML = `
-            <div class="feature-transition">
-                <div class="feature-icon">🎉</div>
-                <h1 class="feature-title">LEVEL UP!</h1>
-                <div class="feature-details">
-                    <p class="level-number-big">LEVEL ${level}</p>
-                    ${rewardText}
-                </div>
-            </div>
-        `;
-        overlay.classList.add('show');
-
         await new Promise(resolve => setTimeout(resolve, GAME_CONFIG.animations.levelUpMessage));
-        overlay.classList.remove('show');
+        this.ui.hideFeatureOverlay();
     }
 
     /**
      * Phase 3: Toggle statistics dashboard
      */
     toggleStats() {
-        const modal = document.getElementById('statsModal');
-        if (!modal) return;
+        const shouldShow = !this.state.getState('ui.statsOpen');
 
-        if (!modal.classList.contains('active')) {
+        if (shouldShow) {
             this.currentStatsTab = 'session';
             this.updateStatsDisplay('session');
-            modal.classList.add('active');
-        } else {
-            modal.classList.remove('active');
         }
+
+        this.state.setState('ui.statsOpen', shouldShow);
+        this.ui.toggleStatsModal(shouldShow);
     }
 
     /**
      * Phase 3: Update statistics display with tabs
      */
     updateStatsDisplay(tab = 'session') {
-        const container = document.getElementById('statsContentArea');
-        if (!container) return;
-
         // Update active tab
-        document.querySelectorAll('.stats-tab').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tab === tab);
-        });
+        this.ui.setActiveStatsTab(tab);
 
         const sessionStats = this.statistics.getSessionStats();
         const allTimeStats = this.statistics.getAllTimeStats();
@@ -1487,37 +1452,27 @@ export class SlotMachine {
                     <h3 style="color: #ffd700; margin-bottom: 20px;">📅 Daily Challenges</h3>
                     <div id="challengesListArea" style="margin-top: 30px;"></div>
                 `;
-                container.innerHTML = html;
+                this.ui.renderStatsContent(html);
                 this.dailyChallenges.updateChallengesUI();
                 return;
         }
 
-        container.innerHTML = html;
-    }
-
-    /**
-     * Phase 4: Update turbo mode UI
-     */
-    updateTurboUI() {
-        const container = document.querySelector('.game-container');
-        if (this.turboMode.isActive) {
-            container.classList.add('turbo-mode');
-        } else {
-            container.classList.remove('turbo-mode');
-        }
-        this.saveGameState();
+        this.ui.renderStatsContent(html);
     }
 
     /**
      * Phase 5: Trigger screen shake effect for mega wins
      */
     triggerScreenShake() {
-        const container = document.querySelector('.game-container');
-        container.classList.add('screen-shake');
+        if (this.dom.gameContainer) {
+            this.dom.gameContainer.classList.add('screen-shake');
 
-        this.timerManager.setTimeout(() => {
-            container.classList.remove('screen-shake');
-        }, GAME_CONFIG.animations.screenShake, 'visual-effects');
+            this.timerManager.setTimeout(() => {
+                this.dom.gameContainer.classList.remove('screen-shake');
+            }, GAME_CONFIG.animations.screenShake, 'visual-effects');
+        }
+
+        this.ui.triggerScreenShake();
     }
 
     /**
