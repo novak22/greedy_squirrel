@@ -285,15 +285,23 @@ export class SlotMachine {
 
         this.soundManager.playClick();
 
-        this.currentBetIndex += direction;
+        const newIndex = Math.min(
+            Math.max(this.currentBetIndex + direction, 0),
+            this.betOptions.length - 1
+        );
 
-        if (this.currentBetIndex < 0) {
-            this.currentBetIndex = 0;
-        } else if (this.currentBetIndex >= this.betOptions.length) {
-            this.currentBetIndex = this.betOptions.length - 1;
+        if (newIndex === this.currentBetIndex) return;
+
+        const proposedBet = this.betOptions[newIndex];
+        const increment = proposedBet - this.currentBet;
+
+        if (increment > 0 && increment >= this.getMaxBetIncrement()) {
+            this.showMessage('BET INCREASE LIMITED TO 10% OF BALANCE');
+            return;
         }
 
-        this.currentBet = this.betOptions[this.currentBetIndex];
+        this.currentBetIndex = newIndex;
+        this.currentBet = proposedBet;
         this.updateDisplay();
     }
 
@@ -302,9 +310,30 @@ export class SlotMachine {
 
         this.soundManager.playClick();
 
-        this.currentBetIndex = this.betOptions.length - 1;
+        const maxIncrement = this.getMaxBetIncrement();
+        const targetIndex = this.findHighestBetWithinIncrement(maxIncrement);
+
+        if (targetIndex === this.currentBetIndex) {
+            this.showMessage('BET INCREASE LIMITED TO 10% OF BALANCE');
+            return;
+        }
+
+        this.currentBetIndex = targetIndex;
         this.currentBet = this.betOptions[this.currentBetIndex];
         this.updateDisplay();
+    }
+
+    getMaxBetIncrement() {
+        return this.credits * 0.1;
+    }
+
+    findHighestBetWithinIncrement(maxIncrement) {
+        for (let i = this.betOptions.length - 1; i > this.currentBetIndex; i--) {
+            if (this.betOptions[i] - this.currentBet < maxIncrement) {
+                return i;
+            }
+        }
+        return this.currentBetIndex;
     }
 
     async spin() {
