@@ -587,9 +587,27 @@ export class SlotMachine {
      * Execute all free spins
      */
     async executeFreeSpins() {
+        // Disable manual spinning during free spins
+        const spinBtn = document.getElementById('spinBtn');
+        const originalText = spinBtn ? spinBtn.textContent : '';
+
         while (this.freeSpins.isActive() && this.freeSpins.remainingSpins > 0) {
+            // Update button text to show auto-spinning
+            if (spinBtn) {
+                spinBtn.textContent = 'AUTO SPIN';
+                spinBtn.disabled = true;
+            }
+
             await this.spin();
-            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Short delay between free spins for visibility
+            await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+
+        // Restore button state
+        if (spinBtn) {
+            spinBtn.textContent = originalText;
+            spinBtn.disabled = false;
         }
     }
 
