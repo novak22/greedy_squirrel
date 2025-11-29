@@ -13,6 +13,10 @@ export class Storage {
                 currentBet: gameState.currentBet,
                 currentBetIndex: gameState.currentBetIndex,
                 stats: gameState.stats || {},
+                // Preserve progression and feature data
+                progression: gameState.progression || {},
+                phase4: gameState.phase4 || {},
+                phase5: gameState.phase5 || {},
                 timestamp: Date.now()
             };
             localStorage.setItem(GAME_CONFIG.storageKey, JSON.stringify(saveData));
