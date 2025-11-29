@@ -350,6 +350,17 @@ export class SlotMachine {
         // Phase 5: Reset anticipation state
         this.winAnticipation.reset();
 
+        // Phase 5: Pre-generate all reel positions for anticipation peeking
+        const predeterminedPositions = [];
+        for (let i = 0; i < this.reelCount; i++) {
+            predeterminedPositions.push(RNG.getRandomPosition(this.symbolsPerReel));
+        }
+
+        // Calculate final result for anticipation system to peek at
+        const finalResult = predeterminedPositions.map((pos, reelIndex) => {
+            return RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], pos, this.rowCount);
+        });
+
         // Phase 5: Spin reels sequentially for anticipation effects
         for (let i = 0; i < this.reelCount; i++) {
             // Phase 4: Use turbo mode timing if active
@@ -358,7 +369,7 @@ export class SlotMachine {
             // Phase 5: Check for anticipation before final reels
             if (i >= 2 && i < this.reelCount - 1) {
                 const partialResult = this.getReelResult();
-                const anticipation = this.winAnticipation.checkAnticipation(i, partialResult);
+                const anticipation = this.winAnticipation.checkAnticipation(i, partialResult, finalResult);
 
                 if (anticipation) {
                     // Add dramatic delay for remaining reels
@@ -376,7 +387,7 @@ export class SlotMachine {
                 }
             }
 
-            await this.spinReel(i, duration);
+            await this.spinReel(i, duration, predeterminedPositions[i]);
 
             // Remove dramatic-slow class after reel stops
             const reel = document.getElementById(`reel-${i}`);
@@ -675,7 +686,7 @@ export class SlotMachine {
         return PaylineEvaluator.evaluateWins(result, this.currentBet);
     }
 
-    spinReel(reelIndex, duration) {
+    spinReel(reelIndex, duration, predeterminedPosition = null) {
         return new Promise((resolve) => {
             const reel = document.getElementById(`reel-${reelIndex}`);
             const container = reel.querySelector('.symbol-container');
@@ -700,8 +711,8 @@ export class SlotMachine {
                     clearInterval(interval);
                     reel.classList.remove('spinning');
 
-                    // Set final position using weighted RNG
-                    const finalPosition = RNG.getRandomPosition(this.symbolsPerReel);
+                    // Set final position - use predetermined if provided, otherwise generate new
+                    const finalPosition = predeterminedPosition !== null ? predeterminedPosition : RNG.getRandomPosition(this.symbolsPerReel);
                     this.reelPositions[reelIndex] = finalPosition;
                     const finalSymbols = RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], finalPosition, this.rowCount);
 

@@ -5,41 +5,65 @@ export class WinAnticipation {
         this.game = slotMachine;
         this.enabled = true;
         this.anticipationActive = false;
+        this.triggerChance = 0.25; // 25% chance to even consider anticipation
+        this.flukeChance = 0.15; // 15% of anticipations are "flukes" (false excitement)
     }
 
     /**
      * Check if we should trigger anticipation effects
      * Called after each reel stops to evaluate potential wins
      */
-    checkAnticipation(stoppedReels, result) {
+    checkAnticipation(stoppedReels, result, finalResult) {
         if (!this.enabled || stoppedReels < 2) return null;
+
+        // Random chance gate - most spins don't trigger anticipation at all
+        if (Math.random() > this.triggerChance) return null;
+
+        // Peek at final result to decide if we should trigger (with some flukes)
+        const willBeFluke = Math.random() < this.flukeChance;
 
         // Check for scatter anticipation (2+ scatters visible)
         const scatterCount = this.countVisibleScatters(result, stoppedReels);
         if (scatterCount >= 2 && stoppedReels < 5) {
-            return {
-                type: 'scatter',
-                intensity: scatterCount === 2 ? 'medium' : 'high'
-            };
+            // Peek: will there be 3+ scatters in final result?
+            const finalScatters = finalResult ? this.countVisibleScatters(finalResult, 5) : 0;
+
+            // Trigger if: actually getting feature, OR it's a fluke near-miss
+            if (finalScatters >= 3 || (willBeFluke && scatterCount === 2)) {
+                return {
+                    type: 'scatter',
+                    intensity: scatterCount === 2 ? 'medium' : 'high'
+                };
+            }
         }
 
         // Check for bonus symbol anticipation
         const bonusCount = this.countBonusOnPayline(result, stoppedReels);
         if (bonusCount >= 2 && stoppedReels < 5) {
-            return {
-                type: 'bonus',
-                intensity: bonusCount === 2 ? 'medium' : 'high'
-            };
+            // Peek: will there be 3+ bonus symbols?
+            const finalBonus = finalResult ? this.countBonusOnPayline(finalResult, 5) : 0;
+
+            if (finalBonus >= 3 || (willBeFluke && bonusCount === 2)) {
+                return {
+                    type: 'bonus',
+                    intensity: bonusCount === 2 ? 'medium' : 'high'
+                };
+            }
         }
 
         // Check for potential big win on paylines
         if (stoppedReels >= 2) {
             const bigWinPotential = this.checkBigWinPotential(result, stoppedReels);
             if (bigWinPotential) {
-                return {
-                    type: 'bigwin',
-                    intensity: 'medium'
-                };
+                // Peek: will there actually be a good win?
+                const willHaveBigWin = finalResult ? this.willHaveBigWin(finalResult) : false;
+
+                if (willHaveBigWin || willBeFluke) {
+                    return {
+                        type: 'bigwin',
+                        intensity: 'medium'
+                    };
+                }
             }
         }
 
@@ -100,6 +124,32 @@ export class WinAnticipation {
         }
 
         return false;
+    }
+
+    /**
+     * Check if final result will have a big win (4+ matching symbols)
+     */
+    willHaveBigWin(finalResult) {
+        if (!finalResult || finalResult.length < 4) return false;
+
+        // Check main payline (middle row) for 4+ matching symbols
+        const payline = finalResult.map(reel => reel[1]);
+        const highValueSymbols = ['👑', '💎', '🌰', '🥜'];
+
+        // Count consecutive matches from left
+        let matches = 1;
+        let currentSymbol = payline[0];
+
+        for (let i = 1; i < payline.length; i++) {
+            if (payline[i] === currentSymbol || payline[i] === '🃏' || currentSymbol === '🃏') {
+                matches++;
+            } else {
+                break;
+            }
+        }
+
+        // Big win if 4+ matches and includes high-value symbols
+        return matches >= 4 && (highValueSymbols.includes(currentSymbol) || highValueSymbols.includes(payline[0]));
     }
 
     /**
