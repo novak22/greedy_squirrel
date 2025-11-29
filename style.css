@@ -297,9 +297,9 @@ body::before {
 
 .paylines {
     position: absolute;
-    top: 15px;
-    left: 15px;
-    width: calc(100% - 30px);
+    top: var(--machine-padding);
+    left: var(--machine-padding);
+    width: calc(100% - (var(--machine-padding) * 2));
     height: calc(var(--reel-size) * 3);
     pointer-events: none;
     z-index: 1;
