@@ -1108,73 +1108,81 @@ body::before {
 }
 
 @media (max-width: 768px) {
+    :root {
+        --reel-size: clamp(64px, 18vw, 78px);
+        --reel-gap: clamp(4px, 1.5vw, 8px);
+        --machine-padding: clamp(8px, 2vw, 12px);
+        --symbol-font-size: calc(var(--reel-size) * 0.32);
+    }
+
     .game-container {
-        padding: 10px;
+        padding: var(--machine-padding);
         max-width: 100%;
+        width: min(98%, 900px);
     }
 
     .game-header h1 {
-        font-size: 1.5em;
+        font-size: clamp(1.35em, 4.5vw, 1.5em);
         letter-spacing: 2px;
     }
 
     .info-panel {
-        gap: 10px;
+        gap: clamp(8px, 2vw, 10px);
         flex-wrap: wrap;
     }
 
     .info-item {
-        min-width: 80px;
+        min-width: clamp(74px, 22vw, 90px);
         padding: 6px 12px;
     }
 
     .info-item .value {
-        font-size: 1.1em;
+        font-size: 1.05em;
     }
 
     .slot-machine {
-        padding: 10px;
+        padding: var(--machine-padding);
     }
 
     .reel {
-        width: 85px;
-        height: 255px;
+        width: var(--reel-size);
+        height: calc(var(--reel-size) * 3);
     }
 
     .symbol {
-        width: 85px;
-        height: 85px;
-        font-size: 2.5em;
+        width: var(--reel-size);
+        height: var(--reel-size);
+        font-size: var(--symbol-font-size);
     }
 
     .reels-container {
-        gap: 5px;
+        gap: var(--reel-gap);
     }
 
     .paylines {
-        top: 10px;
-        left: 10px;
-        width: calc(100% - 20px);
-        height: 255px;
+        top: var(--machine-padding);
+        left: var(--machine-padding);
+        width: calc(100% - (var(--machine-padding) * 2));
+        height: calc(var(--reel-size) * 3);
     }
 
-    .payline-1 { top: 42px; }
-    .payline-2 { top: 0; }
-    .payline-3 { top: 85px; }
-    .payline-4 { top: 21px; }
-    .payline-5 { top: 64px; }
-    .payline-6 { top: 11px; }
-    .payline-7 { top: 74px; }
-    .payline-8 { top: 32px; }
-    .payline-9 { top: 53px; }
-    .payline-10 { top: 26px; }
+    .payline-1 { top: var(--payline-1); }
+    .payline-2 { top: var(--payline-2); }
+    .payline-3 { top: var(--payline-3); }
+    .payline-4 { top: var(--payline-4); }
+    .payline-5 { top: var(--payline-5); }
+    .payline-6 { top: var(--payline-6); }
+    .payline-7 { top: var(--payline-7); }
+    .payline-8 { top: var(--payline-8); }
+    .payline-9 { top: var(--payline-9); }
+    .payline-10 { top: var(--payline-10); }
 
     @keyframes spin {
         from {
             transform: translateY(0);
         }
         to {
-            transform: translateY(-85px);
+            transform: translateY(calc(var(--reel-size) * -1));
         }
     }
 
@@ -2979,6 +2987,13 @@ body::before {
 
 /* Landscape mode optimization for mobile */
 @media (max-width: 896px) and (orientation: landscape) {
+    :root {
+        --reel-size: clamp(58px, 14vw, 68px);
+        --reel-gap: clamp(3px, 1vw, 5px);
+        --machine-padding: clamp(6px, 1.5vw, 10px);
+        --symbol-font-size: calc(var(--reel-size) * 0.3);
+    }
+
     body {
         padding: 5px 0;
     }
@@ -3016,23 +3031,23 @@ body::before {
     }
 
     .slot-machine {
-        padding: 8px;
+        padding: var(--machine-padding);
         margin: 8px 0;
     }
 
     .reel {
-        width: 75px;
-        height: 225px;
+        width: var(--reel-size);
+        height: calc(var(--reel-size) * 3);
     }
 
     .symbol {
-        width: 75px;
-        height: 75px;
-        font-size: 2.2em;
+        width: var(--reel-size);
+        height: var(--reel-size);
+        font-size: var(--symbol-font-size);
     }
 
     .reels-container {
-        gap: 4px;
+        gap: var(--reel-gap);
     }
 
     .controls {
@@ -3064,24 +3079,31 @@ body::before {
 
 /* Very small screens (iPhone SE, etc.) */
 @media (max-width: 375px) {
+    :root {
+        --reel-size: clamp(54px, 20vw, 62px);
+        --reel-gap: clamp(2px, 1vw, 4px);
+        --machine-padding: clamp(6px, 2vw, 10px);
+        --symbol-font-size: calc(var(--reel-size) * 0.3);
+    }
+
     .game-header h1 {
         font-size: 1.2em;
         letter-spacing: 1px;
     }
 
     .reel {
-        width: 70px;
-        height: 210px;
+        width: var(--reel-size);
+        height: calc(var(--reel-size) * 3);
     }
 
     .symbol {
-        width: 70px;
-        height: 70px;
-        font-size: 2em;
+        width: var(--reel-size);
+        height: var(--reel-size);
+        font-size: var(--symbol-font-size);
     }
 
     .reels-container {
-        gap: 3px;
+        gap: var(--reel-gap);
     }
 
     .btn-spin {
