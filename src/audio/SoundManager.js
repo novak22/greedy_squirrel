@@ -19,6 +19,8 @@ export class SoundManager {
     initAudioContext() {
         try {
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            document.addEventListener('visibilitychange', () => this.updateAudioState());
+            this.updateAudioState();
         } catch (error) {
             console.warn('Web Audio API not supported:', error);
             this.enabled = false;
@@ -29,8 +31,35 @@ export class SoundManager {
      * Resume audio context (needed for browser autoplay policies)
      */
     resumeAudioContext() {
-        if (this.audioContext && this.audioContext.state === 'suspended') {
-            this.audioContext.resume();
+        if (!this.audioContext || this.audioContext.state === 'running') return;
+        if (!this.enabled || document.hidden) return;
+
+        this.audioContext.resume().catch(error => {
+            console.warn('Failed to resume audio context:', error);
+        });
+    }
+
+    /**
+     * Suspend audio context when audio shouldn't play
+     */
+    suspendAudioContext() {
+        if (!this.audioContext || this.audioContext.state === 'suspended') return;
+
+        this.audioContext.suspend().catch(error => {
+            console.warn('Failed to suspend audio context:', error);
+        });
+    }
+
+    /**
+     * Update audio context state based on settings and visibility
+     */
+    updateAudioState() {
+        if (!this.audioContext) return;
+
+        if (!this.enabled || document.hidden) {
+            this.suspendAudioContext();
+        } else {
+            this.resumeAudioContext();
         }
     }
 
@@ -236,6 +265,7 @@ export class SoundManager {
      */
     toggleSound(enabled) {
         this.enabled = enabled;
+        this.updateAudioState();
     }
 
     /**
@@ -274,5 +304,7 @@ export class SoundManager {
         this.volume = data.volume !== undefined ? data.volume : 0.5;
         this.musicEnabled = data.musicEnabled !== undefined ? data.musicEnabled : true;
         this.effectsEnabled = data.effectsEnabled !== undefined ? data.effectsEnabled : true;
+
+        this.updateAudioState();
     }
 }
