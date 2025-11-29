@@ -57,7 +57,7 @@ export const FEATURES_CONFIG = {
 
     cascade: {
         enabled: false, // Will enable in this phase
-        maxIterations: 20        // Safety limit to prevent infinite cascades
+        maxIterations: 20,       // Safety limit to prevent infinite cascades
 
         // Multiplier progression for consecutive cascades
         multipliers: [1, 2, 3, 5, 8], // 1x, 2x, 3x, 5x, 8x
