@@ -2026,8 +2026,14 @@ body::before {
 /* Responsive Styles for Phase 4 */
 @media (max-width: 768px) {
     .advanced-controls {
-        flex-direction: column;
-        gap: 8px;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 6px;
+    }
+
+    .advanced-controls .btn-small {
+        padding: 8px 12px;
+        font-size: 0.9em;
     }
 
     .settings-content {
@@ -2967,7 +2973,12 @@ body::before {
     }
 
     .advanced-controls {
-        gap: 8px;
+        gap: 6px;
+    }
+
+    .advanced-controls .btn-small {
+        padding: 8px 12px;
+        font-size: 0.9em;
     }
 
     /* Optimize level display for mobile */
@@ -3120,7 +3131,13 @@ body::before {
     }
 
     .advanced-controls {
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        gap: 4px;
+    }
+
+    .advanced-controls .btn-small {
+        padding: 6px 10px;
+        font-size: 0.8em;
     }
 }
 
