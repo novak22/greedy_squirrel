@@ -941,11 +941,9 @@ export class SlotMachine {
     }
 
     /**
-     * Spin a single reel with animation
-     * NOTE: Performance optimization opportunity - This method updates DOM every 100ms
-     * for visual effect. Could be replaced with pure CSS animations for better performance.
-     * Current approach: JavaScript interval updates symbol text
-     * Better approach: CSS keyframe animation with blur/motion effects
+     * Spin a single reel with CSS animation
+     * OPTIMIZED: Uses CSS animations instead of DOM manipulation every 100ms
+     * Much more performant - GPU accelerated, no layout thrashing
      *
      * @param {number} reelIndex - Index of the reel to spin (0-4)
      * @param {number} duration - How long the reel should spin in milliseconds
@@ -975,47 +973,48 @@ export class SlotMachine {
                 return;
             }
 
+            // Start CSS spinning animation
             reel.classList.add('spinning');
 
-            let spins = 0;
-            const maxSpins = Math.floor(duration / GAME_CONFIG.reelSpinInterval);
+            // Populate with random symbols for initial spin effect
+            const randomPosition = RNG.getRandomPosition(this.symbolsPerReel);
+            const randomSymbols = RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], randomPosition, this.rowCount);
+            symbols.forEach((symbol, index) => {
+                symbol.textContent = randomSymbols[index];
+            });
 
-            const interval = this.timerManager.setInterval(() => {
-                // Show random symbols during spin for visual effect
-                const position = RNG.getRandomPosition(this.symbolsPerReel);
-                const displaySymbols = RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], position, this.rowCount);
+            // Wait for spin duration, then stop
+            this.timerManager.setTimeout(() => {
+                // Remove spinning, add stopping class for deceleration effect
+                reel.classList.remove('spinning');
+                reel.classList.add('stopping');
 
-                symbols.forEach((symbol, index) => {
-                    symbol.textContent = displaySymbols[index];
-                });
+                // Set final position
+                const finalPosition = predeterminedPosition !== null ? predeterminedPosition : RNG.getRandomPosition(this.symbolsPerReel);
+                this.reelPositions[reelIndex] = finalPosition;
+                const finalSymbols = RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], finalPosition, this.rowCount);
 
-                spins++;
-                if (spins >= maxSpins) {
-                    this.timerManager.clearInterval(interval);
-                    reel.classList.remove('spinning');
+                // Update to final symbols
+                for (let i = 0; i < this.rowCount; i++) {
+                    symbols[i].textContent = finalSymbols[i];
 
-                    // Set final position - use predetermined if provided, otherwise generate new
-                    const finalPosition = predeterminedPosition !== null ? predeterminedPosition : RNG.getRandomPosition(this.symbolsPerReel);
-                    this.reelPositions[reelIndex] = finalPosition;
-                    const finalSymbols = RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], finalPosition, this.rowCount);
+                    // Add bounce animation and special classes
+                    symbols[i].classList.add('landed');
+                    this.timerManager.setTimeout(() => symbols[i].classList.remove('landed'), GAME_CONFIG.animations.symbolLanded, 'reels');
 
-                    for (let i = 0; i < this.rowCount; i++) {
-                        symbols[i].textContent = finalSymbols[i];
-
-                        // Add bounce animation and special classes
-                        symbols[i].classList.add('landed');
-                        this.timerManager.setTimeout(() => symbols[i].classList.remove('landed'), GAME_CONFIG.animations.symbolLanded, 'reels');
-
-                        // Add special classes for premium symbols
-                        this.applySymbolClasses(symbols[i], finalSymbols[i]);
-                    }
-
-                    // Play reel stop sound
-                    this.soundManager.playReelStop();
-
-                    resolve();
+                    // Add special classes for premium symbols
+                    this.applySymbolClasses(symbols[i], finalSymbols[i]);
                 }
-            }, GAME_CONFIG.reelSpinInterval);
+
+                // Play reel stop sound
+                this.soundManager.playReelStop();
+
+                // Remove stopping class after animation completes
+                this.timerManager.setTimeout(() => {
+                    reel.classList.remove('stopping');
+                    resolve();
+                }, 300, 'reels'); // Match CSS stopping animation duration
+            }, duration, 'reels');
         });
     }
 

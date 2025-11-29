@@ -282,16 +282,41 @@ body::before {
     }
 }
 
+/* Spinning animation with blur effect */
 .reel.spinning .symbol-container {
-    animation: spin 0.1s linear infinite;
+    animation: reelSpin 0.1s linear infinite;
 }
 
-@keyframes spin {
+.reel.spinning .symbol {
+    filter: blur(3px);
+    opacity: 0.7;
+}
+
+@keyframes reelSpin {
     from {
         transform: translateY(0);
     }
     to {
         transform: translateY(calc(var(--reel-size) * -1));
+    }
+}
+
+/* Stopping animation - smooth deceleration */
+.reel.stopping .symbol-container {
+    animation: reelStop 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.reel.stopping .symbol {
+    filter: blur(2px);
+    opacity: 0.85;
+}
+
+@keyframes reelStop {
+    0% {
+        filter: blur(3px);
+    }
+    100% {
+        filter: blur(0px);
     }
 }
 
