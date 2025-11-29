@@ -1,9 +1,10 @@
 // Autoplay system with configurable settings and stop conditions
 
 export class Autoplay {
-    constructor(slotMachine) {
+    constructor(slotMachine, timerManager) {
         this.game = slotMachine;
         this.isActive = false;
+        this.timerManager = timerManager;
 
         // Autoplay settings
         this.settings = {
@@ -43,6 +44,7 @@ export class Autoplay {
         if (!this.isActive && !this.nextSpinTimeout) return;
 
         this.isActive = false;
+        this.game.cleanupTimers('autoplay');
         this.clearNextSpinTimeout();
         this.updateUI();
 
@@ -86,10 +88,15 @@ export class Autoplay {
             // Delay before next spin (reduced in turbo mode)
             const delay = this.game.turboMode.isActive ? 500 : 1000;
             this.clearNextSpinTimeout();
-            this.nextSpinTimeout = setTimeout(() => {
-                this.nextSpinTimeout = null;
-                this.executeNextSpin();
-            }, delay);
+            this.nextSpinTimeout = this.timerManager
+                ? this.timerManager.setTimeout(() => {
+                    this.nextSpinTimeout = null;
+                    this.executeNextSpin();
+                }, delay, 'autoplay')
+                : setTimeout(() => {
+                    this.nextSpinTimeout = null;
+                    this.executeNextSpin();
+                }, delay);
         } else {
             this.stop();
         }
@@ -100,9 +107,20 @@ export class Autoplay {
      */
     clearNextSpinTimeout() {
         if (this.nextSpinTimeout) {
-            clearTimeout(this.nextSpinTimeout);
+            if (this.timerManager) {
+                this.timerManager.clearTimeout(this.nextSpinTimeout);
+            } else {
+                clearTimeout(this.nextSpinTimeout);
+            }
             this.nextSpinTimeout = null;
         }
+    }
+
+    /**
+     * Reset cached timer handles when a global cleanup occurs.
+     */
+    onTimersCleared() {
+        this.nextSpinTimeout = null;
     }
 
     /**

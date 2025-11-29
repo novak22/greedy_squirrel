@@ -20,9 +20,12 @@ import { SpinHistory } from '../ui/SpinHistory.js';
 import { Gamble } from '../features/Gamble.js';
 import { BuyBonus } from '../features/BuyBonus.js';
 import { WinAnticipation } from '../features/WinAnticipation.js';
+import { TimerManager } from '../utils/TimerManager.js';
 
 export class SlotMachine {
     constructor() {
+        this.timerManager = new TimerManager();
+
         // Game configuration
         this.reelCount = GAME_CONFIG.reelCount;
         this.rowCount = GAME_CONFIG.rowCount;
@@ -70,7 +73,7 @@ export class SlotMachine {
         // Phase 4: Initialize advanced features
         this.soundManager = new SoundManager();
         this.visualEffects = new VisualEffects(this);
-        this.autoplay = new Autoplay(this);
+        this.autoplay = new Autoplay(this, this.timerManager);
         this.turboMode = new TurboMode(this);
         this.settings = new Settings(this);
 
@@ -692,15 +695,16 @@ export class SlotMachine {
 
             const clearAutoCollect = () => {
                 if (autoCollectTimer) {
-                    clearInterval(autoCollectTimer);
+                    this.timerManager.clearInterval(autoCollectTimer);
                     autoCollectTimer = null;
                 }
+                this.cleanupTimers('gamble-offer');
             };
 
             // Start 5-second auto-collect countdown
             const timerDisplay = document.getElementById('gambleOfferTimer');
             let timeLeft = 5;
-            autoCollectTimer = setInterval(() => {
+            autoCollectTimer = this.timerManager.setInterval(() => {
                 timeLeft -= 1;
                 if (timerDisplay) {
                     timerDisplay.textContent = timeLeft;
@@ -712,7 +716,7 @@ export class SlotMachine {
                     this.soundManager.playClick();
                     resolve(winAmount);
                 }
-            }, 1000);
+            }, 1000, 'gamble-offer');
 
             document.getElementById('gambleAccept').addEventListener('click', async () => {
                 clearAutoCollect();
@@ -749,7 +753,7 @@ export class SlotMachine {
             let spins = 0;
             const maxSpins = Math.floor(duration / 100);
 
-            const interval = setInterval(() => {
+            const interval = this.timerManager.setInterval(() => {
                 // Show random symbols during spin for visual effect
                 const position = RNG.getRandomPosition(this.symbolsPerReel);
                 const displaySymbols = RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], position, this.rowCount);
@@ -760,7 +764,7 @@ export class SlotMachine {
 
                 spins++;
                 if (spins >= maxSpins) {
-                    clearInterval(interval);
+                    this.timerManager.clearInterval(interval);
                     reel.classList.remove('spinning');
 
                     // Set final position - use predetermined if provided, otherwise generate new
@@ -773,7 +777,7 @@ export class SlotMachine {
 
                         // Phase 5: Add bounce animation and special classes
                         symbols[i].classList.add('landed');
-                        setTimeout(() => symbols[i].classList.remove('landed'), 600);
+                        this.timerManager.setTimeout(() => symbols[i].classList.remove('landed'), 600, 'reels');
 
                         // Add special classes for premium symbols
                         this.applySymbolClasses(symbols[i], finalSymbols[i]);
@@ -865,8 +869,7 @@ export class SlotMachine {
 
             // Prevent overlapping counter intervals from previous messages
             if (this.winCounterInterval) {
-                clearInterval(this.winCounterInterval);
-                this.winCounterInterval = null;
+                this.cleanupTimers('win-counter');
             }
 
             // Phase 5: Win counter animation
@@ -881,10 +884,10 @@ export class SlotMachine {
             // Phase 4: Use turbo mode timing for messages
             const duration = this.turboMode.getMessageDelay();
 
-            setTimeout(() => {
+            this.timerManager.setTimeout(() => {
                 overlay.classList.remove('show');
                 resolve();
-            }, duration);
+            }, duration, 'win-overlay');
         });
     }
 
@@ -900,7 +903,7 @@ export class SlotMachine {
         let currentAmount = 0;
         let step = 0;
 
-        this.winCounterInterval = setInterval(() => {
+        this.winCounterInterval = this.timerManager.setInterval(() => {
             step++;
             currentAmount = Math.min(Math.floor(increment * step), finalAmount);
 
@@ -914,11 +917,11 @@ export class SlotMachine {
             }
 
             if (currentAmount >= finalAmount) {
-                clearInterval(this.winCounterInterval);
+                this.timerManager.clearInterval(this.winCounterInterval);
                 this.winCounterInterval = null;
                 overlay.textContent = baseMessage; // Final message
             }
-        }, stepDuration);
+        }, stepDuration, 'win-counter');
     }
 
     togglePaytable(show) {
@@ -1163,9 +1166,39 @@ export class SlotMachine {
         const container = document.querySelector('.game-container');
         container.classList.add('screen-shake');
 
-        setTimeout(() => {
+        this.timerManager.setTimeout(() => {
             container.classList.remove('screen-shake');
-        }, 500);
+        }, 500, 'visual-effects');
+    }
+
+    /**
+     * Clear tracked timers either by label or entirely.
+     */
+    cleanupTimers(label = null) {
+        if (label) {
+            this.timerManager.clearByLabel(label);
+        } else {
+            this.timerManager.clearAll();
+        }
+
+        if (!label || label === 'win-counter') {
+            this.winCounterInterval = null;
+        }
+
+        if (!label || label === 'autoplay') {
+            this.autoplay.onTimersCleared();
+        }
+
+        if (!label) {
+            this.autoplay.isActive = false;
+            this.autoplay.updateUI();
+            this.isSpinning = false;
+
+            const spinBtn = document.getElementById('spinBtn');
+            if (spinBtn) {
+                spinBtn.disabled = false;
+            }
+        }
     }
 
     /**
