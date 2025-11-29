@@ -145,24 +145,100 @@ body::before {
     border-bottom: 2px solid #4a3520;
     user-select: none;
     text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+/* Phase 5: Enhanced hover effect for symbols */
+.symbol:hover {
+    transform: scale(1.05);
+    filter: brightness(1.2);
+}
+
+/* Phase 5: Symbol landed animation */
+.symbol.landed {
+    animation: symbolBounce 0.6s ease-out;
+}
+
+@keyframes symbolBounce {
+    0% {
+        transform: translateY(-20px);
+    }
+    50% {
+        transform: translateY(5px);
+    }
+    75% {
+        transform: translateY(-2px);
+    }
+    100% {
+        transform: translateY(0);
+    }
 }
 
 .symbol.winning {
-    animation: symbolWin 0.5s ease-in-out infinite alternate;
+    animation: symbolWinEnhanced 0.8s ease-in-out infinite alternate;
     background: linear-gradient(135deg, #8b5a2b 0%, #cd853f 100%);
     box-shadow:
         0 0 20px rgba(139, 90, 43, 0.8),
         inset 0 0 20px rgba(255, 255, 255, 0.3);
 }
 
-@keyframes symbolWin {
-    from {
-        transform: scale(1);
-        filter: brightness(1);
+/* Phase 5: Enhanced winning symbol animation with glow variations */
+@keyframes symbolWinEnhanced {
+    0% {
+        transform: scale(1) rotate(0deg);
+        filter: brightness(1) drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
     }
-    to {
-        transform: scale(1.1);
-        filter: brightness(1.3);
+    25% {
+        transform: scale(1.05) rotate(-2deg);
+        filter: brightness(1.2) drop-shadow(0 0 15px rgba(255, 215, 0, 0.8));
+    }
+    50% {
+        transform: scale(1.1) rotate(0deg);
+        filter: brightness(1.4) drop-shadow(0 0 25px rgba(255, 215, 0, 1));
+    }
+    75% {
+        transform: scale(1.05) rotate(2deg);
+        filter: brightness(1.2) drop-shadow(0 0 15px rgba(255, 215, 0, 0.8));
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        filter: brightness(1) drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
+    }
+}
+
+/* Phase 5: Special animations for premium symbols */
+.symbol.premium {
+    animation: premiumGlow 2s ease-in-out infinite;
+}
+
+@keyframes premiumGlow {
+    0%, 100% {
+        text-shadow:
+            0 0 10px rgba(255, 255, 255, 0.3),
+            0 0 20px rgba(255, 215, 0, 0.2);
+    }
+    50% {
+        text-shadow:
+            0 0 15px rgba(255, 255, 255, 0.5),
+            0 0 30px rgba(255, 215, 0, 0.4),
+            0 0 40px rgba(255, 215, 0, 0.2);
+    }
+}
+
+/* Phase 5: Wiggle animation for scatter symbols */
+.symbol.scatter {
+    animation: scatterWiggle 1.5s ease-in-out infinite;
+}
+
+@keyframes scatterWiggle {
+    0%, 100% {
+        transform: rotate(0deg);
+    }
+    25% {
+        transform: rotate(-3deg) scale(1.02);
+    }
+    75% {
+        transform: rotate(3deg) scale(1.02);
     }
 }
 
@@ -2891,5 +2967,248 @@ body::before {
         width: 100%;
         padding: 12px 20px;
         font-size: 1.1em;
+    }
+}
+
+/* ============================================
+   PHASE 5: ENHANCED MOBILE RESPONSIVE DESIGN
+   ============================================ */
+
+/* Improved touch targets for mobile */
+@media (max-width: 768px) {
+    .btn {
+        min-height: 44px; /* iOS recommended touch target */
+        padding: 12px 20px;
+        font-size: 1em;
+    }
+
+    .btn-spin {
+        min-height: 60px;
+        font-size: 1.4em;
+    }
+
+    .btn-bet {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .btn-small {
+        min-height: 40px;
+        padding: 8px 15px;
+        font-size: 0.85em;
+    }
+
+    /* Better spacing for mobile controls */
+    .controls {
+        gap: 15px;
+    }
+
+    .bet-controls {
+        gap: 10px;
+    }
+
+    .paytable-toggle {
+        gap: 8px;
+    }
+
+    .advanced-controls {
+        gap: 8px;
+    }
+
+    /* Optimize level display for mobile */
+    .level-display {
+        font-size: 0.8em;
+        padding: 8px 12px;
+    }
+
+    .level-number {
+        font-size: 1.2em;
+    }
+
+    .xp-bar {
+        height: 4px;
+    }
+}
+
+/* Landscape mode optimization for mobile */
+@media (max-width: 896px) and (orientation: landscape) {
+    body {
+        padding: 5px 0;
+    }
+
+    .game-container {
+        padding: 8px;
+        max-width: 95%;
+    }
+
+    .game-header h1 {
+        font-size: 1.3em;
+        margin-bottom: 5px;
+    }
+
+    .level-display {
+        margin-bottom: 5px;
+    }
+
+    .info-panel {
+        gap: 8px;
+        margin-top: 5px;
+    }
+
+    .info-item {
+        padding: 5px 10px;
+        min-width: 70px;
+    }
+
+    .info-item .label {
+        font-size: 0.6em;
+    }
+
+    .info-item .value {
+        font-size: 1em;
+    }
+
+    .slot-machine {
+        padding: 8px;
+        margin: 8px 0;
+    }
+
+    .reel {
+        width: 75px;
+        height: 225px;
+    }
+
+    .symbol {
+        width: 75px;
+        height: 75px;
+        font-size: 2.2em;
+    }
+
+    .reels-container {
+        gap: 4px;
+    }
+
+    .controls {
+        margin-top: 8px;
+        gap: 10px;
+    }
+
+    .btn-spin {
+        min-height: 50px;
+        font-size: 1.2em;
+    }
+
+    .paytable-toggle,
+    .advanced-controls {
+        gap: 6px;
+        margin-top: 8px;
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 0.75em;
+    }
+}
+
+/* Very small screens (iPhone SE, etc.) */
+@media (max-width: 375px) {
+    .game-header h1 {
+        font-size: 1.2em;
+        letter-spacing: 1px;
+    }
+
+    .reel {
+        width: 70px;
+        height: 210px;
+    }
+
+    .symbol {
+        width: 70px;
+        height: 70px;
+        font-size: 2em;
+    }
+
+    .reels-container {
+        gap: 3px;
+    }
+
+    .btn-spin {
+        min-height: 50px;
+        font-size: 1.2em;
+    }
+
+    .bet-display {
+        font-size: 0.9em;
+    }
+
+    .paytable-toggle {
+        flex-wrap: wrap;
+    }
+
+    .advanced-controls {
+        flex-wrap: wrap;
+    }
+}
+
+/* Tablet portrait mode */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+    .game-container {
+        max-width: 700px;
+        padding: 20px;
+    }
+
+    .reel {
+        width: 110px;
+        height: 330px;
+    }
+
+    .symbol {
+        width: 110px;
+        height: 110px;
+        font-size: 3.5em;
+    }
+
+    .btn {
+        min-height: 48px;
+        font-size: 1.1em;
+    }
+
+    .btn-spin {
+        min-height: 65px;
+        font-size: 1.6em;
+    }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    /* Remove hover effects on touch devices */
+    .btn:hover,
+    .btn-spin:hover,
+    .btn-bet:hover,
+    .btn-small:hover {
+        transform: none;
+    }
+
+    /* Add active (tap) feedback instead */
+    .btn:active {
+        transform: scale(0.95);
+        filter: brightness(0.9);
+    }
+
+    .btn-spin:active {
+        transform: scale(0.98);
+    }
+
+    /* Prevent accidental double-tap zoom */
+    button {
+        touch-action: manipulation;
+    }
+
+    /* Better touch scrolling */
+    .paytable-content,
+    .stats-content,
+    .settings-content,
+    .history-list {
+        -webkit-overflow-scrolling: touch;
     }
 }

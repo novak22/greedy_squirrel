@@ -178,6 +178,10 @@ export class SlotMachine {
                 const symbol = document.createElement('div');
                 symbol.className = 'symbol';
                 symbol.textContent = symbols[j];
+
+                // Phase 5: Apply special classes to initial symbols
+                this.applySymbolClasses(symbol, symbols[j]);
+
                 container.appendChild(symbol);
             }
         }
@@ -653,7 +657,17 @@ export class SlotMachine {
 
                     for (let i = 0; i < this.rowCount; i++) {
                         symbols[i].textContent = finalSymbols[i];
+
+                        // Phase 5: Add bounce animation and special classes
+                        symbols[i].classList.add('landed');
+                        setTimeout(() => symbols[i].classList.remove('landed'), 600);
+
+                        // Add special classes for premium symbols
+                        this.applySymbolClasses(symbols[i], finalSymbols[i]);
                     }
+
+                    // Phase 4: Play reel stop sound
+                    this.soundManager.playReelStop();
 
                     resolve();
                 }
@@ -696,6 +710,25 @@ export class SlotMachine {
         document.querySelectorAll('.symbol.winning').forEach(symbol => {
             symbol.classList.remove('winning');
         });
+    }
+
+    /**
+     * Phase 5: Apply special CSS classes to symbols based on their type
+     */
+    applySymbolClasses(symbolElement, symbolText) {
+        // Remove existing special classes
+        symbolElement.classList.remove('premium', 'scatter');
+
+        // Premium symbols (high-value symbols)
+        const premiumSymbols = ['👑', '💎', '🌰', '🥜'];
+        if (premiumSymbols.includes(symbolText)) {
+            symbolElement.classList.add('premium');
+        }
+
+        // Scatter symbol
+        if (symbolText === '⭐') {
+            symbolElement.classList.add('scatter');
+        }
     }
 
     showWinningPaylines(winningLines) {
