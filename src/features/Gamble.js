@@ -9,7 +9,6 @@ export class Gamble {
         this.history = [];
         this.maxGambles = 5;
         this.resolveCallback = null; // Store the resolve callback
-        this.autoCollectTimer = null; // Timer for auto-collect
     }
 
     /**
@@ -61,7 +60,6 @@ export class Gamble {
 
                 <div class="gamble-info">
                     <div>Chances Left: ${this.gamblesRemaining}/${this.maxGambles}</div>
-                    <div class="gamble-timer" id="gambleTimer">Auto-collect in: <span class="timer-value">5</span>s</div>
                 </div>
 
                 ${this.history.length > 0 ? `
@@ -92,40 +90,16 @@ export class Gamble {
 
         overlay.classList.add('show');
 
-        // Clear any existing timer
-        if (this.autoCollectTimer) {
-            clearInterval(this.autoCollectTimer);
-        }
-
-        // Start 5-second countdown
-        let timeLeft = 5;
-        const timerDisplay = document.querySelector('.timer-value');
-
-        this.autoCollectTimer = setInterval(() => {
-            timeLeft--;
-            if (timerDisplay) {
-                timerDisplay.textContent = timeLeft;
-            }
-
-            if (timeLeft <= 0) {
-                clearInterval(this.autoCollectTimer);
-                this.collect();
-            }
-        }, 1000);
-
         // Attach button handlers - use the stored resolve callback
         document.getElementById('gambleRed').addEventListener('click', () => {
-            clearInterval(this.autoCollectTimer);
             this.makeGuess('red');
         });
 
         document.getElementById('gambleBlack').addEventListener('click', () => {
-            clearInterval(this.autoCollectTimer);
             this.makeGuess('black');
         });
 
         document.getElementById('gambleCollect').addEventListener('click', () => {
-            clearInterval(this.autoCollectTimer);
             this.collect();
         });
     }
@@ -237,12 +211,6 @@ export class Gamble {
      */
     end() {
         const finalWin = this.currentWin;
-
-        // Clear any active timer
-        if (this.autoCollectTimer) {
-            clearInterval(this.autoCollectTimer);
-            this.autoCollectTimer = null;
-        }
 
         const overlay = document.getElementById('featureOverlay');
         if (overlay) {

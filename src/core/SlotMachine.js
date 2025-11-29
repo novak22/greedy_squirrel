@@ -658,6 +658,8 @@ export class SlotMachine {
                 return;
             }
 
+            let autoCollectTimer = null;
+
             overlay.innerHTML = `
                 <div class="gamble-container">
                     <h2 class="gamble-title">🎴 DOUBLE UP</h2>
@@ -672,6 +674,8 @@ export class SlotMachine {
                         Guess the card color!
                     </div>
 
+                    <div class="gamble-timer">Auto-collect in: <span class="timer-value" id="gambleOfferTimer">5</span>s</div>
+
                     <div class="gamble-buttons">
                         <button class="btn btn-small" id="gambleAccept">
                             🎲 DOUBLE UP
@@ -685,7 +689,32 @@ export class SlotMachine {
 
             overlay.classList.add('show');
 
+            const clearAutoCollect = () => {
+                if (autoCollectTimer) {
+                    clearInterval(autoCollectTimer);
+                    autoCollectTimer = null;
+                }
+            };
+
+            // Start 5-second auto-collect countdown
+            const timerDisplay = document.getElementById('gambleOfferTimer');
+            let timeLeft = 5;
+            autoCollectTimer = setInterval(() => {
+                timeLeft -= 1;
+                if (timerDisplay) {
+                    timerDisplay.textContent = timeLeft;
+                }
+
+                if (timeLeft <= 0) {
+                    clearAutoCollect();
+                    overlay.classList.remove('show');
+                    this.soundManager.playClick();
+                    resolve(winAmount);
+                }
+            }, 1000);
+
             document.getElementById('gambleAccept').addEventListener('click', async () => {
+                clearAutoCollect();
                 overlay.classList.remove('show');
                 // start() now returns a promise that resolves with the final win amount
                 const finalAmount = await this.gamble.start(winAmount);
@@ -693,6 +722,7 @@ export class SlotMachine {
             });
 
             document.getElementById('gambleDecline').addEventListener('click', () => {
+                clearAutoCollect();
                 overlay.classList.remove('show');
                 this.soundManager.playClick();
                 resolve(winAmount);
