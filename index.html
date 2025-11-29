@@ -85,6 +85,8 @@
             <button class="btn btn-small" id="statsBtn">STATS</button>
             <!-- Phase 4: Settings Button -->
             <button class="btn btn-small" id="settingsBtn">⚙️</button>
+            <!-- Phase 5: History Button -->
+            <button class="btn btn-small" id="historyBtn">📜 HISTORY</button>
         </div>
 
         <!-- Phase 4: Advanced Controls -->
@@ -313,7 +315,26 @@
                     <input type="number" id="balanceLowLimit" min="0" value="100">
                 </div>
             </div>
+
+            <!-- Phase 5: Data Management -->
+            <div class="settings-section">
+                <h3>🗑️ Data Management</h3>
+                <div class="setting-item" style="flex-direction: column; align-items: center; gap: 15px;">
+                    <p style="color: #b0bec5; text-align: center; margin: 0;">Reset all game data including credits, progress, achievements, and statistics.</p>
+                    <button class="btn-reset-data" id="resetDataBtn">RESET ALL DATA</button>
+                </div>
+            </div>
         </div>
+    </div>
+
+    <!-- Phase 5: Spin History Panel -->
+    <div class="history-panel" id="historyPanel">
+        <div class="history-header">
+            <h3>📜 Spin History</h3>
+            <button class="history-close" id="closeHistory">&times;</button>
+        </div>
+        <div class="history-stats" id="historyStats"></div>
+        <div class="history-list" id="historyList"></div>
     </div>
 
     <script type="module" src="game.js"></script>

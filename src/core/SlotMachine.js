@@ -16,6 +16,7 @@ import { TurboMode } from '../features/TurboMode.js';
 import { VisualEffects } from '../effects/VisualEffects.js';
 import { SoundManager } from '../audio/SoundManager.js';
 import { Settings } from '../ui/Settings.js';
+import { SpinHistory } from '../ui/SpinHistory.js';
 
 export class SlotMachine {
     constructor() {
@@ -70,6 +71,9 @@ export class SlotMachine {
         this.turboMode = new TurboMode(this);
         this.settings = new Settings(this);
 
+        // Phase 5: Initialize spin history
+        this.spinHistory = new SpinHistory(20);
+
         // Load saved data
         this.loadGameState();
 
@@ -117,6 +121,11 @@ export class SlotMachine {
                 this.turboMode.init(savedData.phase4.turboMode);
             }
 
+            // Phase 5: Load spin history
+            if (savedData.phase5) {
+                this.spinHistory.init(savedData.phase5.spinHistory);
+            }
+
             console.log('Game state loaded from localStorage');
         }
     }
@@ -142,6 +151,10 @@ export class SlotMachine {
                 sound: this.soundManager.getSaveData(),
                 visualEffects: this.visualEffects.getSaveData(),
                 turboMode: this.turboMode.getSaveData()
+            },
+            // Phase 5: Save spin history
+            phase5: {
+                spinHistory: this.spinHistory.getSaveData()
             }
         });
     }
@@ -216,6 +229,23 @@ export class SlotMachine {
 
         // Phase 4: Settings
         this.settings.attachEventListeners();
+
+        // Phase 5: History panel
+        const historyBtn = document.getElementById('historyBtn');
+        if (historyBtn) {
+            historyBtn.addEventListener('click', () => {
+                this.soundManager.playClick();
+                this.spinHistory.toggle();
+            });
+        }
+
+        const closeHistory = document.getElementById('closeHistory');
+        if (closeHistory) {
+            closeHistory.addEventListener('click', () => {
+                this.soundManager.playClick();
+                this.spinHistory.hide();
+            });
+        }
 
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space' && !this.isSpinning && !this.autoplay.isActive) {
@@ -334,6 +364,11 @@ export class SlotMachine {
             this.soundManager.playWin(winMultiplier);
             this.visualEffects.showWinCelebration(winInfo.totalWin, winMultiplier);
 
+            // Phase 5: Screen shake for mega wins
+            if (winMultiplier >= 100) {
+                this.triggerScreenShake();
+            }
+
             // Build win message
             let message = `WIN: ${winInfo.totalWin}`;
             if (isFreeSpin) {
@@ -352,7 +387,8 @@ export class SlotMachine {
                 this.soundManager.playScatter();
             }
 
-            await this.showMessage(message);
+            // Phase 5: Pass win amount for counter animation
+            await this.showMessage(message, winInfo.totalWin);
 
             // Phase 2: Check for cascading wins (if enabled)
             if (this.cascade.enabled) {
@@ -463,6 +499,15 @@ export class SlotMachine {
             this.currentBet,
             this.credits
         );
+
+        // Phase 5: Record spin in history
+        const features = [];
+        if (this.freeSpins.isActive()) features.push('freeSpins');
+        if (winInfo.hasScatterWin) features.push('scatter');
+        if (bonusInfo.triggered) features.push('bonus');
+        if (this.cascade.enabled && totalWin > winInfo.totalWin) features.push('cascade');
+
+        this.spinHistory.recordSpin(this.currentBet, totalWin, features);
 
         // Save game state after each spin
         this.saveGameState();
@@ -587,10 +632,17 @@ export class SlotMachine {
         });
     }
 
-    showMessage(message) {
+    showMessage(message, winAmount = 0) {
         return new Promise((resolve) => {
             const overlay = document.getElementById('winOverlay');
-            overlay.textContent = message;
+
+            // Phase 5: Win counter animation
+            if (winAmount > 0) {
+                this.animateWinCounter(overlay, winAmount, message);
+            } else {
+                overlay.textContent = message;
+            }
+
             overlay.classList.add('show');
 
             // Phase 4: Use turbo mode timing for messages
@@ -601,6 +653,38 @@ export class SlotMachine {
                 resolve();
             }, duration);
         });
+    }
+
+    /**
+     * Phase 5: Animate win counter from 0 to final amount
+     */
+    animateWinCounter(overlay, finalAmount, baseMessage) {
+        const duration = this.turboMode.isActive ? 500 : 1000;
+        const steps = this.turboMode.isActive ? 10 : 20;
+        const stepDuration = duration / steps;
+        const increment = finalAmount / steps;
+
+        let currentAmount = 0;
+        let step = 0;
+
+        const countInterval = setInterval(() => {
+            step++;
+            currentAmount = Math.min(Math.floor(increment * step), finalAmount);
+
+            // Build message with current count
+            let message = baseMessage.replace(/WIN: \d+/, `WIN: ${currentAmount}`);
+            overlay.textContent = message;
+
+            // Play tick sound every few steps
+            if (step % 3 === 0 && this.soundManager.effectsEnabled) {
+                this.soundManager.playTone(400 + (step * 20), 0.03, 'sine');
+            }
+
+            if (currentAmount >= finalAmount) {
+                clearInterval(countInterval);
+                overlay.textContent = baseMessage; // Final message
+            }
+        }, stepDuration);
     }
 
     togglePaytable(show) {
@@ -875,5 +959,52 @@ export class SlotMachine {
             container.classList.remove('turbo-mode');
         }
         this.saveGameState();
+    }
+
+    /**
+     * Phase 5: Trigger screen shake effect for mega wins
+     */
+    triggerScreenShake() {
+        const container = document.querySelector('.game-container');
+        container.classList.add('screen-shake');
+
+        setTimeout(() => {
+            container.classList.remove('screen-shake');
+        }, 500);
+    }
+
+    /**
+     * Phase 5: Reset all game data
+     */
+    resetAllData() {
+        // Clear localStorage
+        localStorage.removeItem('greedySquirrelGame');
+
+        // Reset all game state
+        this.credits = GAME_CONFIG.initialCredits;
+        this.currentBet = GAME_CONFIG.betOptions[0];
+        this.currentBetIndex = 0;
+        this.lastWin = 0;
+
+        // Reset stats
+        this.stats = {
+            totalSpins: 0,
+            totalWagered: 0,
+            totalWon: 0,
+            biggestWin: 0,
+            scatterHits: 0,
+            bonusHits: 0,
+            freeSpinsTriggers: 0,
+            cascadeWins: 0
+        };
+
+        // Clear all subsystems
+        this.levelSystem = new LevelSystem(this);
+        this.achievements = new Achievements(this);
+        this.dailyRewards = new DailyRewards(this);
+        this.statistics = new Statistics(this);
+        this.spinHistory.clear();
+
+        this.updateDisplay();
     }
 }

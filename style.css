@@ -2040,3 +2040,252 @@ body::before {
         margin-top: 10px;
     }
 }
+
+/* ========================================
+   PHASE 5: ENHANCED POLISH & UX
+   ======================================== */
+
+/* Screen Shake Animation for Mega Wins */
+.screen-shake {
+    animation: screenShake 0.5s ease-in-out;
+}
+
+@keyframes screenShake {
+    0%, 100% {
+        transform: translate(0, 0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+        transform: translate(-10px, 0);
+    }
+    20%, 40%, 60%, 80% {
+        transform: translate(10px, 0);
+    }
+}
+
+/* Spin History Panel */
+.history-panel {
+    position: fixed;
+    top: 20px;
+    right: -400px;
+    width: 380px;
+    max-height: calc(100vh - 40px);
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 3px solid #daa520;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+    z-index: 9998;
+    transition: right 0.3s ease-out;
+    overflow-y: auto;
+}
+
+.history-panel.show {
+    right: 20px;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 10px;
+}
+
+.history-header h3 {
+    color: #ffd700;
+    margin: 0;
+    font-size: 1.3em;
+}
+
+.history-close {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 2em;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.3s;
+    line-height: 1;
+    padding: 0;
+}
+
+.history-close:hover {
+    opacity: 1;
+}
+
+.history-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.history-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.history-stat-label {
+    font-size: 0.8em;
+    color: #b0bec5;
+    margin-bottom: 3px;
+}
+
+.history-stat-value {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #fff;
+}
+
+.history-stat-value.positive {
+    color: #4caf50;
+}
+
+.history-stat-value.negative {
+    color: #f44336;
+}
+
+.history-list {
+    max-height: calc(100vh - 280px);
+    overflow-y: auto;
+}
+
+.history-empty {
+    text-align: center;
+    color: #78909c;
+    padding: 30px;
+    font-style: italic;
+}
+
+.history-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+    transition: all 0.3s;
+}
+
+.history-item.big-win {
+    border-color: #ffd700;
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.history-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(-5px);
+}
+
+.history-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.history-spin-number {
+    font-weight: bold;
+    color: #ffd700;
+}
+
+.history-time {
+    font-size: 0.8em;
+    color: #78909c;
+}
+
+.history-item-details {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 5px;
+}
+
+.history-bet,
+.history-win,
+.history-profit {
+    font-size: 0.9em;
+    padding: 5px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    text-align: center;
+}
+
+.history-win.has-win {
+    color: #4caf50;
+    font-weight: bold;
+}
+
+.history-profit {
+    font-weight: bold;
+}
+
+.profit-positive {
+    color: #4caf50;
+}
+
+.profit-negative {
+    color: #f44336;
+}
+
+.profit-neutral {
+    color: #78909c;
+}
+
+.history-multiplier {
+    display: inline-block;
+    background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: bold;
+    margin-top: 5px;
+}
+
+.history-features {
+    margin-top: 5px;
+    font-size: 1.2em;
+    text-align: center;
+}
+
+/* Mobile adjustments for history panel */
+@media (max-width: 768px) {
+    .history-panel {
+        right: -100%;
+        width: 90%;
+        max-width: 350px;
+    }
+
+    .history-panel.show {
+        right: 5%;
+    }
+}
+
+/* Reset Data Button */
+.btn-reset-data {
+    background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+    color: white;
+    border: 2px solid #f44336;
+    padding: 12px 30px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 0.95em;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 10px rgba(211, 47, 47, 0.4);
+}
+
+.btn-reset-data:hover {
+    background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(211, 47, 47, 0.6);
+}
+
+.btn-reset-data:active {
+    transform: translateY(0);
+}

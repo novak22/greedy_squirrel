@@ -185,6 +185,45 @@ export class Settings {
             const limit = parseInt(value) || 100;
             this.game.autoplay.updateSettings({ balanceLowLimit: Math.max(0, limit) });
         });
+
+        // Phase 5: Reset data button
+        const resetDataBtn = document.getElementById('resetDataBtn');
+        if (resetDataBtn) {
+            resetDataBtn.addEventListener('click', () => {
+                this.confirmReset();
+            });
+        }
+    }
+
+    /**
+     * Phase 5: Confirm and execute data reset
+     */
+    confirmReset() {
+        const confirmed = confirm(
+            'Are you sure you want to reset ALL game data?\n\n' +
+            'This will delete:\n' +
+            '• All credits and progress\n' +
+            '• Levels and XP\n' +
+            '• All achievements\n' +
+            '• Statistics and history\n' +
+            '• Daily rewards streak\n\n' +
+            'This action CANNOT be undone!'
+        );
+
+        if (confirmed) {
+            const doubleConfirm = confirm(
+                'FINAL WARNING!\n\n' +
+                'This will permanently delete all your game data.\n\n' +
+                'Are you absolutely sure?'
+            );
+
+            if (doubleConfirm) {
+                this.game.resetAllData();
+                alert('All game data has been reset!');
+                this.hide();
+                location.reload(); // Reload page to reset everything
+            }
+        }
     }
 
     /**
