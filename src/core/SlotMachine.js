@@ -575,6 +575,7 @@ export class SlotMachine {
     async executeReelSpin(reelData) {
         const {
             reelPositions,
+            predeterminedSymbols,
             shouldTriggerAnticipation,
             anticipationConfig,
             anticipationTriggerReel
@@ -599,7 +600,7 @@ export class SlotMachine {
                     }
                 }
 
-                await this.spinReel(i, duration, reelPositions[i]);
+                await this.spinReel(i, duration, reelPositions[i], predeterminedSymbols ? predeterminedSymbols[i] : null);
 
                 // Remove dramatic-slow class after reel stops
                 const reel = document.getElementById(`reel-${i}`);
@@ -610,7 +611,7 @@ export class SlotMachine {
             const spinPromises = [];
             for (let i = 0; i < this.reelCount; i++) {
                 const duration = this.turboMode.getReelSpinTime(i);
-                spinPromises.push(this.spinReel(i, duration, reelPositions[i]));
+                spinPromises.push(this.spinReel(i, duration, reelPositions[i], predeterminedSymbols ? predeterminedSymbols[i] : null));
             }
             await Promise.all(spinPromises);
         }
@@ -1077,9 +1078,10 @@ export class SlotMachine {
      * @param {number} reelIndex - Index of the reel to spin (0-4)
      * @param {number} duration - How long the reel should spin in milliseconds
      * @param {number|null} predeterminedPosition - Final position (null = random)
+     * @param {Array<string>|null} predeterminedSymbols - Forced symbols for debug mode
      * @returns {Promise<void>} Resolves when reel stops spinning
      */
-    spinReel(reelIndex, duration, predeterminedPosition = null) {
+    spinReel(reelIndex, duration, predeterminedPosition = null, predeterminedSymbols = null) {
         return new Promise((resolve) => {
             const reel = this.dom.reels[reelIndex];
             if (!reel) {
@@ -1118,10 +1120,16 @@ export class SlotMachine {
                 reel.classList.remove('spinning');
                 reel.classList.add('stopping');
 
-                // Set final position
-                const finalPosition = predeterminedPosition !== null ? predeterminedPosition : RNG.getRandomPosition(this.symbolsPerReel);
-                this.state.setReelPosition(reelIndex, finalPosition);
-                const finalSymbols = RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], finalPosition, this.rowCount);
+                // Set final position and symbols
+                let finalSymbols;
+                if (predeterminedSymbols) {
+                    // Debug mode: use forced symbols
+                    finalSymbols = predeterminedSymbols;
+                } else {
+                    const finalPosition = predeterminedPosition !== null ? predeterminedPosition : RNG.getRandomPosition(this.symbolsPerReel);
+                    this.state.setReelPosition(reelIndex, finalPosition);
+                    finalSymbols = RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], finalPosition, this.rowCount);
+                }
 
                 // Update to final symbols
                 for (let i = 0; i < this.rowCount; i++) {
