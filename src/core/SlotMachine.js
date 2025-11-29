@@ -949,8 +949,16 @@ export class SlotMachine {
         // Disable manual spinning during free spins
         const originalText = this.dom.spinBtn ? this.dom.spinBtn.textContent : '';
 
+        if (this.debugMode) {
+            console.log('[DEBUG] executeFreeSpins started - remaining:', this.freeSpins.remainingSpins);
+        }
+
         try {
             while (this.freeSpins.isActive() && this.freeSpins.remainingSpins > 0) {
+                if (this.debugMode) {
+                    console.log('[DEBUG] Free spin loop - remaining:', this.freeSpins.remainingSpins, 'isActive:', this.freeSpins.isActive());
+                }
+
                 // Update button text to show auto-spinning
                 if (this.dom.spinBtn) {
                     this.dom.spinBtn.textContent = 'AUTO SPIN';
@@ -958,6 +966,10 @@ export class SlotMachine {
                 }
 
                 await this.spin();
+
+                if (this.debugMode) {
+                    console.log('[DEBUG] After spin - remaining:', this.freeSpins.remainingSpins);
+                }
 
                 // Safety: if spin didn't decrement remaining spins, break to avoid infinite loop
                 if (this.freeSpins.remainingSpins === this.freeSpins.totalSpins) {
