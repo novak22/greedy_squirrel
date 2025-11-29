@@ -28,6 +28,7 @@ import { BuyBonus } from '../features/BuyBonus.js';
 import { WinAnticipation } from '../features/WinAnticipation.js';
 import { TimerManager } from '../utils/TimerManager.js';
 import { Logger } from '../utils/Logger.js';
+import { Metrics } from '../utils/Metrics.js';
 
 export class SlotMachine {
     constructor() {
@@ -82,6 +83,12 @@ export class SlotMachine {
         // Debug mode (enable with ?debug=true in URL)
         this.debugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
         this.debugNextSpin = null; // Format: [['🌰','🌰','🌰'], ['🌰','🌰','🌰'], ...]
+
+        const dashboardHook = typeof window !== 'undefined' ? window.slotMetricsListener : undefined;
+        Metrics.init({ enableLogging: this.debugMode, listener: dashboardHook });
+        if (typeof window !== 'undefined') {
+            window.slotMetrics = Metrics;
+        }
 
         // Track active timers to avoid overlapping animations
         this.winCounterInterval = null;
@@ -861,6 +868,13 @@ export class SlotMachine {
         if (!this.canSpin()) return;
 
         const isFreeSpin = this.freeSpins.isActive();
+        const spinTimer = Metrics.time('spin.duration', {
+            bet: this.state.getCurrentBet(),
+            isFreeSpin
+        });
+        let spinRecorded = false;
+        let renderTimer = null;
+        let renderRecorded = false;
 
         // Create checkpoint for error recovery using GameState
         const checkpoint = this.state.createCheckpoint();
@@ -877,6 +891,11 @@ export class SlotMachine {
 
             const reelData = this.prepareReelResults();
             await this.executeReelSpin(reelData);
+
+            renderTimer = Metrics.time('spin.renderLatency', {
+                bet: this.state.getCurrentBet(),
+                isFreeSpin
+            });
 
             const result = this.getReelResult();
 
@@ -895,6 +914,22 @@ export class SlotMachine {
             const shouldExecuteFreeSpins = await this.handleFeatureTriggers(winInfo, bonusInfo, isFreeSpin);
 
             await this.finalizeSpin(totalWin, winInfo, bonusInfo, isFreeSpin);
+
+            if (renderTimer) {
+                renderTimer({
+                    hasWin: totalWin > 0,
+                    totalWin,
+                    credits: this.state.getCredits()
+                });
+                renderRecorded = true;
+            }
+
+            spinTimer({
+                hasWin: totalWin > 0,
+                totalWin,
+                credits: this.state.getCredits()
+            });
+            spinRecorded = true;
 
             // Execute free spins AFTER the triggering spin completes
             if (shouldExecuteFreeSpins) {
@@ -930,6 +965,13 @@ export class SlotMachine {
             // Update display to reflect restored state
             this.updateDisplay();
             this.saveGameState();
+        } finally {
+            if (renderTimer && !renderRecorded) {
+                renderTimer({ error: true });
+            }
+            if (!spinRecorded) {
+                spinTimer({ error: true });
+            }
         }
     }
 
