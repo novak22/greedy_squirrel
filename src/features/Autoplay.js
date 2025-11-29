@@ -78,6 +78,12 @@ export class Autoplay {
         // Execute spin
         await this.game.spin();
 
+        // Check if free spins were triggered (active flag is set after transition)
+        if (this.settings.stopOnFeature && this.game.freeSpins.active) {
+            this.stop('Free spins triggered');
+            return;
+        }
+
         // Check stop conditions after spin
         if (this.checkStopConditions()) {
             return;
@@ -129,12 +135,6 @@ export class Autoplay {
         const currentBet = this.game.state.getCurrentBet();
         if (this.settings.stopOnBigWin && lastWin >= currentBet * this.settings.bigWinMultiplier) {
             this.stop(`Big win (${Math.floor(lastWin / currentBet)}x)`);
-            return true;
-        }
-
-        // Stop on feature trigger
-        if (this.settings.stopOnFeature && this.game.freeSpins.isActive) {
-            this.stop('Free spins triggered');
             return true;
         }
 
