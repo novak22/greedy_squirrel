@@ -1,6 +1,7 @@
 // Main SlotMachine class with Phase 1, 2, 3 & 4 enhancements
 import { SYMBOLS, getAllSymbolEmojis, getPremiumSymbols } from '../config/symbols.js';
 import { GAME_CONFIG } from '../config/game.js';
+import { FEATURES_CONFIG } from '../config/features.js';
 import { RNG } from '../utils/RNG.js';
 import { Storage } from '../utils/Storage.js';
 import { PaylineEvaluator } from './PaylineEvaluator.js';
@@ -26,6 +27,7 @@ import { Gamble } from '../features/Gamble.js';
 import { BuyBonus } from '../features/BuyBonus.js';
 import { WinAnticipation } from '../features/WinAnticipation.js';
 import { TimerManager } from '../utils/TimerManager.js';
+import { Logger } from '../utils/Logger.js';
 
 export class SlotMachine {
     constructor() {
@@ -97,23 +99,6 @@ export class SlotMachine {
         this.loadGameState();
 
         this.init();
-    }
-
-    /**
-     * Backward compatibility: expose statistics through .stats property
-     * This maintains the existing API while delegating to Statistics class
-     */
-    get stats() {
-        return {
-            totalSpins: this.statistics.allTime.totalSpins,
-            totalWagered: this.statistics.allTime.totalWagered,
-            totalWon: this.statistics.allTime.totalWon,
-            biggestWin: this.statistics.allTime.biggestWin,
-            scatterHits: this.statistics.allTime.scatterHits,
-            bonusHits: this.statistics.allTime.bonusHits,
-            freeSpinsTriggers: this.statistics.allTime.freeSpinsTriggers,
-            cascadeWins: this.statistics.allTime.cascadeWins
-        };
     }
 
     init() {
@@ -208,7 +193,7 @@ export class SlotMachine {
                 this.autoCollectEnabled = savedData.phase5.autoCollectEnabled || false;
             }
 
-            console.log('Game state loaded from localStorage');
+            Logger.info('Game state loaded from localStorage');
         } else {
             // Initialize progression systems for new sessions
             this.dailyChallenges.init();
@@ -251,13 +236,13 @@ export class SlotMachine {
         for (let i = 0; i < this.reelCount; i++) {
             const reel = this.dom.reels[i];
             if (!reel) {
-                console.error(`Reel element not found: reel-${i}`);
+                Logger.error(`Reel element not found: reel-${i}`);
                 continue;
             }
 
             const container = reel.querySelector('.symbol-container');
             if (!container) {
-                console.error(`Symbol container not found in reel-${i}`);
+                Logger.error(`Symbol container not found in reel-${i}`);
                 continue;
             }
 
@@ -511,7 +496,7 @@ export class SlotMachine {
     prepareReelResults() {
         // Debug mode: use forced symbols if set
         if (this.debugMode && this.debugNextSpin) {
-            console.log('[DEBUG] Using forced spin:', this.debugNextSpin);
+            Logger.debug('Using forced spin:', this.debugNextSpin);
             const predeterminedSymbols = this.debugNextSpin;
             this.debugNextSpin = null; // Clear after use
 
@@ -799,16 +784,12 @@ export class SlotMachine {
      * @returns {Promise<void>}
      */
     async finalizeSpin(totalWin, winInfo, bonusInfo, isFreeSpin) {
-        if (this.debugMode) {
-            console.log('[DEBUG] finalizeSpin - isFreeSpin:', isFreeSpin, 'remaining before:', this.freeSpins.remainingSpins);
-        }
+        Logger.debug('finalizeSpin - isFreeSpin:', isFreeSpin, 'remaining before:', this.freeSpins.remainingSpins);
 
         // Handle free spins countdown
         if (isFreeSpin) {
             const hasMoreSpins = await this.freeSpins.executeSpin();
-            if (this.debugMode) {
-                console.log('[DEBUG] After executeSpin - hasMoreSpins:', hasMoreSpins, 'remaining:', this.freeSpins.remainingSpins);
-            }
+            Logger.debug('After executeSpin - hasMoreSpins:', hasMoreSpins, 'remaining:', this.freeSpins.remainingSpins);
             if (!hasMoreSpins) {
                 await this.freeSpins.end();
             }
@@ -899,17 +880,13 @@ export class SlotMachine {
 
             const result = this.getReelResult();
 
-            if (this.debugMode) {
-                console.log('[DEBUG] Reel result:', result);
-            }
+            Logger.debug('Reel result:', result);
 
             let winInfo = PaylineEvaluator.evaluateWins(result, this.state.getCurrentBet());
             const bonusInfo = PaylineEvaluator.checkBonusTrigger(result);
 
-            if (this.debugMode) {
-                console.log('[DEBUG] Win info:', winInfo);
-                console.log('[DEBUG] Scatter count:', winInfo.scatterCount);
-            }
+            Logger.debug('Win info:', winInfo);
+            Logger.debug('Scatter count:', winInfo.scatterCount);
 
             let totalWin = await this.processWins(winInfo, isFreeSpin);
 
@@ -934,7 +911,7 @@ export class SlotMachine {
             });
 
         } catch (error) {
-            console.error('Spin failed with error:', error);
+            Logger.error('Spin failed with error:', error);
 
             // Restore state from checkpoint using GameState
             this.state.restoreCheckpoint(checkpoint);
@@ -963,15 +940,11 @@ export class SlotMachine {
         // Disable manual spinning during free spins
         const originalText = this.dom.spinBtn ? this.dom.spinBtn.textContent : '';
 
-        if (this.debugMode) {
-            console.log('[DEBUG] executeFreeSpins started - remaining:', this.freeSpins.remainingSpins);
-        }
+        Logger.debug('executeFreeSpins started - remaining:', this.freeSpins.remainingSpins);
 
         try {
             while (this.freeSpins.isActive() && this.freeSpins.remainingSpins > 0) {
-                if (this.debugMode) {
-                    console.log('[DEBUG] Free spin loop - remaining:', this.freeSpins.remainingSpins, 'isActive:', this.freeSpins.isActive());
-                }
+                Logger.debug('Free spin loop - remaining:', this.freeSpins.remainingSpins, 'isActive:', this.freeSpins.isActive());
 
                 // Update button text to show auto-spinning
                 if (this.dom.spinBtn) {
@@ -984,13 +957,11 @@ export class SlotMachine {
 
                 await this.spin();
 
-                if (this.debugMode) {
-                    console.log('[DEBUG] After spin - remaining:', this.freeSpins.remainingSpins);
-                }
+                Logger.debug('After spin - remaining:', this.freeSpins.remainingSpins);
 
                 // Safety: if spin didn't decrement remaining spins, break to avoid infinite loop
                 if (this.freeSpins.remainingSpins === remainingBefore) {
-                    console.error('Free spins stuck - remainingSpins did not decrement. Breaking loop.');
+                    Logger.error('Free spins stuck - remainingSpins did not decrement. Breaking loop.');
                     await this.freeSpins.end();
                     break;
                 }
@@ -999,7 +970,7 @@ export class SlotMachine {
                 await new Promise(resolve => setTimeout(resolve, GAME_CONFIG.animations.freeSpinDelay));
             }
         } catch (error) {
-            console.error('Error during free spins execution:', error);
+            Logger.error('Error during free spins execution:', error);
             await this.freeSpins.end();
         }
 
@@ -1124,21 +1095,21 @@ export class SlotMachine {
         return new Promise((resolve) => {
             const reel = this.dom.reels[reelIndex];
             if (!reel) {
-                console.error(`Reel not found: reel-${reelIndex}`);
+                Logger.error(`Reel not found: reel-${reelIndex}`);
                 resolve();
                 return;
             }
 
             const container = reel.querySelector('.symbol-container');
             if (!container) {
-                console.error(`Symbol container not found in reel-${reelIndex}`);
+                Logger.error(`Symbol container not found in reel-${reelIndex}`);
                 resolve();
                 return;
             }
 
             const symbols = Array.from(container.querySelectorAll('.symbol'));
             if (symbols.length === 0) {
-                console.error(`No symbols found in reel-${reelIndex}`);
+                Logger.error(`No symbols found in reel-${reelIndex}`);
                 resolve();
                 return;
             }

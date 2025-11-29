@@ -58,6 +58,7 @@ export class Cascade {
             while (currentWinningPositions.size > 0) {
                 // Safety check to prevent infinite cascade loops
                 if (cascadeIterations >= MAX_CASCADE_ITERATIONS) {
+                    // Always log errors
                     console.error('Cascade: Maximum iteration limit reached, stopping cascade');
                     break;
                 }

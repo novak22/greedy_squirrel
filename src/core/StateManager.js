@@ -146,6 +146,7 @@ export class StateManager {
                 try {
                     callback(newValue, oldValue, path);
                 } catch (error) {
+                    // Always log errors, not debug-only
                     console.error(`Error in state subscriber for "${path}":`, error);
                 }
             });
