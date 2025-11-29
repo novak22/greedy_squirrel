@@ -77,6 +77,9 @@ export class SlotMachine {
         this.turboMode = new TurboMode(this);
         this.settings = new Settings(this);
 
+        // Gamble settings
+        this.autoCollectEnabled = false;
+
         // Track active timers to avoid overlapping animations
         this.winCounterInterval = null;
 
@@ -133,6 +136,7 @@ export class SlotMachine {
             // Phase 5: Load spin history
             if (savedData.phase5) {
                 this.spinHistory.init(savedData.phase5.spinHistory);
+                this.autoCollectEnabled = savedData.phase5.autoCollectEnabled || false;
             }
 
             console.log('Game state loaded from localStorage');
@@ -168,7 +172,8 @@ export class SlotMachine {
             },
             // Phase 5: Save spin history
             phase5: {
-                spinHistory: this.spinHistory.getSaveData()
+                spinHistory: this.spinHistory.getSaveData(),
+                autoCollectEnabled: this.autoCollectEnabled
             }
         });
     }
@@ -245,6 +250,17 @@ export class SlotMachine {
             });
         }
 
+        const autoCollectBtn = document.getElementById('autoCollectBtn');
+        if (autoCollectBtn) {
+            this.updateAutoCollectUI();
+            autoCollectBtn.addEventListener('click', () => {
+                this.soundManager.playClick();
+                this.autoCollectEnabled = !this.autoCollectEnabled;
+                this.updateAutoCollectUI();
+                this.saveGameState();
+            });
+        }
+
         // Phase 4: Settings
         this.settings.attachEventListeners();
 
@@ -281,6 +297,22 @@ export class SlotMachine {
         document.getElementById('bet').textContent = this.currentBet;
         document.getElementById('betDisplay').textContent = this.currentBet;
         document.getElementById('win').textContent = this.lastWin;
+    }
+
+    /**
+     * Update auto collect toggle UI
+     */
+    updateAutoCollectUI() {
+        const autoCollectBtn = document.getElementById('autoCollectBtn');
+        if (!autoCollectBtn) return;
+
+        if (this.autoCollectEnabled) {
+            autoCollectBtn.textContent = 'AUTO COLLECT: ON';
+            autoCollectBtn.classList.add('active');
+        } else {
+            autoCollectBtn.textContent = 'AUTO COLLECT: OFF';
+            autoCollectBtn.classList.remove('active');
+        }
     }
 
     changeBet(direction) {
@@ -609,7 +641,13 @@ export class SlotMachine {
         );
 
         // Phase 5: Offer gamble on regular wins (not during free spins/bonus)
-        if (totalWin > 0 && !isFreeSpin && !bonusInfo.triggered && this.gamble.canGamble(totalWin)) {
+        if (
+            totalWin > 0 &&
+            !isFreeSpin &&
+            !bonusInfo.triggered &&
+            this.gamble.canGamble(totalWin) &&
+            !this.autoCollectEnabled
+        ) {
             // Deduct the win temporarily
             this.credits -= totalWin;
             this.updateDisplay();
@@ -685,6 +723,12 @@ export class SlotMachine {
      */
     async offerGamble(winAmount) {
         return new Promise(async (resolve) => {
+            if (this.autoCollectEnabled) {
+                this.soundManager.playClick();
+                resolve(winAmount);
+                return;
+            }
+
             const overlay = document.getElementById('featureOverlay');
             if (!overlay) {
                 resolve(winAmount);
