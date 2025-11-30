@@ -6,6 +6,7 @@ import { ErrorHandler, ERROR_TYPES } from './ErrorHandler.js';
 import { UIController } from '../ui/UIController.js';
 import { RNG } from '../utils/RNG.js';
 import { Logger } from '../utils/Logger.js';
+import { Metrics } from '../utils/Metrics.js';
 import { GAME_EVENTS } from './EventBus.js';
 
 export class GameOrchestrator extends SlotMachine {
@@ -316,9 +317,16 @@ export class GameOrchestrator extends SlotMachine {
         if (!this.canSpin()) return;
 
         const isFreeSpin = this.freeSpins.isActive();
+        const spinTimer = Metrics.startTimer('spin.total', {
+            isFreeSpin,
+            bet: this.state.getCurrentBet(),
+            creditsBefore: this.state.getCredits()
+        });
 
         // Create checkpoint for error recovery using GameState
         const checkpoint = this.state.createCheckpoint();
+        let totalWin = 0;
+        let spinError = null;
 
         try {
             this.initializeSpin(isFreeSpin);
@@ -343,7 +351,7 @@ export class GameOrchestrator extends SlotMachine {
             Logger.debug('Win info:', winInfo);
             Logger.debug('Scatter count:', winInfo.scatterCount);
 
-            let totalWin = await this.processWins(winInfo, isFreeSpin);
+            totalWin = await this.processWins(winInfo, isFreeSpin);
 
             this.updateCreditsAndStats(totalWin);
 
@@ -366,6 +374,7 @@ export class GameOrchestrator extends SlotMachine {
             });
 
         } catch (error) {
+            spinError = error;
             await ErrorHandler.handle(error, {
                 context: 'Spin',
                 type: ERROR_TYPES.SPIN,
@@ -379,6 +388,12 @@ export class GameOrchestrator extends SlotMachine {
                     this.updateDisplay();
                     this.saveGameState();
                 }
+            });
+        } finally {
+            spinTimer?.end({
+                totalWin,
+                creditsAfter: this.state.getCredits(),
+                error: spinError ? spinError.message : null
             });
         }
     }

@@ -28,6 +28,7 @@ import { ErrorHandler, ERROR_TYPES } from './ErrorHandler.js';
 import { SpinEngine } from './SpinEngine.js';
 import { FeatureManager } from './FeatureManager.js';
 import { UIFacade } from '../ui/UIFacade.js';
+import { Metrics } from '../utils/Metrics.js';
 
 export class SlotMachine {
     constructor() {
@@ -83,6 +84,12 @@ export class SlotMachine {
         this.debugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
         this.debugNextSpin = null; // Format: [['🌰','🌰','🌰'], ['🌰','🌰','🌰'], ...]
 
+        // Metrics instrumentation (optional dashboard hook via window.__GS_METRICS_HOOK__)
+        this.metrics = Metrics;
+        if (typeof window !== 'undefined' && typeof window.__GS_METRICS_HOOK__ === 'function') {
+            Metrics.setReporter(window.__GS_METRICS_HOOK__);
+        }
+
         ErrorHandler.init({
             showMessage: (message) => this.showMessage(message)
         });
@@ -120,7 +127,8 @@ export class SlotMachine {
             levelSystem: this.levelSystem,
             visualEffects: this.visualEffects,
             ui: this.uiFacade,
-            triggerScreenShake: () => this.triggerScreenShake()
+            triggerScreenShake: () => this.triggerScreenShake(),
+            metrics: this.metrics
         });
 
         this.featureManager = new FeatureManager({
