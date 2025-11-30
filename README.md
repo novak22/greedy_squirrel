@@ -84,6 +84,20 @@ window.game.stats        // View statistics
 window.game.reelStrips   // View weighted reel strips
 ```
 
+## Code Quality Tools
+
+Install dependencies and run ESLint and Prettier to keep the codebase consistent:
+
+```bash
+npm install
+npm run lint          # Check code style and potential issues
+npm run lint:fix      # Auto-fix fixable ESLint issues
+npm run format        # Check formatting with Prettier
+npm run format:write  # Write Prettier formatting changes
+```
+
+> **Why is `package-lock.json` large?** ESLint and Prettier bring a sizable dependency tree. The lockfile records exact versions for every transitive package so installs are reproducible; its size is expected and should stay committed.
+
 ### Clear Save Data
 ```javascript
 localStorage.removeItem('greedy_squirrel_save')
