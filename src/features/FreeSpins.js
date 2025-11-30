@@ -7,18 +7,12 @@ export class FreeSpins {
      * @param {Object} deps - Dependencies (or legacy game instance)
      * @param {Object} deps.renderer - FreeSpinsRenderer instance for UI
      */
-    constructor(deps) {
-        // Backward compatibility: support both new DI pattern and old game instance pattern
-        const isNewDI = deps && deps.renderer !== undefined;
-
-        if (isNewDI) {
-            // New DI pattern: { renderer }
-            this.renderer = deps.renderer;
-        } else {
-            // Old pattern: FreeSpins(game) - renderer will be set later
-            this.game = deps; // Store game reference temporarily
-            this.renderer = null;
+    constructor({ renderer }) {
+        if (!renderer) {
+            throw new Error('FreeSpins requires a renderer instance');
         }
+
+        this.renderer = renderer;
 
         this.active = false;
         this.remainingSpins = 0;
@@ -26,14 +20,6 @@ export class FreeSpins {
         this.totalWon = 0;
         this.multiplier = 1;
         this.retriggered = 0;
-    }
-
-    /**
-     * Set renderer (backward compatibility method)
-     * @param {Object} renderer - FreeSpinsRenderer instance
-     */
-    setRenderer(renderer) {
-        this.renderer = renderer;
     }
 
     /**

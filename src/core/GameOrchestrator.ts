@@ -52,7 +52,25 @@ export class GameOrchestrator extends SlotMachine {
     statsController!: StatsController;
 
     constructor() {
-        super();
+        const dom: Record<string, unknown> = {};
+        const cascadeRenderer = new CascadeRenderer(dom);
+        const bonusGameRenderer = new BonusGameRenderer();
+        const freeSpinsRenderer = new FreeSpinsRenderer();
+        const paylineEvaluator = new PaylineEvaluator({
+            symbols: SYMBOLS,
+            symbolHelpers: { getSymbolByEmoji },
+            paylines: GAME_CONFIG.paylines,
+            reelCount: GAME_CONFIG.reelCount,
+            metrics: Metrics
+        });
+
+        super({
+            dom,
+            paylineEvaluator,
+            cascadeRenderer,
+            bonusGameRenderer,
+            freeSpinsRenderer
+        });
 
         // Validate game configuration before initialization
         const configErrors = assertValidConfigs(Logger);
@@ -62,14 +80,7 @@ export class GameOrchestrator extends SlotMachine {
             );
         }
 
-        // Initialize PaylineEvaluator instance for the game
-        this.paylineEvaluator = new PaylineEvaluator({
-            symbols: SYMBOLS,
-            symbolHelpers: { getSymbolByEmoji },
-            paylines: GAME_CONFIG.paylines,
-            reelCount: GAME_CONFIG.reelCount,
-            metrics: Metrics
-        });
+        this.paylineEvaluator = paylineEvaluator;
 
         // Initialize state loader
         this.stateLoader = new GameStateLoader(this);
@@ -81,16 +92,6 @@ export class GameOrchestrator extends SlotMachine {
     init(): void {
         // Initialize DOM cache (populate existing this.dom object to preserve references)
         new DOMCache(this.dom);
-
-        // Initialize feature renderers (after DOM cache available)
-        const cascadeRenderer = new CascadeRenderer(this.dom);
-        this.cascade.setRenderer(cascadeRenderer);
-
-        const bonusGameRenderer = new BonusGameRenderer();
-        this.bonusGame.setRenderer(bonusGameRenderer);
-
-        const freeSpinsRenderer = new FreeSpinsRenderer();
-        this.freeSpins.setRenderer(freeSpinsRenderer);
 
         // Initialize stats controller
         const statsRenderer = new StatsRenderer();
