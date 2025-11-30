@@ -28,8 +28,86 @@ import { SpinEngine } from './SpinEngine.js';
 import { FeatureManager } from './FeatureManager.js';
 import { UIFacade } from '../ui/UIFacade.js';
 import { Metrics } from '../utils/Metrics.js';
+import type { FeaturesConfig, GameConfig } from '../types/config.js';
+
+declare global {
+    interface Window {
+        __GS_METRICS_HOOK__?: (...args: unknown[]) => void;
+    }
+}
+
+type ReelData = {
+    reelPositions: number[];
+    shouldTriggerAnticipation: boolean;
+    anticipationConfig: Record<string, unknown> | null;
+    anticipationTriggerReel: number;
+};
+
+type WinInfo = {
+    totalWin: number;
+    winningPositions: Set<string>;
+    winningLines: number[];
+    hasScatterWin: boolean;
+    scatterCount: number;
+};
+
+type SpinEngineOptions = Record<string, any>;
+
+type FeatureManagerOptions = Record<string, any>;
 
 export class SlotMachine {
+    timerManager: TimerManager;
+    events: EventBus;
+    stateManager: StateManager;
+    state: GameState;
+    reelCount: number;
+    rowCount: number;
+    symbolsPerReel: number;
+    betOptions: GameConfig['betOptions'];
+    rng: RNG;
+    reelStrips: string[][];
+    freeSpins: FreeSpins;
+    bonusGame: BonusGame;
+    cascade: Cascade;
+    levelSystem: LevelSystem;
+    achievements: Achievements;
+    dailyChallenges: DailyChallenges;
+    statistics: Statistics;
+    soundManager: SoundManager;
+    visualEffects: VisualEffects;
+    autoplay: Autoplay;
+    turboMode: TurboMode;
+    settings: Settings;
+    autoCollectEnabled: boolean;
+    debugMode: boolean;
+    debugNextSpin: string[][] | null;
+    metrics: typeof Metrics;
+    winCounterInterval: ReturnType<typeof setInterval> | null;
+    spinHistory: SpinHistory;
+    gamble: Gamble;
+    buyBonus: BuyBonus;
+    winAnticipation: WinAnticipation;
+    dom: Record<string, HTMLElement | null | undefined>;
+    uiFacade: UIFacade;
+    ui: UIFacade & { applySymbolClasses?: (symbol: any, text: string) => void };
+    spinEngine: SpinEngine;
+    featureManager: FeatureManager;
+    gameConfig: GameConfig;
+    featuresConfig: FeaturesConfig;
+
+    // Overridden by orchestrator implementations
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    showMessage(_message: string, _winAmount?: number): unknown {
+        return undefined;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    applySymbolClasses(_symbolElement: HTMLElement, _symbolText: string): void {}
+
+    triggerScreenShake(): void {}
+
+    saveGameState?(): void;
+
     constructor() {
         // Core systems
         this.timerManager = new TimerManager();
@@ -38,10 +116,12 @@ export class SlotMachine {
         this.state = new GameState(this.stateManager);
 
         // Game configuration
-        this.reelCount = GAME_CONFIG.reelCount;
-        this.rowCount = GAME_CONFIG.rowCount;
-        this.symbolsPerReel = GAME_CONFIG.symbolsPerReel;
-        this.betOptions = GAME_CONFIG.betOptions;
+        this.gameConfig = GAME_CONFIG as GameConfig;
+        this.featuresConfig = FEATURES_CONFIG as FeaturesConfig;
+        this.reelCount = this.gameConfig.reelCount;
+        this.rowCount = this.gameConfig.rowCount;
+        this.symbolsPerReel = this.gameConfig.symbolsPerReel;
+        this.betOptions = this.gameConfig.betOptions;
 
         // Initialize RNG with symbol configuration
         this.rng = RNG.create(getSymbolsForReel);
@@ -54,8 +134,8 @@ export class SlotMachine {
 
         // Game state is now managed by GameState wrapper
         // Initialize state with config defaults
-        this.state.setCredits(GAME_CONFIG.initialCredits);
-        this.state.setCurrentBet(GAME_CONFIG.betOptions[0]);
+        this.state.setCredits(this.gameConfig.initialCredits);
+        this.state.setCurrentBet(this.gameConfig.betOptions[0]);
         this.state.setCurrentBetIndex(0);
         this.state.setLastWin(0);
         this.state.setSpinning(false);
@@ -72,11 +152,22 @@ export class SlotMachine {
         this.dailyChallenges = new DailyChallenges(this);
         this.statistics = new Statistics(this);
 
+        // DOM element cache (populated in init)
+        this.dom = {};
+
         // Initialize advanced features
         this.soundManager = new SoundManager();
         this.visualEffects = new VisualEffects(this);
-        this.autoplay = new Autoplay(this, this.timerManager);
-        this.turboMode = new TurboMode(this);
+        this.turboMode = new TurboMode({ eventBus: this.events, dom: this.dom });
+        this.autoplay = new Autoplay(
+            {
+                timerManager: this.timerManager,
+                gameState: this.state,
+                eventBus: this.events,
+                turboMode: this.turboMode
+            },
+            undefined
+        );
         this.settings = new Settings(this);
 
         // Gamble settings
@@ -93,24 +184,21 @@ export class SlotMachine {
         }
 
         ErrorHandler.init({
-            showMessage: (message) => this.showMessage(message)
+            showMessage: (message: string) => this.showMessage(message)
         });
 
         // Track active timers to avoid overlapping animations
         this.winCounterInterval = null;
 
         // Initialize gamble and history features
-        this.spinHistory = new SpinHistory(FEATURES_CONFIG.spinHistory.maxEntries);
+        this.spinHistory = new SpinHistory(this.featuresConfig.spinHistory.maxEntries);
         this.gamble = new Gamble(this);
         this.buyBonus = new BuyBonus(this);
         this.winAnticipation = new WinAnticipation(this);
 
-        // DOM element cache (populated in init)
-        this.dom = {};
-
         // Delegated subsystems
         this.uiFacade = new UIFacade(this.dom, this.timerManager, this.turboMode);
-        this.spinEngine = new SpinEngine({
+        const spinEngineOptions: SpinEngineOptions = {
             reelCount: this.reelCount,
             rowCount: this.rowCount,
             symbolsPerReel: this.symbolsPerReel,
@@ -132,9 +220,11 @@ export class SlotMachine {
             triggerScreenShake: () => this.triggerScreenShake(),
             metrics: this.metrics,
             rng: this.rng
-        });
+        };
 
-        this.featureManager = new FeatureManager({
+        this.spinEngine = new SpinEngine(spinEngineOptions as any);
+
+        const featureManagerOptions: FeatureManagerOptions = {
             freeSpins: this.freeSpins,
             bonusGame: this.bonusGame,
             statistics: this.statistics,
@@ -148,15 +238,20 @@ export class SlotMachine {
             ui: this.uiFacade,
             spinHistory: this.spinHistory,
             cascade: this.cascade,
-            gameConfig: GAME_CONFIG,
+            gameConfig: this.gameConfig,
             spinExecutor: this,
             saveGameState: () => this.saveGameState?.(),
             dom: this.dom
-        });
+        };
+
+        this.featureManager = new FeatureManager(featureManagerOptions as any);
 
         // Maintain backward compatible UI reference
-        this.ui = this.uiFacade;
-        this.ui.applySymbolClasses = (symbol, text) => this.applySymbolClasses(symbol, text);
+        this.ui = this.uiFacade as UIFacade & {
+            applySymbolClasses?: (symbol: any, text: string) => void;
+        };
+        this.ui.applySymbolClasses = (symbol: any, text: string) =>
+            this.applySymbolClasses(symbol, text);
     }
 
     /**
@@ -168,7 +263,7 @@ export class SlotMachine {
      * @param {number} reelData.anticipationTriggerReel - Reel where anticipation triggers
      * @returns {Promise<void>}
      */
-    async executeReelSpin(reelData) {
+    async executeReelSpin(reelData: ReelData): Promise<void> {
         return this.spinEngine.executeReelSpin(reelData);
     }
 
@@ -183,7 +278,7 @@ export class SlotMachine {
      * @param {boolean} isFreeSpin - Whether this is a free spin
      * @returns {Promise<number>} Total win amount including cascades
      */
-    async processWins(winInfo, isFreeSpin) {
+    async processWins(winInfo: WinInfo, isFreeSpin: boolean): Promise<number> {
         return this.spinEngine.processWins(winInfo, isFreeSpin);
     }
 
@@ -193,11 +288,11 @@ export class SlotMachine {
      * @param {PaylineEvaluator} paylineEvaluator - PaylineEvaluator instance
      * @returns {Promise<Object>} Win information from PaylineEvaluator
      */
-    async evaluateWinsWithoutDisplay(result, paylineEvaluator) {
+    async evaluateWinsWithoutDisplay(result: string[][], paylineEvaluator: unknown): Promise<any> {
         return this.spinEngine.evaluateWinsWithoutDisplay(result, paylineEvaluator);
     }
 
-    updateCreditsAndStats(totalWin) {
+    updateCreditsAndStats(totalWin: number) {
         return this.spinEngine.updateCreditsAndStats(totalWin);
     }
 
@@ -212,12 +307,17 @@ export class SlotMachine {
      * @param {Array<string>|null} predeterminedSymbols - Forced symbols for debug mode
      * @returns {Promise<void>} Resolves when reel stops spinning
      */
-    spinReel(reelIndex, duration, predeterminedPosition = null, predeterminedSymbols = null) {
+    spinReel(
+        reelIndex: number,
+        duration: number,
+        predeterminedPosition: number | null = null,
+        predeterminedSymbols: string[] | null = null
+    ) {
         return this.spinEngine.spinReel(
             reelIndex,
             duration,
-            predeterminedPosition,
-            predeterminedSymbols
+            predeterminedPosition as any,
+            predeterminedSymbols as any
         );
     }
 
@@ -225,7 +325,7 @@ export class SlotMachine {
      * Get current symbols visible on all reels
      * @returns {Array<Array<string>>} 2D array of symbols [reel][row]
      */
-    getReelResult() {
+    getReelResult(): string[][] {
         return this.spinEngine.getReelResult();
     }
 }
