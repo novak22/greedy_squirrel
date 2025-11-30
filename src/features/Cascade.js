@@ -3,13 +3,43 @@ import { FEATURES_CONFIG } from '../config/features.js';
 
 export class Cascade {
     /**
-     * Create Cascade feature
-     * @param {Object} game - Game instance
-     * @param {Object} renderer - CascadeRenderer instance for UI
+     * Create Cascade feature with dependency injection
+     * @param {Object} deps - Dependencies (or legacy game instance)
+     * @param {Object} deps.renderer - CascadeRenderer instance for UI
+     * @param {RNG} deps.rng - RNG for generating new symbols
+     * @param {Array} deps.reelStrips - Reel strip data
+     * @param {number} deps.symbolsPerReel - Symbols per reel
+     * @param {Object} deps.paylineEvaluator - For evaluating wins
+     * @param {Statistics} deps.statistics - For tracking cascades
+     * @param {EventBus} deps.eventBus - For UI updates and messages
      */
-    constructor(game, renderer = null) {
-        this.game = game;
-        this.renderer = renderer;
+    constructor(deps) {
+        // Backward compatibility: support both new DI pattern and old game instance pattern
+        const isNewDI = deps && (deps.renderer !== undefined || deps.rng !== undefined);
+
+        if (isNewDI) {
+            // New DI pattern: { renderer, rng, reelStrips, ... }
+            this.renderer = deps.renderer;
+            this.rng = deps.rng;
+            this.reelStrips = deps.reelStrips;
+            this.symbolsPerReel = deps.symbolsPerReel;
+            this.paylineEvaluator = deps.paylineEvaluator;
+            this.statistics = deps.statistics;
+            this.eventBus = deps.eventBus;
+            // Still need game reference for board state methods
+            this.game = null;
+        } else {
+            // Old pattern: Cascade(game) - dependencies will be set later or accessed via game
+            this.game = deps;
+            this.renderer = null;
+            this.rng = null;
+            this.reelStrips = null;
+            this.symbolsPerReel = null;
+            this.paylineEvaluator = null;
+            this.statistics = null;
+            this.eventBus = null;
+        }
+
         this.enabled = FEATURES_CONFIG.cascade.enabled;
         this.currentMultiplier = 1;
         this.cascadeCount = 0;
@@ -17,7 +47,7 @@ export class Cascade {
     }
 
     /**
-     * Set the renderer (for dependency injection)
+     * Set renderer (backward compatibility method)
      * @param {Object} renderer - CascadeRenderer instance
      */
     setRenderer(renderer) {
@@ -115,11 +145,19 @@ export class Cascade {
                     this.totalCascadeWins += cascadeWin;
 
                     // Track cascade in statistics
-                    this.game.statistics.recordFeatureTrigger('cascade');
+                    const statistics = this.statistics || this.game?.statistics;
+                    if (statistics) {
+                        statistics.recordFeatureTrigger('cascade');
+                    }
 
                     // Highlight new wins
-                    this.game.highlightWinningSymbols(winInfo.winningPositions);
-                    this.game.showWinningPaylines(winInfo.winningLines);
+                    if (this.eventBus) {
+                        this.eventBus.emit('ui:highlightWinningSymbols', winInfo.winningPositions);
+                        this.eventBus.emit('ui:showWinningPaylines', winInfo.winningLines);
+                    } else if (this.game) {
+                        this.game.highlightWinningSymbols(winInfo.winningPositions);
+                        this.game.showWinningPaylines(winInfo.winningLines);
+                    }
 
                     // Show cascade win
                     await this.showCascadeWin(cascadeWin, this.currentMultiplier);
@@ -151,9 +189,14 @@ export class Cascade {
      * @returns {string} Symbol emoji
      */
     getNewSymbol(reelIndex) {
-        const position = this.game.rng.getRandomPosition(this.game.symbolsPerReel);
-        const newSymbols = this.game.rng.getSymbolsAtPosition(
-            this.game.reelStrips[reelIndex],
+        // Support both DI and legacy patterns
+        const rng = this.rng || this.game.rng;
+        const symbolsPerReel = this.symbolsPerReel || this.game.symbolsPerReel;
+        const reelStrips = this.reelStrips || this.game.reelStrips;
+
+        const position = rng.getRandomPosition(symbolsPerReel);
+        const newSymbols = rng.getSymbolsAtPosition(
+            reelStrips[reelIndex],
             position,
             1
         );
@@ -164,7 +207,12 @@ export class Cascade {
      * Show cascade win message
      */
     async showCascadeWin(winAmount, multiplier) {
-        await this.game.showMessage(`CASCADE WIN!\n${winAmount}\n${multiplier}x MULTIPLIER`);
+        // Support both DI and legacy patterns
+        if (this.eventBus) {
+            this.eventBus.emit('message:show', `CASCADE WIN!\n${winAmount}\n${multiplier}x MULTIPLIER`);
+        } else if (this.game) {
+            await this.game.showMessage(`CASCADE WIN!\n${winAmount}\n${multiplier}x MULTIPLIER`);
+        }
     }
 
     /**

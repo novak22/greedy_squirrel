@@ -2,8 +2,13 @@
 import { FEATURES_CONFIG } from '../config/features.js';
 
 export class Gamble {
-    constructor(slotMachine) {
-        this.game = slotMachine;
+    /**
+     * Create Gamble feature with dependency injection
+     * @param {Object} deps - Dependencies
+     * @param {SoundManager} deps.soundManager - Sound manager for audio effects
+     */
+    constructor({ soundManager }) {
+        this.soundManager = soundManager;
         this.isActive = false;
         this.currentWin = 0;
         this.gamblesRemaining = FEATURES_CONFIG.gamble.maxAttempts;
@@ -38,7 +43,7 @@ export class Gamble {
             this.history = [];
             this.resolveCallback = resolve;
 
-            this.game.soundManager.playClick();
+            this.soundManager.playClick();
             this.showGambleUI();
         });
     }
@@ -139,7 +144,7 @@ export class Gamble {
             this.currentWin *= 2;
             this.gamblesRemaining--;
 
-            this.game.soundManager.playWin(2);
+            this.soundManager.playWin(2);
 
             // Check if can continue
             if (
@@ -155,7 +160,7 @@ export class Gamble {
             }
         } else {
             // Lost everything
-            this.game.soundManager.playError();
+            this.soundManager.playError();
             await this.showResult(false, 'Wrong! You lost everything!');
             this.currentWin = 0;
             this.end();
@@ -222,7 +227,7 @@ export class Gamble {
      * Collect winnings
      */
     collect() {
-        this.game.soundManager.playClick();
+        this.soundManager.playClick();
         this.end();
     }
 

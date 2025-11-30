@@ -5,6 +5,23 @@ import { Metrics } from '../utils/Metrics.js';
 
 export class PaylineEvaluator {
     /**
+     * Constructor for instance-based usage (backward compatibility)
+     * @param {Object} config - Configuration object (currently unused, kept for compatibility)
+     */
+    constructor(config = {}) {
+        // Store config if needed in the future
+        this.config = config;
+
+        // Bind static methods to instance for backward compatibility
+        // This allows both static (PaylineEvaluator.evaluateWins) and instance (instance.evaluateWins) usage
+        this.evaluateWins = PaylineEvaluator.evaluateWins.bind(PaylineEvaluator);
+        this.checkPaylineWins = PaylineEvaluator.checkPaylineWins.bind(PaylineEvaluator);
+        this.evaluatePayline = PaylineEvaluator.evaluatePayline.bind(PaylineEvaluator);
+        this.checkScatterWins = PaylineEvaluator.checkScatterWins.bind(PaylineEvaluator);
+        this.checkBonusTrigger = PaylineEvaluator.checkBonusTrigger.bind(PaylineEvaluator);
+    }
+
+    /**
      * Check all wins for a given reel result
      * @param {Array<Array<string>>} result - 2D array of symbols [reel][row]
      * @param {number} betAmount - Current bet amount

@@ -1,24 +1,8 @@
 // Buy Bonus feature - Purchase direct entry to bonus game
 
 export class BuyBonus {
-    /**
-     * Create BuyBonus feature with dependency injection
-     * @param {Object} deps - Dependencies
-     * @param {GameState} deps.gameState - Game state for credits/bet
-     * @param {SoundManager} deps.soundManager - Sound manager
-     * @param {Statistics} deps.statistics - Statistics tracker
-     * @param {BonusGame} deps.bonusGame - Bonus game feature
-     * @param {LevelSystem} deps.levelSystem - Level system for XP
-     * @param {EventBus} deps.eventBus - Event bus for messages
-     */
-    constructor({ gameState, soundManager, statistics, bonusGame, levelSystem, eventBus }) {
-        this.gameState = gameState;
-        this.soundManager = soundManager;
-        this.statistics = statistics;
-        this.bonusGame = bonusGame;
-        this.levelSystem = levelSystem;
-        this.eventBus = eventBus;
-
+    constructor(slotMachine) {
+        this.game = slotMachine;
         this.costMultiplier = 100; // Cost is bet × 100
         this.minBet = 10;
         this.enabled = true;
@@ -28,14 +12,14 @@ export class BuyBonus {
      * Get cost to buy bonus at current bet
      */
     getCost() {
-        return this.gameState.getCurrentBet() * this.costMultiplier;
+        return this.game.state.getCurrentBet() * this.costMultiplier;
     }
 
     /**
      * Check if player can afford to buy bonus
      */
     canBuy() {
-        return this.enabled && this.gameState.getCredits() >= this.getCost();
+        return this.enabled && this.game.state.getCredits() >= this.getCost();
     }
 
     /**
@@ -70,7 +54,7 @@ export class BuyBonus {
 
             <div class="buy-bonus-balance">
                 <div class="balance-label">Your Credits:</div>
-                <div class="balance-amount ${canAfford ? 'sufficient' : 'insufficient'}">${this.gameState.getCredits()}</div>
+                <div class="balance-amount ${canAfford ? 'sufficient' : 'insufficient'}">${this.game.state.getCredits()}</div>
             </div>
 
             ${
@@ -120,7 +104,7 @@ export class BuyBonus {
         if (modal) {
             modal.classList.remove('active');
         }
-        this.soundManager.playClick();
+        this.game.soundManager.playClick();
     }
 
     /**
@@ -131,44 +115,43 @@ export class BuyBonus {
 
         const cost = this.getCost();
 
-        // Deduct cost
-        this.gameState.deductCredits(cost);
-
-        // Notify UI update needed
-        this.eventBus.emit('ui:update');
-        this.eventBus.emit('state:save');
+        // Deduct cost using GameState
+        this.game.state.deductCredits(cost);
+        this.game.updateDisplay();
+        this.game.saveGameState();
 
         this.hide();
-        this.soundManager.playClick();
+
+        // Play purchase sound
+        this.game.soundManager.playClick();
 
         // Track statistics
-        this.statistics.recordFeatureTrigger('buyBonus', { cost });
+        this.game.statistics.recordFeatureTrigger('buyBonus', { cost });
 
         // Small delay for effect
         await new Promise((resolve) => setTimeout(resolve, 500));
 
         // Trigger bonus game with random count (3-5)
-        const bonusCount = 3 + Math.floor(Math.random() * 3);
-        await this.bonusGame.trigger(bonusCount);
+        const bonusCount = 3 + Math.floor(Math.random() * 3); // 3, 4, or 5
+        await this.game.bonusGame.trigger(bonusCount);
 
-        const bonusWin = await this.bonusGame.end();
+        const bonusWin = await this.game.bonusGame.end();
 
         if (bonusWin > 0) {
-            this.gameState.addCredits(bonusWin);
-            this.gameState.setLastWin(bonusWin);
+            this.game.state.addCredits(bonusWin);
+            this.game.state.setLastWin(bonusWin);
 
-            // Track spin
-            this.statistics.recordSpin(this.gameState.getCurrentBet(), bonusWin, true);
+            // Stats are now tracked via statistics class
+            this.game.statistics.recordSpin(this.game.state.getCurrentBet(), bonusWin, true);
 
-            // Award XP
-            this.levelSystem.awardXP('bonus');
+            // Award XP for bonus
+            this.game.levelSystem.awardXP('bonus');
 
-            // Update UI and show message
-            this.eventBus.emit('ui:update');
-            this.eventBus.emit('message:show', `BONUS WIN: ${bonusWin}`);
+            this.game.updateDisplay();
+            await this.game.showMessage(`BONUS WIN: ${bonusWin}`);
         }
 
-        this.eventBus.emit('state:save');
+        this.game.saveGameState();
     }
 
     /**
@@ -178,7 +161,7 @@ export class BuyBonus {
         const buyBonusBtn = document.getElementById('buyBonusBtn');
         if (buyBonusBtn) {
             buyBonusBtn.addEventListener('click', () => {
-                if (!this.gameState.isSpinning()) {
+                if (!this.game.state.isSpinning()) {
                     this.show();
                 }
             });

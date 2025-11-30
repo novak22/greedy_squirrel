@@ -1,37 +1,23 @@
 // Autoplay system with configurable settings and stop conditions
 import { GAME_CONFIG } from '../config/game.js';
-import { GAME_EVENTS } from '../../SlotMachineEngine/src/core/EventBus.js';
+import { GAME_EVENTS } from '../core/EventBus.js';
 
 export class Autoplay {
     /**
      * Create Autoplay with dependency injection
-     * @param {Object} deps - Dependencies (can be game instance for backward compat or deps object)
-     * @param {TimerManager} deps.timerManager - Timer manager (when using DI)
-     * @param {GameState} deps.gameState - Game state (when using DI)
-     * @param {EventBus} deps.eventBus - Event bus (when using DI)
-     * @param {TurboMode} deps.turboMode - Turbo mode reference (when using DI)
+     * @param {Object} deps - Dependencies
+     * @param {TimerManager} deps.timerManager - Timer manager
+     * @param {GameState} deps.gameState - Game state
+     * @param {EventBus} deps.eventBus - Event bus
+     * @param {TurboMode} deps.turboMode - Turbo mode reference
+     * @param {FreeSpins} deps.freeSpins - Free spins feature (to check if active)
      */
-    constructor(deps, timerManagerLegacy) {
-        // Support both old API and new DI API
-        // Check if second param exists - that means old API: new Autoplay(game, timerManager)
-        // Or check if deps has gameState (only DI pattern has this)
-        const isNewDI = !timerManagerLegacy && deps && deps.gameState;
-
-        if (isNewDI) {
-            // New DI pattern: new Autoplay({ timerManager, gameState, eventBus, turboMode })
-            this.timerManager = deps.timerManager;
-            this.gameState = deps.gameState;
-            this.eventBus = deps.eventBus;
-            this.turboMode = deps.turboMode;
-            this.game = null;
-        } else {
-            // Old pattern: new Autoplay(game, timerManager)
-            this.game = deps;
-            this.timerManager = timerManagerLegacy || deps?.timerManager;
-            this.gameState = null;
-            this.eventBus = null;
-            this.turboMode = null;
-        }
+    constructor({ timerManager, gameState, eventBus, turboMode, freeSpins }) {
+        this.timerManager = timerManager;
+        this.gameState = gameState;
+        this.eventBus = eventBus;
+        this.turboMode = turboMode;
+        this.freeSpins = freeSpins;
 
         this.isActive = false;
 
@@ -63,8 +49,7 @@ export class Autoplay {
         if (this.isActive) return;
 
         this.isActive = true;
-        const state = this.gameState || this.game.state;
-        this.startingBalance = state.getCredits();
+        this.startingBalance = this.gameState.getCredits();
         this.clearNextSpinTimeout();
 
         this.updateUI();
@@ -78,22 +63,12 @@ export class Autoplay {
         if (!this.isActive && !this.nextSpinTimeout) return;
 
         this.isActive = false;
-
-        if (this.game) {
-            this.game.cleanupTimers('autoplay');
-        } else {
-            this.timerManager.clearByLabel('autoplay');
-        }
-
+        this.timerManager.clearByLabel('autoplay');
         this.clearNextSpinTimeout();
         this.updateUI();
 
         if (reason) {
-            if (this.eventBus) {
-                this.eventBus.emit('message:show', `Autoplay stopped: ${reason}`);
-            } else if (this.game) {
-                this.game.showMessage(`Autoplay stopped: ${reason}`);
-            }
+            this.eventBus.emit('message:show', `Autoplay stopped: ${reason}`);
         }
     }
 
@@ -106,31 +81,24 @@ export class Autoplay {
             return;
         }
 
-        const state = this.gameState || this.game.state;
-
         // Check if can afford spin
-        if (state.getCredits() < state.getCurrentBet()) {
+        if (this.gameState.getCredits() < this.gameState.getCurrentBet()) {
             this.stop('Insufficient credits');
             return;
         }
 
         this.updateUI();
 
-        // Execute spin - emit event or call game method
-        if (this.eventBus) {
-            this.eventBus.emit(GAME_EVENTS.SPIN_START);
-        } else if (this.game) {
-            await this.game.spin();
-        }
+        // Execute spin via event
+        this.eventBus.emit(GAME_EVENTS.SPIN_START);
 
-        // Check if free spins were triggered (active flag is set after transition)
-        const freeSpinsActive = this.game?.freeSpins?.active || false;
-        if (this.settings.stopOnFeature && freeSpinsActive) {
+        // Check if free spins were triggered
+        if (this.settings.stopOnFeature && this.freeSpins.active) {
             this.stop('Free spins triggered');
             return;
         }
 
-        // Check stop conditions after spin (based on current spin results)
+        // Check stop conditions after spin
         if (this.checkStopConditions()) {
             return;
         }
@@ -138,8 +106,7 @@ export class Autoplay {
         // Continue to next spin if still active
         if (this.isActive) {
             // Delay before next spin (reduced in turbo mode)
-            const turbo = this.turboMode || this.game.turboMode;
-            const delay = turbo.isActive
+            const delay = this.turboMode.isActive
                 ? GAME_CONFIG.autoplay.turboDelay
                 : GAME_CONFIG.autoplay.normalDelay;
             this.clearNextSpinTimeout();
@@ -170,17 +137,15 @@ export class Autoplay {
      * Check if any stop conditions are met
      */
     checkStopConditions() {
-        const state = this.gameState || this.game.state;
-
         // Stop on any win
-        if (this.settings.stopOnWin && state.getLastWin() > 0) {
+        if (this.settings.stopOnWin && this.gameState.getLastWin() > 0) {
             this.stop('Win detected');
             return true;
         }
 
         // Stop on big win
-        const lastWin = state.getLastWin();
-        const currentBet = state.getCurrentBet();
+        const lastWin = this.gameState.getLastWin();
+        const currentBet = this.gameState.getCurrentBet();
         if (this.settings.stopOnBigWin && lastWin >= currentBet * this.settings.bigWinMultiplier) {
             this.stop(`Big win (${Math.floor(lastWin / currentBet)}x)`);
             return true;
@@ -188,7 +153,7 @@ export class Autoplay {
 
         // Stop on balance increase
         if (this.settings.stopOnBalance) {
-            const balanceChange = state.getCredits() - this.startingBalance;
+            const balanceChange = this.gameState.getCredits() - this.startingBalance;
             if (balanceChange >= this.settings.balanceIncrease) {
                 this.stop(`Balance increased by ${balanceChange}`);
                 return true;
@@ -196,7 +161,7 @@ export class Autoplay {
         }
 
         // Stop on low balance
-        if (this.settings.stopOnBalanceLow && state.getCredits() < this.settings.balanceLowLimit) {
+        if (this.settings.stopOnBalanceLow && this.gameState.getCredits() < this.settings.balanceLowLimit) {
             this.stop('Balance too low');
             return true;
         }

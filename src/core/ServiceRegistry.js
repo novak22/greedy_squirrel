@@ -7,12 +7,13 @@
 
 import { GAME_CONFIG } from '../config/game.js';
 import { FEATURES_CONFIG } from '../config/features.js';
-import { getSymbolsForReel } from '../config/symbols.js';
+import { getSymbolsForReel, SYMBOLS, getSymbolByEmoji } from '../config/symbols.js';
 
-import { RNG } from '../../SlotMachineEngine/src/utils/RNG.js';
-import { EventBus } from '../../SlotMachineEngine/src/core/EventBus.js';
-import { StateManager, createInitialState } from '../../SlotMachineEngine/src/core/StateManager.js';
-import { GameState } from '../../SlotMachineEngine/src/core/GameState.js';
+import { RNG } from '../utils/RNG.js';
+import { EventBus } from './EventBus.js';
+import { StateManager, createInitialState } from './StateManager.js';
+import { GameState } from './GameState.js';
+import { PaylineEvaluator } from './PaylineEvaluator.js';
 
 import { TimerManager } from '../utils/TimerManager.js';
 import { Metrics } from '../utils/Metrics.js';
@@ -56,7 +57,7 @@ export function registerServices(container) {
     container.value('debugMode', debugMode);
 
     // ============================================
-    // Core Engine (from SlotMachineEngine package)
+    // Core Engine
     // ============================================
     container.singleton('timerManager', TimerManager);
     container.singleton('eventBus', EventBus);
@@ -84,29 +85,69 @@ export function registerServices(container) {
         return strips;
     });
 
+    container.factory('paylineEvaluator', (c) => {
+        return new PaylineEvaluator({
+            symbols: SYMBOLS,
+            symbolHelpers: { getSymbolByEmoji },
+            paylines: c.resolve('gameConfig').paylines,
+            reelCount: c.resolve('gameConfig').reelCount,
+            metrics: c.resolve('metrics')
+        });
+    });
+
     // ============================================
     // Features
     // ============================================
-    container.factory('freeSpins', () => {
-        // FreeSpins needs access to some game methods, we'll handle this in refactor
-        return new FreeSpins(null); // Will be injected later
+    // FreeSpins with DI - needs renderer
+    container.factory('freeSpins', (c) => {
+        return new FreeSpins({
+            renderer: c.resolve('freeSpinsRenderer')
+        });
     });
 
-    container.factory('bonusGame', () => {
-        return new BonusGame(null); // Will be injected later
+    // BonusGame with DI - needs renderer
+    container.factory('bonusGame', (c) => {
+        return new BonusGame({
+            renderer: c.resolve('bonusGameRenderer')
+        });
     });
 
-    container.factory('cascade', () => {
-        return new Cascade(null); // Will be injected later
+    // Cascade with DI - needs renderer, rng, reelStrips, symbolsPerReel, paylineEvaluator, statistics, eventBus
+    container.factory('cascade', (c) => {
+        return new Cascade({
+            renderer: c.resolve('cascadeRenderer'),
+            rng: c.resolve('rng'),
+            reelStrips: c.resolve('reelStrips'),
+            symbolsPerReel: c.resolve('gameConfig').symbolsPerReel,
+            paylineEvaluator: c.resolve('paylineEvaluator'),
+            statistics: c.resolve('statistics'),
+            eventBus: c.resolve('eventBus')
+        });
     });
 
-    // Autoplay with DI - needs timerManager, gameState, eventBus, turboMode
+    // Gamble with DI - needs soundManager
+    container.factory('gamble', (c) => {
+        return new Gamble({
+            soundManager: c.resolve('soundManager')
+        });
+    });
+
+    // WinAnticipation with DI - needs timerManager, soundManager
+    container.factory('winAnticipation', (c) => {
+        return new WinAnticipation({
+            timerManager: c.resolve('timerManager'),
+            soundManager: c.resolve('soundManager')
+        });
+    });
+
+    // Autoplay with DI - needs timerManager, gameState, eventBus, turboMode, freeSpins
     container.factory('autoplay', (c) => {
         return new Autoplay({
             timerManager: c.resolve('timerManager'),
             gameState: c.resolve('gameState'),
             eventBus: c.resolve('eventBus'),
-            turboMode: c.resolve('turboMode')
+            turboMode: c.resolve('turboMode'),
+            freeSpins: c.resolve('freeSpins')
         });
     });
 
@@ -118,16 +159,16 @@ export function registerServices(container) {
         });
     });
 
-    container.factory('gamble', () => {
-        return new Gamble(null); // Will be injected later
-    });
-
-    container.factory('buyBonus', () => {
-        return new BuyBonus(null); // Will be injected later
-    });
-
-    container.factory('winAnticipation', () => {
-        return new WinAnticipation(null); // Will be injected later
+    // BuyBonus with DI - needs gameState, soundManager, statistics, bonusGame, levelSystem, eventBus
+    container.factory('buyBonus', (c) => {
+        return new BuyBonus({
+            gameState: c.resolve('gameState'),
+            soundManager: c.resolve('soundManager'),
+            statistics: c.resolve('statistics'),
+            bonusGame: c.resolve('bonusGame'),
+            levelSystem: c.resolve('levelSystem'),
+            eventBus: c.resolve('eventBus')
+        });
     });
 
     // ============================================

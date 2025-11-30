@@ -3,6 +3,17 @@ import { getSymbolsForReel } from '../config/symbols.js';
 
 export class RNG {
     /**
+     * Factory method for DI container compatibility
+     * @param {Function} getSymbolsForReel - Symbol configuration function (unused, kept for API compatibility)
+     * @returns {typeof RNG} - RNG class with static methods
+     */
+    static create(getSymbolsForReel) {
+        // RNG uses static methods only, so we return the class itself
+        // getSymbolsForReel is already imported at module level
+        return RNG;
+    }
+
+    /**
      * Generate weighted random symbol for a specific reel
      * @param {number} reelIndex - The reel index (0-4)
      * @returns {string} - Symbol emoji

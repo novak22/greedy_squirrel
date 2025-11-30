@@ -3,13 +3,23 @@ import { FEATURES_CONFIG } from '../config/features.js';
 
 export class FreeSpins {
     /**
-     * Create FreeSpins feature
-     * @param {Object} game - Game instance
-     * @param {Object} renderer - FreeSpinsRenderer instance for UI
+     * Create FreeSpins feature with dependency injection
+     * @param {Object} deps - Dependencies (or legacy game instance)
+     * @param {Object} deps.renderer - FreeSpinsRenderer instance for UI
      */
-    constructor(game, renderer = null) {
-        this.game = game;
-        this.renderer = renderer;
+    constructor(deps) {
+        // Backward compatibility: support both new DI pattern and old game instance pattern
+        const isNewDI = deps && deps.renderer !== undefined;
+
+        if (isNewDI) {
+            // New DI pattern: { renderer }
+            this.renderer = deps.renderer;
+        } else {
+            // Old pattern: FreeSpins(game) - renderer will be set later
+            this.game = deps; // Store game reference temporarily
+            this.renderer = null;
+        }
+
         this.active = false;
         this.remainingSpins = 0;
         this.totalSpins = 0;
@@ -19,7 +29,7 @@ export class FreeSpins {
     }
 
     /**
-     * Set the renderer (for dependency injection)
+     * Set renderer (backward compatibility method)
      * @param {Object} renderer - FreeSpinsRenderer instance
      */
     setRenderer(renderer) {

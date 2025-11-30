@@ -1,6 +1,6 @@
 import { GAME_CONFIG } from '../config/game.js';
 import { formatNumber } from '../utils/formatters.js';
-import { GAME_EVENTS } from '../../SlotMachineEngine/src/core/EventBus.js';
+import { GAME_EVENTS } from './EventBus.js';
 
 export class SpinEngine {
     constructor({

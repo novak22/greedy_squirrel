@@ -2,10 +2,10 @@
 import { getSymbolsForReel } from '../config/symbols.js';
 import { GAME_CONFIG } from '../config/game.js';
 import { FEATURES_CONFIG } from '../config/features.js';
-import { RNG } from '../../SlotMachineEngine/src/utils/RNG.js';
-import { EventBus } from '../../SlotMachineEngine/src/core/EventBus.js';
-import { StateManager, createInitialState } from '../../SlotMachineEngine/src/core/StateManager.js';
-import { GameState } from '../../SlotMachineEngine/src/core/GameState.js';
+import { RNG } from '../utils/RNG.js';
+import { EventBus } from './EventBus.js';
+import { StateManager, createInitialState } from './StateManager.js';
+import { GameState } from './GameState.js';
 import { FreeSpins } from '../features/FreeSpins.js';
 import { BonusGame } from '../features/BonusGame.js';
 import { Cascade } from '../features/Cascade.js';

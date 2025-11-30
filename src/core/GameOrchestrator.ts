@@ -1,13 +1,13 @@
 import { GAME_CONFIG } from '../config/game.js';
 import { SYMBOLS, getPremiumSymbols, getSymbolByEmoji } from '../config/symbols.js';
 import { FEATURES_CONFIG } from '../config/features.js';
-import { PaylineEvaluator } from '../../SlotMachineEngine/src/core/PaylineEvaluator.js';
+import { PaylineEvaluator } from './PaylineEvaluator.js';
 import { SlotMachine } from './SlotMachine.js';
 import { ErrorHandler, ERROR_TYPES } from './ErrorHandler.js';
 import { UIController } from '../ui/UIController.js';
 import { Logger } from '../utils/Logger.js';
 import { Metrics } from '../utils/Metrics.js';
-import { GAME_EVENTS } from '../../SlotMachineEngine/src/core/EventBus.js';
+import { GAME_EVENTS } from './EventBus.js';
 import { StatsRenderer } from '../ui/renderers/StatsRenderer.js';
 import { CascadeRenderer } from '../ui/renderers/CascadeRenderer.js';
 import { BonusGameRenderer } from '../ui/renderers/BonusGameRenderer.js';

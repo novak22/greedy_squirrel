@@ -3,9 +3,15 @@ import { GAME_CONFIG } from '../config/game.js';
 import { getHighValueSymbols, SYMBOLS } from '../config/symbols.js';
 
 export class WinAnticipation {
-    constructor(slotMachine) {
-        this.game = slotMachine;
-        this.timerManager = slotMachine.timerManager;
+    /**
+     * Create WinAnticipation feature with dependency injection
+     * @param {Object} deps - Dependencies
+     * @param {TimerManager} deps.timerManager - Timer manager for scheduling
+     * @param {SoundManager} deps.soundManager - Sound manager for audio effects
+     */
+    constructor({ timerManager, soundManager }) {
+        this.timerManager = timerManager;
+        this.soundManager = soundManager;
         this.enabled = GAME_CONFIG.anticipation.enabled;
         this.anticipationActive = false;
         this.triggerChance = GAME_CONFIG.anticipation.triggerChance;
@@ -208,7 +214,7 @@ export class WinAnticipation {
         this.highlightAnticipationSymbols(anticipationType.type);
 
         // Play anticipation sound
-        this.game.soundManager.playTone(800, 0.3, 'sine');
+        this.soundManager.playTone(800, 0.3, 'sine');
     }
 
     /**
