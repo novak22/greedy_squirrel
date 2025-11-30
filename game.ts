@@ -5,6 +5,12 @@ import { GAME_EVENTS } from './src/core/EventBus.js';
 import { Logger } from './src/utils/Logger.js';
 import { assertValidConfigs } from './src/config/validation.js';
 
+declare global {
+    interface Window {
+        game?: GameOrchestrator;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize logger based on URL parameter
     const debugMode = window.location.search.includes('debug');
@@ -41,15 +47,15 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('pagehide', disposeGame);
 
     // Subscribe to game events for debugging/analytics
-    game.events.on(GAME_EVENTS.WIN, (data) => {
+    game.events.on(GAME_EVENTS.WIN, (data: any) => {
         Logger.debug('WIN:', data.amount, `(${data.multiplier.toFixed(1)}x)`);
     });
 
-    game.events.on(GAME_EVENTS.BIG_WIN, (data) => {
+    game.events.on(GAME_EVENTS.BIG_WIN, (data: any) => {
         Logger.info('BIG WIN!', data.amount, `(${data.multiplier.toFixed(1)}x)`);
     });
 
-    game.events.on(GAME_EVENTS.MEGA_WIN, (data) => {
+    game.events.on(GAME_EVENTS.MEGA_WIN, (data: any) => {
         Logger.info('MEGA WIN!!!', data.amount, `(${data.multiplier.toFixed(1)}x)`);
     });
 

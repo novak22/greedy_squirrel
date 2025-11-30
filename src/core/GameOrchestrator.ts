@@ -16,7 +16,40 @@ import { DOMCache } from '../ui/DOMCache.js';
 import { StatsController } from '../ui/StatsController.js';
 import { GameStateLoader } from './GameStateLoader.js';
 
+type WinningPositions = Set<string>;
+
+type BonusInfo = {
+    triggered: boolean;
+    bonusLines: unknown[];
+};
+
+type SpinContext = {
+    reelPositions: number[];
+    predeterminedSymbols: string[][];
+    shouldTriggerAnticipation: boolean;
+    anticipationConfig: Record<string, unknown> | null;
+    anticipationTriggerReel: number;
+};
+
+type WinInfo = {
+    totalWin: number;
+    winningPositions: WinningPositions;
+    winningLines: number[];
+    hasScatterWin: boolean;
+    scatterCount: number;
+};
+
+type LevelReward = {
+    credits: number;
+    type?: string;
+    value?: string;
+} | null;
+
 export class GameOrchestrator extends SlotMachine {
+    paylineEvaluator: PaylineEvaluator;
+    stateLoader: GameStateLoader;
+    statsController!: StatsController;
+
     constructor() {
         super();
 
@@ -36,7 +69,7 @@ export class GameOrchestrator extends SlotMachine {
         this.init();
     }
 
-    init() {
+    init(): void {
         // Initialize DOM cache (populate existing this.dom object to preserve references)
         new DOMCache(this.dom);
 
@@ -78,11 +111,11 @@ export class GameOrchestrator extends SlotMachine {
     /**
      * Save game state to localStorage
      */
-    saveGameState() {
+    saveGameState(): void {
         this.stateLoader.save();
     }
 
-    attachEventListeners() {
+    attachEventListeners(): void {
         // Core game controls moved to UIController to avoid duplication
         // UIController emits events, SlotMachine subscribes to them
         this.events.on(GAME_EVENTS.SPIN_START, () => this.spin());
@@ -93,7 +126,7 @@ export class GameOrchestrator extends SlotMachine {
         // Stats modal
         this.ui.bindStatsControls(
             () => this.statsController.toggle(),
-            (tab) => this.statsController.updateDisplay(tab)
+            (tab: string) => this.statsController.updateDisplay(tab)
         );
 
         // Autoplay and advanced controls (feature-specific, not duplicated)
@@ -156,19 +189,19 @@ export class GameOrchestrator extends SlotMachine {
         });
     }
 
-    createReels() {
+    createReels(): void {
         this.ui.createReels(
             this.reelCount,
             this.symbolsPerReel,
             this.rowCount,
             this.reelStrips,
             this.state,
-            (symbol, text) => this.applySymbolClasses(symbol, text),
+            (symbol: HTMLElement, text: string) => this.applySymbolClasses(symbol, text),
             this.rng
         );
     }
 
-    updateDisplay() {
+    updateDisplay(): void {
         this.ui.updateDisplay(
             this.state.getCredits(),
             this.state.getCurrentBet(),
@@ -179,7 +212,7 @@ export class GameOrchestrator extends SlotMachine {
     /**
      * Update auto collect toggle UI
      */
-    updateAutoCollectUI() {
+    updateAutoCollectUI(): void {
         this.ui.updateAutoCollectUI(this.autoCollectEnabled);
     }
 
@@ -187,7 +220,7 @@ export class GameOrchestrator extends SlotMachine {
      * Highlight symbols that are part of winning combinations
      * @param {Set<string>} winningPositions - Set of position strings (e.g., "0-1", "2-3")
      */
-    highlightWinningSymbols(winningPositions) {
+    highlightWinningSymbols(winningPositions: WinningPositions): void {
         this.ui.highlightWinningSymbols(winningPositions);
     }
 
@@ -198,7 +231,7 @@ export class GameOrchestrator extends SlotMachine {
     /**
      * Phase 5: Apply special CSS classes to symbols based on their type
      */
-    applySymbolClasses(symbolElement, symbolText) {
+    applySymbolClasses(symbolElement: HTMLElement, symbolText: string): void {
         // Remove existing special classes
         symbolElement.classList.remove('premium', 'scatter');
 
@@ -214,26 +247,30 @@ export class GameOrchestrator extends SlotMachine {
         }
     }
 
-    showWinningPaylines(winningLines) {
+    showWinningPaylines(winningLines: number[]): void {
         this.ui.showWinningPaylines(winningLines);
     }
 
-    hidePaylines() {
+    hidePaylines(): void {
         this.ui.hidePaylines();
     }
 
-    showMessage(message, winAmount = 0) {
+    showMessage(message: string, winAmount = 0) {
         return this.ui.showMessage(message, winAmount);
     }
 
     /**
      * Phase 5: Animate win counter from 0 to final amount
      */
-    animateWinCounter(overlay, finalAmount, baseMessage) {
+    animateWinCounter(
+        overlay: HTMLElement | null,
+        finalAmount: number,
+        baseMessage: string
+    ): unknown {
         return this.ui.animateWinCounter(overlay, finalAmount, baseMessage);
     }
 
-    togglePaytable(show) {
+    togglePaytable(show: boolean): void {
         if (!this.dom.paytableModal) return;
 
         if (show) {
@@ -246,12 +283,13 @@ export class GameOrchestrator extends SlotMachine {
     /**
      * Phase 3: Show level up message
      */
-    async showLevelUpMessage(level, reward) {
+    async showLevelUpMessage(level: number, reward: LevelReward): Promise<void> {
         let rewardText = '';
         if (reward) {
             rewardText = `<p class="level-reward">+${reward.credits} Credits</p>`;
             if (reward.type === 'feature') {
-                rewardText += `<p class="level-unlock">✨ ${reward.value.toUpperCase()} UNLOCKED!</p>`;
+                const rewardLabel = reward.value?.toUpperCase() ?? '';
+                rewardText += `<p class="level-unlock">✨ ${rewardLabel} UNLOCKED!</p>`;
             }
         }
 
@@ -283,13 +321,13 @@ export class GameOrchestrator extends SlotMachine {
     /**
      * Phase 5: Trigger screen shake effect for mega wins
      */
-    triggerScreenShake() {
+    triggerScreenShake(): void {
         if (this.dom.gameContainer) {
             this.dom.gameContainer.classList.add('screen-shake');
 
             this.timerManager.setTimeout(
                 () => {
-                    this.dom.gameContainer.classList.remove('screen-shake');
+                    this.dom.gameContainer?.classList.remove('screen-shake');
                 },
                 GAME_CONFIG.animations.screenShake,
                 'visual-effects'
@@ -299,10 +337,14 @@ export class GameOrchestrator extends SlotMachine {
         this.ui.triggerScreenShake();
     }
 
+    getSpinButton(): HTMLButtonElement | null {
+        return (this.dom.spinBtn as HTMLButtonElement | null) ?? null;
+    }
+
     /**
      * Clear tracked timers either by label or entirely.
      */
-    cleanupTimers(label = null) {
+    cleanupTimers(label: string | null = null): void {
         if (label) {
             this.timerManager.clearByLabel(label);
         } else {
@@ -318,8 +360,9 @@ export class GameOrchestrator extends SlotMachine {
             this.autoplay.updateUI();
             this.state.setSpinning(false);
 
-            if (this.dom.spinBtn) {
-                this.dom.spinBtn.disabled = false;
+            const spinButton = this.getSpinButton();
+            if (spinButton) {
+                spinButton.disabled = false;
             }
         }
     }
@@ -327,7 +370,7 @@ export class GameOrchestrator extends SlotMachine {
     /**
      * Fully dispose of timer resources to prevent leaks during teardown.
      */
-    dispose() {
+    dispose(): void {
         this.cleanupTimers();
         this.timerManager.dispose();
     }
@@ -335,7 +378,7 @@ export class GameOrchestrator extends SlotMachine {
     /**
      * Reset all game data
      */
-    resetAllData() {
+    resetAllData(): void {
         // Clear localStorage via stateLoader
         this.stateLoader.clear();
 
@@ -346,7 +389,7 @@ export class GameOrchestrator extends SlotMachine {
     /**
      * Phase 5: Offer gamble feature after win
      */
-    async offerGamble(winAmount) {
+    async offerGamble(winAmount: number): Promise<number> {
         if (this.autoCollectEnabled) {
             this.soundManager.playClick();
             return winAmount;
@@ -383,7 +426,7 @@ export class GameOrchestrator extends SlotMachine {
         }
 
         return new Promise((resolve) => {
-            let autoCollectTimer = null;
+            let autoCollectTimer: ReturnType<typeof setInterval> | null = null;
 
             const clearAutoCollect = () => {
                 if (autoCollectTimer) {
@@ -431,7 +474,7 @@ export class GameOrchestrator extends SlotMachine {
         });
     }
 
-    changeBet(direction) {
+    changeBet(direction: number): void {
         if (this.state.isSpinning()) return;
 
         this.soundManager.playClick();
@@ -456,7 +499,7 @@ export class GameOrchestrator extends SlotMachine {
         this.updateDisplay();
     }
 
-    setMaxBet() {
+    setMaxBet(): void {
         if (this.state.isSpinning()) return;
 
         this.soundManager.playClick();
@@ -474,11 +517,11 @@ export class GameOrchestrator extends SlotMachine {
         this.updateDisplay();
     }
 
-    getMaxBetIncrement() {
+    getMaxBetIncrement(): number {
         return this.state.getCredits() * GAME_CONFIG.maxBetIncrementPercent;
     }
 
-    findHighestBetWithinIncrement(maxIncrement) {
+    findHighestBetWithinIncrement(maxIncrement: number): number {
         for (let i = this.betOptions.length - 1; i > this.state.getCurrentBetIndex(); i--) {
             if (this.betOptions[i] - this.state.getCurrentBet() < maxIncrement) {
                 return i;
@@ -491,7 +534,7 @@ export class GameOrchestrator extends SlotMachine {
      * Validate if a spin can be initiated
      * @returns {boolean} True if spin can proceed, false otherwise
      */
-    canSpin() {
+    canSpin(): boolean {
         if (this.state.isSpinning()) return false;
         if (this.bonusGame.isActive()) return false;
 
@@ -508,7 +551,7 @@ export class GameOrchestrator extends SlotMachine {
      * Initialize spin state and deduct bet
      * @param {boolean} isFreeSpin - Whether this is a free spin (no bet deduction)
      */
-    initializeSpin(isFreeSpin) {
+    initializeSpin(isFreeSpin: boolean): void {
         this.state.setSpinning(true);
 
         // Play spin sound
@@ -528,7 +571,8 @@ export class GameOrchestrator extends SlotMachine {
         this.levelSystem.awardXP('spin');
         this.dailyChallenges.updateChallengeProgress('play_spins', 1);
 
-        if (this.dom.spinBtn) this.dom.spinBtn.disabled = true;
+        const spinButton = this.getSpinButton();
+        if (spinButton) spinButton.disabled = true;
 
         this.clearWinningSymbols();
         this.hidePaylines();
@@ -546,7 +590,7 @@ export class GameOrchestrator extends SlotMachine {
      * @returns {Object|null} return.anticipationConfig - Configuration for anticipation effects
      * @returns {number} return.anticipationTriggerReel - Reel index where anticipation triggers
      */
-    prepareReelResults() {
+    prepareReelResults(): SpinContext {
         // Debug mode: use forced symbols if set
         if (this.debugMode && this.debugNextSpin) {
             Logger.debug('Using forced spin:', this.debugNextSpin);
@@ -610,7 +654,7 @@ export class GameOrchestrator extends SlotMachine {
     /**
      * Main spin method - orchestrates the entire spin process
      */
-    async spin() {
+    async spin(): Promise<void> {
         if (!this.canSpin()) return;
 
         const isFreeSpin = this.freeSpins.isActive();
@@ -642,8 +686,11 @@ export class GameOrchestrator extends SlotMachine {
 
             Logger.debug('Reel result:', result);
 
-            let winInfo = this.paylineEvaluator.evaluateWins(result, this.state.getCurrentBet());
-            const bonusInfo = this.paylineEvaluator.checkBonusTrigger(result);
+            const winInfo = this.paylineEvaluator.evaluateWins(
+                result,
+                this.state.getCurrentBet()
+            ) as WinInfo;
+            const bonusInfo = this.paylineEvaluator.checkBonusTrigger(result) as BonusInfo;
 
             Logger.debug('Win info:', winInfo);
             Logger.debug('Scatter count:', winInfo.scatterCount);
@@ -681,7 +728,8 @@ export class GameOrchestrator extends SlotMachine {
                 userMessage: 'ERROR: SPIN FAILED\nBET REFUNDED',
                 fallback: async () => {
                     this.state.restoreCheckpoint(checkpoint);
-                    if (this.dom.spinBtn) this.dom.spinBtn.disabled = false;
+                    const spinButton = this.getSpinButton();
+                    if (spinButton) spinButton.disabled = false;
                     this.cleanupTimers();
                     this.clearWinningSymbols();
                     this.hidePaylines();
@@ -693,7 +741,7 @@ export class GameOrchestrator extends SlotMachine {
             spinTimer?.end({
                 totalWin,
                 creditsAfter: this.state.getCredits(),
-                error: spinError ? spinError.message : null
+                error: spinError instanceof Error ? spinError.message : null
             });
         }
     }
@@ -701,9 +749,10 @@ export class GameOrchestrator extends SlotMachine {
     /**
      * Execute all free spins
      */
-    async executeFreeSpins() {
+    async executeFreeSpins(): Promise<void> {
         // Disable manual spinning during free spins
-        const originalText = this.dom.spinBtn ? this.dom.spinBtn.textContent : '';
+        const spinButton = this.getSpinButton();
+        const originalText = spinButton ? spinButton.textContent : '';
 
         Logger.debug('executeFreeSpins started - remaining:', this.freeSpins.remainingSpins);
 
@@ -717,9 +766,9 @@ export class GameOrchestrator extends SlotMachine {
                 );
 
                 // Update button text to show auto-spinning
-                if (this.dom.spinBtn) {
-                    this.dom.spinBtn.textContent = 'AUTO SPIN';
-                    this.dom.spinBtn.disabled = true;
+                if (spinButton) {
+                    spinButton.textContent = 'AUTO SPIN';
+                    spinButton.disabled = true;
                 }
 
                 // Track remaining spins before the spin to detect stuck state
@@ -737,9 +786,9 @@ export class GameOrchestrator extends SlotMachine {
             }
         } finally {
             // Restore manual controls
-            if (this.dom.spinBtn) {
-                this.dom.spinBtn.textContent = originalText;
-                this.dom.spinBtn.disabled = false;
+            if (spinButton) {
+                spinButton.textContent = originalText;
+                spinButton.disabled = false;
             }
         }
     }
@@ -748,7 +797,7 @@ export class GameOrchestrator extends SlotMachine {
      * Update credits and statistics after win
      * @param {number} totalWin - Total win amount to add to credits
      */
-    updateCreditsAndStats(totalWin) {
+    updateCreditsAndStats(totalWin: number) {
         return super.updateCreditsAndStats(totalWin);
     }
 
@@ -761,7 +810,11 @@ export class GameOrchestrator extends SlotMachine {
      * @param {boolean} isFreeSpin - Whether this is a free spin
      * @returns {Promise<void>}
      */
-    async handleFeatureTriggers(winInfo, bonusInfo, isFreeSpin) {
+    async handleFeatureTriggers(
+        winInfo: WinInfo,
+        bonusInfo: BonusInfo,
+        isFreeSpin: boolean
+    ): Promise<boolean> {
         return this.featureManager.handleFeatureTriggers(winInfo, bonusInfo, isFreeSpin);
     }
 
@@ -773,7 +826,12 @@ export class GameOrchestrator extends SlotMachine {
      * @param {boolean} isFreeSpin - Whether this was a free spin
      * @returns {Promise<void>}
      */
-    async finalizeSpin(totalWin, winInfo, bonusInfo, isFreeSpin) {
+    async finalizeSpin(
+        totalWin: number,
+        winInfo: WinInfo,
+        bonusInfo: BonusInfo,
+        isFreeSpin: boolean
+    ): Promise<void> {
         return this.featureManager.finalizeSpin(totalWin, winInfo, bonusInfo, isFreeSpin);
     }
 }
