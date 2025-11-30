@@ -44,14 +44,14 @@ export class PaylineEvaluator {
         // Check payline wins
         const paylineWins = this.checkPaylineWins(result, betAmount);
         totalWin += paylineWins.totalWin;
-        paylineWins.winningPositions.forEach(pos => winningPositions.add(pos));
+        paylineWins.winningPositions.forEach((pos) => winningPositions.add(pos));
         winningLines.push(...paylineWins.winningLines);
         winDetails.push(...paylineWins.details);
 
         // Check scatter wins (pays anywhere)
         const scatterWins = this.checkScatterWins(result, betAmount);
         totalWin += scatterWins.totalWin;
-        scatterWins.winningPositions.forEach(pos => winningPositions.add(pos));
+        scatterWins.winningPositions.forEach((pos) => winningPositions.add(pos));
         if (scatterWins.details.length > 0) {
             winDetails.push(...scatterWins.details);
         }
@@ -218,7 +218,7 @@ export class PaylineEvaluator {
                 totalWin = payout * betAmount;
 
                 // Mark all scatter positions as winning
-                scatterPositions.forEach(pos => {
+                scatterPositions.forEach((pos) => {
                     winningPositions.add(`${pos.reel}-${pos.row}`);
                 });
 

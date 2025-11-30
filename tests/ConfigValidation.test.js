@@ -17,7 +17,9 @@ function expect(actual) {
     return {
         toBe(expected) {
             if (actual !== expected) {
-                throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+                throw new Error(
+                    `Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`
+                );
             }
         },
         toBeTruthy() {

@@ -113,13 +113,16 @@ export class DIContainer {
 
         try {
             // Resolve dependencies
-            const deps = service.deps.map(dep => this.resolve(dep));
+            const deps = service.deps.map((dep) => this.resolve(dep));
 
             // Create instance
             let instance;
             if (typeof service.factory === 'function') {
                 // Check if it's a class (has prototype) or factory function
-                if (service.factory.prototype && service.factory.prototype.constructor === service.factory) {
+                if (
+                    service.factory.prototype &&
+                    service.factory.prototype.constructor === service.factory
+                ) {
                     // It's a class constructor
                     instance = new service.factory(...deps);
                 } else {
@@ -199,7 +202,10 @@ export function createGameContainer() {
     const container = new DIContainer();
 
     // Register configuration values
-    container.value('debugMode', new URLSearchParams(window.location.search).get('debug') === 'true');
+    container.value(
+        'debugMode',
+        new URLSearchParams(window.location.search).get('debug') === 'true'
+    );
 
     return container;
 }

@@ -77,7 +77,11 @@ export class FeatureManager {
                 this.state.addCredits(bonusWin);
                 this.state.setLastWin(this.state.getLastWin() + bonusWin);
 
-                this.ui.updateDisplay(this.state.getCredits(), this.state.getCurrentBet(), this.state.getLastWin());
+                this.ui.updateDisplay(
+                    this.state.getCredits(),
+                    this.state.getCurrentBet(),
+                    this.state.getLastWin()
+                );
                 await this.ui.showMessage(`BONUS WIN: ${formatNumber(bonusWin)}`);
             }
         }
@@ -109,14 +113,22 @@ export class FeatureManager {
         ) {
             const currentCredits = this.state.getCredits();
             this.state.setCredits(currentCredits - totalWin);
-            this.ui.updateDisplay(this.state.getCredits(), this.state.getCurrentBet(), this.state.getLastWin());
+            this.ui.updateDisplay(
+                this.state.getCredits(),
+                this.state.getCurrentBet(),
+                this.state.getLastWin()
+            );
 
             const gambleResult = await this.spinExecutor.offerGamble(totalWin);
 
             this.state.setCredits(this.state.getCredits() + gambleResult);
             totalWin = gambleResult;
             this.state.setLastWin(gambleResult);
-            this.ui.updateDisplay(this.state.getCredits(), this.state.getCurrentBet(), this.state.getLastWin());
+            this.ui.updateDisplay(
+                this.state.getCredits(),
+                this.state.getCurrentBet(),
+                this.state.getLastWin()
+            );
 
             if (gambleResult > 0) {
                 this.statistics.recordSpin(this.state.getCurrentBet(), gambleResult, true);
@@ -139,9 +151,12 @@ export class FeatureManager {
         if (this.state.getCredits() === 0 && !isFreeSpin) {
             await this.ui.showMessage('GAME OVER\nResetting to 1000 credits');
             this.state.setCredits(this.gameConfig.initialCredits);
-            this.ui.updateDisplay(this.state.getCredits(), this.state.getCurrentBet(), this.state.getLastWin());
+            this.ui.updateDisplay(
+                this.state.getCredits(),
+                this.state.getCurrentBet(),
+                this.state.getLastWin()
+            );
             this.saveGameState();
         }
     }
 }
-

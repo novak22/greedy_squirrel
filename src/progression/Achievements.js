@@ -15,7 +15,7 @@ export class Achievements {
      * Initialize achievements from config
      */
     initAchievements() {
-        this.achievements = PROGRESSION_CONFIG.achievements.map(achievement => ({
+        this.achievements = PROGRESSION_CONFIG.achievements.map((achievement) => ({
             ...achievement,
             unlocked: false,
             unlockedAt: null,
@@ -28,8 +28,8 @@ export class Achievements {
      */
     init(savedData) {
         if (savedData && savedData.achievements) {
-            savedData.achievements.forEach(saved => {
-                const achievement = this.achievements.find(a => a.id === saved.id);
+            savedData.achievements.forEach((saved) => {
+                const achievement = this.achievements.find((a) => a.id === saved.id);
                 if (achievement) {
                     achievement.unlocked = saved.unlocked;
                     achievement.unlockedAt = saved.unlockedAt;
@@ -44,7 +44,7 @@ export class Achievements {
     checkAchievements(stats, lastWin, bet, credits) {
         const newlyUnlocked = [];
 
-        this.achievements.forEach(achievement => {
+        this.achievements.forEach((achievement) => {
             if (!achievement.unlocked) {
                 const unlocked = achievement.check(stats, lastWin, bet, credits, this.achievements);
 
@@ -135,7 +135,7 @@ export class Achievements {
      * Get achievement statistics
      */
     getStats() {
-        const unlocked = this.achievements.filter(a => a.unlocked).length;
+        const unlocked = this.achievements.filter((a) => a.unlocked).length;
         const total = this.achievements.length;
         const completion = (unlocked / total) * 100;
 
@@ -151,14 +151,14 @@ export class Achievements {
      * Get unlocked achievements
      */
     getUnlocked() {
-        return this.achievements.filter(a => a.unlocked);
+        return this.achievements.filter((a) => a.unlocked);
     }
 
     /**
      * Get locked achievements
      */
     getLocked() {
-        return this.achievements.filter(a => !a.unlocked);
+        return this.achievements.filter((a) => !a.unlocked);
     }
 
     /**
@@ -166,7 +166,7 @@ export class Achievements {
      */
     getSaveData() {
         return {
-            achievements: this.achievements.map(a => ({
+            achievements: this.achievements.map((a) => ({
                 id: a.id,
                 unlocked: a.unlocked,
                 unlockedAt: a.unlockedAt

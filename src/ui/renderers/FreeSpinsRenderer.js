@@ -5,7 +5,6 @@
  * FreeSpins.js should only contain game logic, this handles the visual representation.
  */
 
-import { FEATURES_CONFIG } from '../../config/features.js';
 import { formatNumber } from '../../utils/formatters.js';
 
 export class FreeSpinsRenderer {
@@ -37,7 +36,7 @@ export class FreeSpinsRenderer {
         overlay.classList.add('show');
 
         // Wait for user click
-        await new Promise(resolve => {
+        await new Promise((resolve) => {
             const clickHandler = () => {
                 overlay.removeEventListener('click', clickHandler);
                 resolve();
@@ -72,7 +71,7 @@ export class FreeSpinsRenderer {
         overlay.classList.add('show');
 
         // Wait for user click
-        await new Promise(resolve => {
+        await new Promise((resolve) => {
             const clickHandler = () => {
                 overlay.removeEventListener('click', clickHandler);
                 resolve();
@@ -111,12 +110,16 @@ export class FreeSpinsRenderer {
                         <span class="stat-label">Multiplier</span>
                         <span class="stat-value">${formatNumber(multiplier)}x</span>
                     </div>
-                    ${retriggered > 0 ? `
+                    ${
+                        retriggered > 0
+                            ? `
                         <div class="stat-item">
                             <span class="stat-label">Retriggered</span>
                             <span class="stat-value">${formatNumber(retriggered)} times</span>
                         </div>
-                    ` : ''}
+                    `
+                            : ''
+                    }
                 </div>
                 <p class="feature-end">Click to continue...</p>
             </div>
@@ -124,7 +127,7 @@ export class FreeSpinsRenderer {
         overlay.classList.add('show');
 
         // Wait for user click
-        await new Promise(resolve => {
+        await new Promise((resolve) => {
             const clickHandler = () => {
                 overlay.removeEventListener('click', clickHandler);
                 resolve();

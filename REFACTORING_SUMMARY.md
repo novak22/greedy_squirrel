@@ -7,18 +7,21 @@
 **Problem:** Hardcoded timing values scattered across multiple files made it difficult to adjust game feel and balance.
 
 **Solution:**
+
 - Added `animations.reelStopping`, `animations.anticipationDisplay`, and `animations.anticipationHighlight` to `GAME_CONFIG`
 - Created `anticipation` config section with `triggerChance`, `flukeChance`, `dramaticDelayHigh`, and `dramaticDelayMedium`
 - Updated all references in:
-  - `SlotMachine.js` (reel stopping animation)
-  - `WinAnticipation.js` (all timing values)
+    - `SlotMachine.js` (reel stopping animation)
+    - `WinAnticipation.js` (all timing values)
 
 **Benefits:**
+
 - Single source of truth for all timing values
 - Easy to adjust game pacing from one location
 - Clear documentation of what each timing value controls
 
 **Files Modified:**
+
 - `src/config/game.js`
 - `src/core/SlotMachine.js`
 - `src/features/WinAnticipation.js`
@@ -28,23 +31,27 @@
 ### ✅ 2. Added Error Handling with Checkpoint/Rollback
 
 **Problem:** The `spin()` method had no error handling. If any async operation failed, the game could get stuck with:
+
 - `isSpinning` locked to `true`
 - Bet deducted but no spin completed
 - Spin button disabled permanently
 
 **Solution:**
+
 - Wrapped entire spin logic in `try-catch`
 - Created checkpoint of critical state before spin
 - On error: restore checkpoint, re-enable UI, show error message, save state
 - User gets their bet back if spin fails
 
 **Benefits:**
+
 - Robust error recovery
 - No credit loss on technical failures
 - Clear user feedback
 - Graceful degradation
 
 **Files Modified:**
+
 - `src/core/SlotMachine.js` (spin method)
 
 ---
@@ -52,11 +59,13 @@
 ### ✅ 3. Deduplicated Premium Symbol Constants
 
 **Problem:** Premium symbol arrays hardcoded in 3+ locations:
+
 - `SlotMachine.js:1074`: `['👑', '💎', '🌰', '🥜']`
 - `WinAnticipation.js:109`: `['👑', '💎', '🌰', '🥜']`
 - Risk of inconsistency when adding new symbols
 
 **Solution:**
+
 - Added `tier: 'premium'` property to symbol configs
 - Created `getPremiumSymbols()` helper function
 - Created `getHighValueSymbols()` for big win detection
@@ -64,12 +73,14 @@
 - Used `SYMBOLS.SCATTER.emoji`, `SYMBOLS.WILD.emoji`, etc. instead of hardcoded emojis
 
 **Benefits:**
+
 - Single source of truth for symbol categorization
 - Easy to add new premium symbols
 - Type-safe symbol references
 - No risk of typos in emoji strings
 
 **Files Modified:**
+
 - `src/config/symbols.js` (added tier property and helper functions)
 - `src/core/SlotMachine.js` (applySymbolClasses)
 - `src/features/WinAnticipation.js` (all symbol checks)
@@ -81,21 +92,25 @@
 **Problem:** `WinAnticipation.js` used direct `setTimeout` calls, bypassing the centralized timer management system.
 
 **Impact:**
+
 - Timers not cleaned up on game reset
 - Memory leaks possible
 - Inconsistent timer tracking
 
 **Solution:**
+
 - Passed `timerManager` reference to `WinAnticipation` constructor
 - Replaced all `setTimeout` calls with `this.timerManager.setTimeout(..., label)`
 - Added proper labels ('anticipation') for categorized cleanup
 
 **Benefits:**
+
 - All timers tracked centrally
 - Proper cleanup on game reset
 - Consistent timer management across all modules
 
 **Files Modified:**
+
 - `src/features/WinAnticipation.js`
 
 ---
@@ -105,16 +120,19 @@
 **Problem:** `PaylineEvaluator.evaluateWins()` assumed valid input. Malformed data could cause crashes.
 
 **Solution:**
+
 - Added validation for `result` parameter (must be 2D array)
 - Added validation for `betAmount` (must be positive number)
 - Throws descriptive errors with validation failures
 
 **Benefits:**
+
 - Fail fast with clear error messages
 - Easier debugging
 - Prevents silent failures
 
 **Files Modified:**
+
 - `src/core/PaylineEvaluator.js`
 
 ---
@@ -124,17 +142,20 @@
 **Problem:** Critical WILD substitution rule was buried in code without documentation.
 
 **Solution:**
+
 - Added comprehensive comment block in `PaylineEvaluator.evaluatePayline()`
 - Explained why wilds don't pay on their own
 - Provided examples of what pays and what doesn't
 - Documented steps to change this behavior
 
 **Benefits:**
+
 - Future developers understand design decisions
 - Easy to modify if needed
 - Clear examples prevent misunderstanding
 
 **Files Modified:**
+
 - `src/core/PaylineEvaluator.js`
 
 ---
@@ -144,15 +165,17 @@
 **Problem:** Tight coupling between features and game core. Features directly called methods on each other.
 
 **Solution:**
+
 - Created `EventBus` class with pub/sub pattern
 - Defined `GAME_EVENTS` constants for all major events
 - Integrated EventBus into `SlotMachine`
 - Added event emissions for:
-  - `SPIN_START`, `SPIN_END`
-  - `WIN`, `BIG_WIN`, `MEGA_WIN`
+    - `SPIN_START`, `SPIN_END`
+    - `WIN`, `BIG_WIN`, `MEGA_WIN`
 - Created debug mode example showing event subscription
 
 **Benefits:**
+
 - Features can communicate without direct dependencies
 - Easy to add analytics/logging
 - Testable - can mock events
@@ -160,6 +183,7 @@
 - New features can subscribe to existing events without modifying core
 
 **Example Usage:**
+
 ```javascript
 // Subscribe to events
 game.events.on(GAME_EVENTS.BIG_WIN, (data) => {
@@ -171,9 +195,11 @@ this.events.emit(GAME_EVENTS.BIG_WIN, { amount: 5000, multiplier: 50 });
 ```
 
 **Files Created:**
+
 - `src/core/EventBus.js`
 
 **Files Modified:**
+
 - `src/core/SlotMachine.js` (integrated EventBus, added event emissions)
 - `game.js` (added debug mode event subscriptions)
 
@@ -184,15 +210,18 @@ this.events.emit(GAME_EVENTS.BIG_WIN, { amount: 5000, multiplier: 50 });
 **Problem:** Unused methods cluttering the codebase.
 
 **Solution:**
+
 - Removed `showNearMiss()` from WinAnticipation.js (never called, 28 lines)
 - Verified `updateSettings()` in Autoplay is actually used (not dead)
 
 **Benefits:**
+
 - Cleaner codebase
 - Less confusion for developers
 - Slightly smaller bundle size
 
 **Files Modified:**
+
 - `src/features/WinAnticipation.js`
 
 ---
@@ -202,22 +231,25 @@ this.events.emit(GAME_EVENTS.BIG_WIN, { amount: 5000, multiplier: 50 });
 **Problem:** Repeated `document.getElementById()` calls on every update, potentially causing performance bottlenecks.
 
 **Solution:**
+
 - Created `this.dom = {}` cache in SlotMachine constructor
 - Added `cacheDOM()` method that runs once during initialization
 - Cached all frequently accessed elements:
-  - Display elements (credits, bet, win)
-  - Control buttons (spin, bet controls)
-  - Overlays and modals
-  - All 5 reel containers
+    - Display elements (credits, bet, win)
+    - Control buttons (spin, bet controls)
+    - Overlays and modals
+    - All 5 reel containers
 - Updated ~20 methods to use `this.dom.elementName` instead of `document.getElementById()`
 
 **Benefits:**
+
 - **~60% reduction** in DOM queries
 - Better performance, especially on slower devices
 - Null checks built-in (`if (this.dom.spinBtn)`)
 - Centralized element references
 
 **Example:**
+
 ```javascript
 // Before
 const spinBtn = document.getElementById('spinBtn');
@@ -228,6 +260,7 @@ if (this.dom.spinBtn) this.dom.spinBtn.disabled = true;
 ```
 
 **Files Modified:**
+
 - `src/core/SlotMachine.js` (20+ methods updated)
 
 ---
@@ -235,11 +268,13 @@ if (this.dom.spinBtn) this.dom.spinBtn.disabled = true;
 ### ✅ 10. Consolidated Duplicate Statistics Tracking
 
 **Problem:** Statistics tracked in TWO places:
+
 - `SlotMachine.stats` (basic, 8 properties)
 - `Statistics` class (comprehensive, 20+ properties)
 - Duplicate tracking code in every win/loss/feature
 
 **Solution:**
+
 - Removed `this.stats` object from SlotMachine
 - Created getter for backward compatibility: `get stats()` delegates to `Statistics.allTime`
 - Removed all duplicate stat tracking (`this.stats.totalWon++`, etc.)
@@ -247,18 +282,21 @@ if (this.dom.spinBtn) this.dom.spinBtn.disabled = true;
 - Updated save/load to not duplicate stats
 
 **Benefits:**
+
 - **Single source of truth** for all statistics
 - No risk of stats getting out of sync
 - Reduced code duplication (~40 lines removed)
 - More detailed stats (RTP, win rate, comebacks, etc.)
 
 **Backward Compatibility:**
+
 ```javascript
 // Still works!
-console.log(game.stats.biggestWin);  // Uses getter, delegates to Statistics
+console.log(game.stats.biggestWin); // Uses getter, delegates to Statistics
 ```
 
 **Files Modified:**
+
 - `src/core/SlotMachine.js` (removed duplicate tracking)
 - `src/features/Cascade.js` (added statistics tracking)
 
@@ -267,11 +305,13 @@ console.log(game.stats.biggestWin);  // Uses getter, delegates to Statistics
 ## Code Quality Metrics
 
 ### Lines Changed (Total)
+
 - **Modified:** ~350 lines
 - **Added:** ~300 lines (EventBus + validation + docs + DOM cache)
 - **Removed:** ~100 lines (dead code + duplicate stats tracking)
 
 ### Files Touched
+
 - **9 files modified**
 - **1 file created** (EventBus.js)
 - **0 breaking changes** (100% backward compatible)
@@ -293,41 +333,45 @@ console.log(game.stats.biggestWin);  // Uses getter, delegates to Statistics
 ## Next Steps (Recommended Priority)
 
 ### High Impact, Quick Wins
+
 1. **Remove Dead Code** (~30 min)
-   - Remove `showNearMiss()` from WinAnticipation (never called)
-   - Remove unused `updateSettings()` from Autoplay
+    - Remove `showNearMiss()` from WinAnticipation (never called)
+    - Remove unused `updateSettings()` from Autoplay
 
 2. **Cache DOM Elements** (~1 hour)
-   - Add `domCache` to SlotMachine constructor
-   - Stop calling `getElementById` repeatedly
+    - Add `domCache` to SlotMachine constructor
+    - Stop calling `getElementById` repeatedly
 
 ### Medium Effort, High Impact
+
 3. **Consolidate Statistics** (~2-3 hours)
-   - Merge `SlotMachine.stats` and `Statistics` class
-   - Single source of truth for all stats
-   - Remove duplicate tracking code
+    - Merge `SlotMachine.stats` and `Statistics` class
+    - Single source of truth for all stats
+    - Remove duplicate tracking code
 
 4. **Extract UIController** (~1 day)
-   - Move all DOM manipulation out of SlotMachine
-   - Create `UIController` class
-   - Make SlotMachine testable without DOM
+    - Move all DOM manipulation out of SlotMachine
+    - Create `UIController` class
+    - Make SlotMachine testable without DOM
 
 ### Long-term Improvements
+
 5. **Feature Plugin Architecture** (~3-5 days)
-   - Create `FeaturePlugin` base class
-   - Auto-register features
-   - Standardize lifecycle hooks
+    - Create `FeaturePlugin` base class
+    - Auto-register features
+    - Standardize lifecycle hooks
 
 6. **Centralized State Management** (~1 week)
-   - Create `GameStateManager`
-   - Implement observer pattern
-   - Reactive UI updates
+    - Create `GameStateManager`
+    - Implement observer pattern
+    - Reactive UI updates
 
 ---
 
 ## Architecture Improvements
 
 ### Before Refactoring
+
 ```
 SlotMachine (1477 lines, 40+ responsibilities)
 ├── Direct calls to features
@@ -337,6 +381,7 @@ SlotMachine (1477 lines, 40+ responsibilities)
 ```
 
 ### After Refactoring
+
 ```
 SlotMachine (cleaner, with error handling)
 ├── EventBus (decoupled communication)
@@ -346,6 +391,7 @@ SlotMachine (cleaner, with error handling)
 ```
 
 ### Future Vision
+
 ```
 GameCore
 ├── EventBus (communication backbone)
@@ -363,14 +409,17 @@ GameCore
 ## Developer Experience Improvements
 
 ### Debugging
+
 - **Before:** Search through 1477 lines to find timing constants
 - **After:** Check `GAME_CONFIG` in one place
 
 ### Adding Features
+
 - **Before:** Modify SlotMachine constructor, init, event listeners, save/load
 - **After:** Subscribe to events, no core modifications needed
 
 ### Testing
+
 - **Before:** Mock entire DOM, hard to isolate logic
 - **After:** Can test via EventBus, validate inputs separately
 
@@ -405,6 +454,7 @@ GameCore
 ### For Developers
 
 **Access the EventBus:**
+
 ```javascript
 window.game.events.on(GAME_EVENTS.WIN, (data) => {
     // Your custom logic here
@@ -413,6 +463,7 @@ window.game.events.on(GAME_EVENTS.WIN, (data) => {
 
 **Adjust Game Feel:**
 Edit `src/config/game.js`:
+
 ```javascript
 animations: {
     reelStopping: 200,  // Faster stops
@@ -422,6 +473,7 @@ animations: {
 
 **Add Premium Symbol:**
 Edit `src/config/symbols.js`:
+
 ```javascript
 NEW_SYMBOL: {
     emoji: '🎯',
@@ -436,15 +488,19 @@ NEW_SYMBOL: {
 Add `?debug` to URL: `http://localhost:8000/index.html?debug`
 
 **Monitor Events:**
+
 ```javascript
-window.game.events.eventNames()  // See all active events
-window.game.events.listenerCount(GAME_EVENTS.WIN)  // Check listeners
+window.game.events.eventNames(); // See all active events
+window.game.events.listenerCount(GAME_EVENTS.WIN); // Check listeners
 ```
 
 **Force Error (Test Recovery):**
+
 ```javascript
 // This should trigger error handling
-window.game.spin = async function() { throw new Error('Test'); }
+window.game.spin = async function () {
+    throw new Error('Test');
+};
 ```
 
 ---
@@ -452,12 +508,14 @@ window.game.spin = async function() { throw new Error('Test'); }
 ## Performance Impact
 
 ### Before Refactoring
+
 - **DOM queries per spin:** ~25-30
 - **Duplicate stat tracking:** 8+ operations per spin
 - **Code duplication:** High (stats, symbols, timings)
 - **Memory leaks:** Potential (timers not managed)
 
 ### After Refactoring
+
 - **DOM queries per spin:** ~5-8 (**70% reduction**)
 - **Duplicate stat tracking:** 0 (**eliminated**)
 - **Code duplication:** Low (centralized)
@@ -481,4 +539,3 @@ window.game.spin = async function() { throw new Error('Test'); }
 **Technical Debt Reduced:** ~60%
 **Future Development Speed:** +75% estimated
 **Lines of Code Cleaned:** ~100 lines removed
-

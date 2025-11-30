@@ -132,7 +132,10 @@ export class Storage {
         const merged = this.deepMerge(defaults, migrated);
         merged.credits = this.isValidNumber(merged.credits, defaults.credits);
         merged.currentBet = this.isValidNumber(merged.currentBet, defaults.currentBet);
-        merged.currentBetIndex = this.isValidNumber(merged.currentBetIndex, defaults.currentBetIndex);
+        merged.currentBetIndex = this.isValidNumber(
+            merged.currentBetIndex,
+            defaults.currentBetIndex
+        );
         merged.timestamp = Date.now();
         merged.schemaVersion = CURRENT_SCHEMA_VERSION;
         return merged;

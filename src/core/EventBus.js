@@ -99,7 +99,7 @@ export class EventBus {
         // Call regular listeners
         const listeners = this.listeners.get(event);
         if (listeners) {
-            listeners.forEach(callback => {
+            listeners.forEach((callback) => {
                 try {
                     callback(data);
                 } catch (error) {
@@ -115,7 +115,7 @@ export class EventBus {
             const callbacks = [...onceListeners];
             this.onceListeners.set(event, []);
 
-            callbacks.forEach(callback => {
+            callbacks.forEach((callback) => {
                 try {
                     callback(data);
                 } catch (error) {
@@ -155,10 +155,7 @@ export class EventBus {
      * @returns {Array<string>} Event names
      */
     eventNames() {
-        const names = new Set([
-            ...this.listeners.keys(),
-            ...this.onceListeners.keys()
-        ]);
+        const names = new Set([...this.listeners.keys(), ...this.onceListeners.keys()]);
         return Array.from(names);
     }
 }

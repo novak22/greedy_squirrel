@@ -50,11 +50,13 @@ export class Gamble {
         const overlay = document.getElementById('featureOverlay');
         if (!overlay) return;
 
-        const historyHTML = this.history.map((h, i) => {
-            const icon = h.suit === 'hearts' || h.suit === 'diamonds' ? '♥️' : '♠️';
-            const colorClass = h.suit === 'hearts' || h.suit === 'diamonds' ? 'red' : 'black';
-            return `<div class="gamble-history-card ${colorClass}">${icon}</div>`;
-        }).join('');
+        const historyHTML = this.history
+            .map((h) => {
+                const icon = h.suit === 'hearts' || h.suit === 'diamonds' ? '♥️' : '♠️';
+                const colorClass = h.suit === 'hearts' || h.suit === 'diamonds' ? 'red' : 'black';
+                return `<div class="gamble-history-card ${colorClass}">${icon}</div>`;
+            })
+            .join('');
 
         overlay.innerHTML = `
             <div class="gamble-container">
@@ -69,12 +71,16 @@ export class Gamble {
                     <div>Chances Left: ${this.gamblesRemaining}/${this.maxGambles}</div>
                 </div>
 
-                ${this.history.length > 0 ? `
+                ${
+                    this.history.length > 0
+                        ? `
                     <div class="gamble-history">
                         <div class="gamble-history-label">Previous Cards:</div>
                         <div class="gamble-history-cards">${historyHTML}</div>
                     </div>
-                ` : ''}
+                `
+                        : ''
+                }
 
                 <div class="gamble-message">Guess the card color:</div>
 
@@ -118,7 +124,7 @@ export class Gamble {
         // Draw a random card
         const suits = ['hearts', 'diamonds', 'spades', 'clubs'];
         const suit = suits[Math.floor(Math.random() * suits.length)];
-        const cardColor = (suit === 'hearts' || suit === 'diamonds') ? 'red' : 'black';
+        const cardColor = suit === 'hearts' || suit === 'diamonds' ? 'red' : 'black';
 
         const won = guess === cardColor;
 
@@ -136,7 +142,10 @@ export class Gamble {
             this.game.soundManager.playWin(2);
 
             // Check if can continue
-            if (this.gamblesRemaining > 0 && this.currentWin <= FEATURES_CONFIG.gamble.maxWinAmount) {
+            if (
+                this.gamblesRemaining > 0 &&
+                this.currentWin <= FEATURES_CONFIG.gamble.maxWinAmount
+            ) {
                 // Show updated UI and continue
                 await this.showGambleUI();
             } else {
@@ -180,7 +189,7 @@ export class Gamble {
             </div>
         `;
 
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
     }
 
     /**
@@ -194,15 +203,19 @@ export class Gamble {
             <div class="gamble-container">
                 <h2 class="gamble-title">${won ? '🎉 SUCCESS!' : '💔 GAME OVER'}</h2>
                 <div class="gamble-final-message">${message}</div>
-                ${this.currentWin > 0 ? `
+                ${
+                    this.currentWin > 0
+                        ? `
                     <div class="gamble-final-amount">
                         Final Amount: ${this.currentWin}
                     </div>
-                ` : ''}
+                `
+                        : ''
+                }
             </div>
         `;
 
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
     }
 
     /**

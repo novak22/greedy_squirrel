@@ -12,7 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const configErrors = assertValidConfigs(Logger);
     if (configErrors.length) {
-        const errorMessage = 'Game configuration validation failed. Please contact support or refresh after fixing configuration issues.';
+        const errorMessage =
+            'Game configuration validation failed. Please contact support or refresh after fixing configuration issues.';
         Logger.error('Critical configuration errors prevent the game from starting.');
 
         const errorBanner = document.createElement('div');
@@ -54,7 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Welcome message (always shown)
     console.log('🐿️ Greedy Squirrel - Game Loaded');
-    console.log('Features: FREE SPINS (3+ scatters), BONUS GAME (3+ bonus symbols), Cascading Wins (optional)');
+    console.log(
+        'Features: FREE SPINS (3+ scatters), BONUS GAME (3+ bonus symbols), Cascading Wins (optional)'
+    );
     console.log('Core: WILD symbols, SCATTER pays, Weighted RNG, Auto-save');
     console.log('');
     console.log('💡 Tips:');
@@ -68,7 +71,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (debugMode) {
         Logger.info('DEBUG MODE ENABLED');
         Logger.debug('Force next spin result with:');
-        Logger.debug('  game.debugNextSpin = [[\'⭐\',\'⭐\',\'⭐\'], [\'⭐\',\'⭐\',\'⭐\'], [\'⭐\',\'⭐\',\'⭐\'], [\'🌰\',\'🌰\',\'🌰\'], [\'🌰\',\'🌰\',\'🌰\']]');
-        Logger.debug('Symbols: 🃏 (wild), ⭐ (scatter), 🎁 (bonus), 👑, 💎, 🌰, 🥜, 🌻, 🍄, 🌲, 🍂');
+        Logger.debug(
+            "  game.debugNextSpin = [['⭐','⭐','⭐'], ['⭐','⭐','⭐'], ['⭐','⭐','⭐'], ['🌰','🌰','🌰'], ['🌰','🌰','🌰']]"
+        );
+        Logger.debug(
+            'Symbols: 🃏 (wild), ⭐ (scatter), 🎁 (bonus), 👑, 💎, 🌰, 🥜, 🌻, 🍄, 🌲, 🍂'
+        );
     }
 });

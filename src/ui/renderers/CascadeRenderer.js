@@ -24,7 +24,7 @@ export class CascadeRenderer {
      */
     async removeSymbols(winningPositions) {
         // Add removal animation class
-        winningPositions.forEach(pos => {
+        winningPositions.forEach((pos) => {
             const [reel, row] = pos.split('-').map(Number);
             const reelEl = this.dom.reels[reel];
             if (!reelEl) return;
@@ -35,12 +35,10 @@ export class CascadeRenderer {
             }
         });
 
-        await new Promise(resolve =>
-            setTimeout(resolve, FEATURES_CONFIG.cascade.removeDelay)
-        );
+        await new Promise((resolve) => setTimeout(resolve, FEATURES_CONFIG.cascade.removeDelay));
 
         // Actually remove symbols (set to empty)
-        winningPositions.forEach(pos => {
+        winningPositions.forEach((pos) => {
             const [reel, row] = pos.split('-').map(Number);
             const reelEl = this.dom.reels[reel];
             if (!reelEl) return;
@@ -62,22 +60,22 @@ export class CascadeRenderer {
     async dropSymbols(winningPositions) {
         // Determine which reels need processing
         const reelsToProcess = new Set();
-        winningPositions.forEach(pos => {
+        winningPositions.forEach((pos) => {
             const [reel] = pos.split('-').map(Number);
             reelsToProcess.add(reel);
         });
 
-        reelsToProcess.forEach(reelIndex => {
+        reelsToProcess.forEach((reelIndex) => {
             const reelEl = this.dom.reels[reelIndex];
             if (!reelEl) return;
 
             const symbols = Array.from(reelEl.querySelectorAll('.symbol'));
 
             // Create new array representing the reel
-            const symbolTexts = symbols.map(s => s.textContent);
+            const symbolTexts = symbols.map((s) => s.textContent);
 
             // Remove empty symbols and shift down
-            const nonEmpty = symbolTexts.filter(text => text !== '');
+            const nonEmpty = symbolTexts.filter((text) => text !== '');
             const emptyCount = symbolTexts.length - nonEmpty.length;
 
             // Add empty spaces at the top
@@ -95,14 +93,12 @@ export class CascadeRenderer {
             });
         });
 
-        await new Promise(resolve =>
-            setTimeout(resolve, FEATURES_CONFIG.cascade.dropDelay)
-        );
+        await new Promise((resolve) => setTimeout(resolve, FEATURES_CONFIG.cascade.dropDelay));
 
         // Remove dropping class
-        this.dom.reels.forEach(reel => {
+        this.dom.reels.forEach((reel) => {
             if (!reel) return;
-            reel.querySelectorAll('.symbol.dropping').forEach(s =>
+            reel.querySelectorAll('.symbol.dropping').forEach((s) =>
                 s.classList.remove('dropping')
             );
         });
@@ -116,12 +112,12 @@ export class CascadeRenderer {
      */
     async fillEmptySpaces(winningPositions, getNewSymbol) {
         const reelsToProcess = new Set();
-        winningPositions.forEach(pos => {
+        winningPositions.forEach((pos) => {
             const [reel] = pos.split('-').map(Number);
             reelsToProcess.add(reel);
         });
 
-        reelsToProcess.forEach(reelIndex => {
+        reelsToProcess.forEach((reelIndex) => {
             const reelEl = this.dom.reels[reelIndex];
             if (!reelEl) return;
 
@@ -139,19 +135,15 @@ export class CascadeRenderer {
             });
         });
 
-        await new Promise(resolve =>
-            setTimeout(resolve, FEATURES_CONFIG.cascade.fillDelay)
-        );
+        await new Promise((resolve) => setTimeout(resolve, FEATURES_CONFIG.cascade.fillDelay));
 
         // Remove filling class
-        this.dom.reels.forEach(reel => {
+        this.dom.reels.forEach((reel) => {
             if (!reel) return;
-            reel.querySelectorAll('.symbol.filling').forEach(s =>
-                s.classList.remove('filling')
-            );
+            reel.querySelectorAll('.symbol.filling').forEach((s) => s.classList.remove('filling'));
         });
 
-        await new Promise(resolve =>
+        await new Promise((resolve) =>
             setTimeout(resolve, FEATURES_CONFIG.cascade.evaluationDelay)
         );
     }

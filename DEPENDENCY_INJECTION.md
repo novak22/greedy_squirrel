@@ -9,7 +9,9 @@ Implemented a lightweight DI container to manage dependencies and improve testab
 ## What Was Built
 
 ### 1. DIContainer (`src/core/DIContainer.js`)
+
 Lightweight container with:
+
 - Singleton/transient lifecycles
 - Auto-resolution of constructor dependencies
 - Factory functions for complex initialization
@@ -17,28 +19,33 @@ Lightweight container with:
 - Scoped containers for testing
 
 ### 2. ServiceRegistry (`src/core/ServiceRegistry.js`)
+
 Centralized registration of all game services:
+
 - Core engine (StateManager, EventBus, GameState, RNG)
 - Features (FreeSpins, BonusGame, Cascade, etc.)
 - Progression (LevelSystem, Achievements, etc.)
 - UI (UIController, SoundManager, etc.)
 
 ### 3. Example Refactored Feature
+
 `TurboMode.refactored.js` shows the pattern:
+
 - Before: Receives entire game instance
 - After: Receives only `{ eventBus, dom }`
 
 ## Benefits
 
 ### Before DI
+
 ```javascript
 class TurboMode {
     constructor(slotMachine) {
-        this.game = slotMachine;  // Everything!
+        this.game = slotMachine; // Everything!
     }
 
     toggle() {
-        this.game.showMessage('...');  // Tight coupling
+        this.game.showMessage('...'); // Tight coupling
     }
 }
 
@@ -47,21 +54,23 @@ const turboMode = new TurboMode(entireGameInstance);
 ```
 
 **Problems:**
+
 - Can't test without full game
 - Unclear dependencies
 - Circular reference risk
 - Hard to mock
 
 ### After DI
+
 ```javascript
 class TurboMode {
     constructor({ eventBus, dom }) {
-        this.eventBus = eventBus;  // Only what it needs
+        this.eventBus = eventBus; // Only what it needs
         this.dom = dom;
     }
 
     toggle() {
-        this.eventBus.emit('message:show', '...');  // Loose coupling
+        this.eventBus.emit('message:show', '...'); // Loose coupling
     }
 }
 
@@ -73,6 +82,7 @@ const turboMode = new TurboMode({
 ```
 
 **Benefits:**
+
 - ✅ Testable in isolation
 - ✅ Clear dependencies
 - ✅ No circular references
@@ -136,30 +146,34 @@ expect(mockEventBus.emit).toHaveBeenCalledWith('message:show', '...');
 ## Migration Strategy
 
 ### Phase 1: Infrastructure (✅ Complete)
+
 - [x] DIContainer implementation
 - [x] ServiceRegistry setup
 - [x] Example refactored feature (TurboMode)
 
 ### Phase 2: Gradual Feature Migration
+
 Refactor features one at a time:
 
 1. **Simple features first:**
-   - TurboMode ✅ (example done)
-   - SoundManager
-   - SpinHistory
+    - TurboMode ✅ (example done)
+    - SoundManager
+    - SpinHistory
 
 2. **Medium complexity:**
-   - Autoplay
-   - Gamble
-   - VisualEffects
+    - Autoplay
+    - Gamble
+    - VisualEffects
 
 3. **Complex features:**
-   - FreeSpins
-   - BonusGame
-   - Cascade
+    - FreeSpins
+    - BonusGame
+    - Cascade
 
 ### Phase 3: Core Refactor
+
 After features are migrated:
+
 - SlotMachine uses container
 - GameOrchestrator uses container
 - Remove manual dependency wiring
@@ -167,6 +181,7 @@ After features are migrated:
 ## Refactoring Pattern
 
 ### Step 1: Identify Dependencies
+
 ```javascript
 // OLD: What does this class actually use?
 class MyFeature {
@@ -178,6 +193,7 @@ class MyFeature {
 ```
 
 ### Step 2: Extract to Constructor Params
+
 ```javascript
 // NEW: Explicit dependencies
 class MyFeature {
@@ -190,6 +206,7 @@ class MyFeature {
 ```
 
 ### Step 3: Replace Direct Calls with Events
+
 ```javascript
 // OLD: Direct coupling
 this.game.showMessage('Win!');
@@ -199,12 +216,9 @@ this.eventBus.emit('message:show', 'Win!');
 ```
 
 ### Step 4: Register in ServiceRegistry
+
 ```javascript
-container.singleton('myFeature', MyFeature, [
-    'gameState',
-    'eventBus',
-    'soundManager'
-]);
+container.singleton('myFeature', MyFeature, ['gameState', 'eventBus', 'soundManager']);
 ```
 
 ## API Reference
@@ -212,6 +226,7 @@ container.singleton('myFeature', MyFeature, [
 ### DIContainer Methods
 
 #### `singleton(name, factory, deps = [])`
+
 Register service created once and reused.
 
 ```javascript
@@ -220,6 +235,7 @@ container.singleton('gameState', GameState, ['stateManager']);
 ```
 
 #### `transient(name, factory, deps = [])`
+
 Register service created fresh each time.
 
 ```javascript
@@ -227,6 +243,7 @@ container.transient('randomGen', RandomGenerator);
 ```
 
 #### `value(name, value)`
+
 Register value directly (no factory).
 
 ```javascript
@@ -235,6 +252,7 @@ container.value('debug', true);
 ```
 
 #### `factory(name, factoryFn)`
+
 Register custom factory function.
 
 ```javascript
@@ -245,6 +263,7 @@ container.factory('rng', (c) => {
 ```
 
 #### `resolve(name)`
+
 Get service instance (auto-resolves dependencies).
 
 ```javascript
@@ -252,6 +271,7 @@ const eventBus = container.resolve('eventBus');
 ```
 
 #### `has(name)`
+
 Check if service is registered.
 
 ```javascript
@@ -259,6 +279,7 @@ if (container.has('myService')) { ... }
 ```
 
 #### `createScope()`
+
 Create child container (inherits registrations, separate instances).
 
 ```javascript
@@ -270,6 +291,7 @@ testScope.value('eventBus', mockEventBus);
 ## Testing Examples
 
 ### Unit Test with Mocks
+
 ```javascript
 import { DIContainer } from '../src/core/DIContainer.js';
 import { TurboMode } from '../src/features/TurboMode.refactored.js';
@@ -308,6 +330,7 @@ describe('TurboMode', () => {
 ```
 
 ### Integration Test with Real Services
+
 ```javascript
 describe('Feature Integration', () => {
     let container;
@@ -335,6 +358,7 @@ describe('Feature Integration', () => {
 ## Best Practices
 
 ### ✅ DO
+
 - Register services in ServiceRegistry
 - Use minimal dependencies (only what you need)
 - Use events for cross-feature communication
@@ -342,6 +366,7 @@ describe('Feature Integration', () => {
 - Use factory functions for complex initialization
 
 ### ❌ DON'T
+
 - Pass entire game instance to features
 - Create circular dependencies
 - Resolve services in constructors

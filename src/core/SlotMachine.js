@@ -1,5 +1,5 @@
 // Main SlotMachine class with Phase 1, 2, 3 & 4 enhancements
-import { getAllSymbolEmojis, getSymbolsForReel } from '../config/symbols.js';
+import { getSymbolsForReel } from '../config/symbols.js';
 import { GAME_CONFIG } from '../config/game.js';
 import { FEATURES_CONFIG } from '../config/features.js';
 import { RNG } from '../../SlotMachineEngine/src/utils/RNG.js';
@@ -23,7 +23,7 @@ import { Gamble } from '../features/Gamble.js';
 import { BuyBonus } from '../features/BuyBonus.js';
 import { WinAnticipation } from '../features/WinAnticipation.js';
 import { TimerManager } from '../utils/TimerManager.js';
-import { ErrorHandler, ERROR_TYPES } from './ErrorHandler.js';
+import { ErrorHandler } from './ErrorHandler.js';
 import { SpinEngine } from './SpinEngine.js';
 import { FeatureManager } from './FeatureManager.js';
 import { UIFacade } from '../ui/UIFacade.js';
@@ -157,7 +157,6 @@ export class SlotMachine {
         // Maintain backward compatible UI reference
         this.ui = this.uiFacade;
         this.ui.applySymbolClasses = (symbol, text) => this.applySymbolClasses(symbol, text);
-
     }
 
     /**
@@ -214,7 +213,12 @@ export class SlotMachine {
      * @returns {Promise<void>} Resolves when reel stops spinning
      */
     spinReel(reelIndex, duration, predeterminedPosition = null, predeterminedSymbols = null) {
-        return this.spinEngine.spinReel(reelIndex, duration, predeterminedPosition, predeterminedSymbols);
+        return this.spinEngine.spinReel(
+            reelIndex,
+            duration,
+            predeterminedPosition,
+            predeterminedSymbols
+        );
     }
 
     /**

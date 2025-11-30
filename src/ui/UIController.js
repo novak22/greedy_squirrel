@@ -139,11 +139,10 @@ export class UIController {
             this.dom.closeStats.addEventListener('click', onToggle);
         }
 
-        this.dom.statsTabs?.forEach(tab => {
+        this.dom.statsTabs?.forEach((tab) => {
             tab.addEventListener('click', () => onTabChange(tab.dataset.tab));
         });
     }
-
 
     /**
      * Highlight winning symbol positions
@@ -154,7 +153,7 @@ export class UIController {
 
         if (!winningPositions || winningPositions.size === 0) return;
 
-        winningPositions.forEach(pos => {
+        winningPositions.forEach((pos) => {
             const [reel, row] = pos.split('-').map(Number);
             const reelEl = this.dom.reels[reel];
             if (reelEl) {
@@ -176,8 +175,10 @@ export class UIController {
 
         if (!winningLines || winningLines.length === 0) return;
 
-        winningLines.forEach(lineIndex => {
-            const payline = this.dom.paylines?.find(line => line.classList.contains(`payline-${lineIndex + 1}`));
+        winningLines.forEach((lineIndex) => {
+            const payline = this.dom.paylines?.find((line) =>
+                line.classList.contains(`payline-${lineIndex + 1}`)
+            );
             if (payline) {
                 payline.classList.add('active');
             }
@@ -188,7 +189,7 @@ export class UIController {
      * Hide all paylines
      */
     hidePaylines() {
-        this.dom.paylines?.forEach(line => {
+        this.dom.paylines?.forEach((line) => {
             line.classList.remove('active');
         });
     }
@@ -197,9 +198,9 @@ export class UIController {
      * Clear winning symbols highlights
      */
     clearWinningSymbols() {
-        this.dom.reels.forEach(reel => {
+        this.dom.reels.forEach((reel) => {
             const winningSymbols = reel?.querySelectorAll('.symbol.winning') || [];
-            winningSymbols.forEach(symbol => symbol.classList.remove('winning'));
+            winningSymbols.forEach((symbol) => symbol.classList.remove('winning'));
         });
     }
 
@@ -210,7 +211,7 @@ export class UIController {
     }
 
     setActiveStatsTab(tab) {
-        this.dom.statsTabs?.forEach(btn => {
+        this.dom.statsTabs?.forEach((btn) => {
             btn.classList.toggle('active', btn.dataset.tab === tab);
         });
     }
@@ -265,12 +266,12 @@ export class UIController {
     animateWinCounter(element, finalAmount) {
         return new Promise((resolve) => {
             const isTurbo = this.state.select('controls.turboMode');
-            const duration = isTurbo ?
-                GAME_CONFIG.animations.winCounterFast :
-                GAME_CONFIG.animations.winCounterNormal;
-            const steps = isTurbo ?
-                GAME_CONFIG.animations.winCounterStepsFast :
-                GAME_CONFIG.animations.winCounterStepsNormal;
+            const duration = isTurbo
+                ? GAME_CONFIG.animations.winCounterFast
+                : GAME_CONFIG.animations.winCounterNormal;
+            const steps = isTurbo
+                ? GAME_CONFIG.animations.winCounterStepsFast
+                : GAME_CONFIG.animations.winCounterStepsNormal;
 
             let currentStep = 0;
             const increment = finalAmount / steps;
@@ -352,9 +353,7 @@ export class UIController {
         `;
         overlay.classList.add('show');
 
-        await new Promise(resolve =>
-            setTimeout(resolve, GAME_CONFIG.animations.levelUpMessage)
-        );
+        await new Promise((resolve) => setTimeout(resolve, GAME_CONFIG.animations.levelUpMessage));
 
         overlay.classList.remove('show');
     }
@@ -404,7 +403,6 @@ export class UIController {
             counter.style.display = 'none';
         }
     }
-
 
     /**
      * Cleanup - remove event listeners and subscriptions

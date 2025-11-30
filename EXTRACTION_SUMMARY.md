@@ -24,24 +24,28 @@ SlotMachineEngine/
 ## Core Components
 
 ### StateManager.js
+
 - Observable state container with subscriptions
 - Immutable updates with versioning
 - Batch update support
 - Nested property paths (e.g., 'game.credits')
 
 ### GameState.js
+
 - Type-safe wrapper around StateManager
 - Validated getters/setters for credits, bets, wins, reels
 - Checkpoint/restore for error recovery
 - Convenience methods (addCredits, deductCredits)
 
 ### EventBus.js
+
 - Decoupled pub/sub pattern
 - One-time event listeners
 - Named events (GAME_EVENTS constants)
 - Error-safe event handlers
 
 ### PaylineEvaluator.js
+
 - **Now instance-based** (was static)
 - Configurable via constructor
 - Wild substitution logic
@@ -50,6 +54,7 @@ SlotMachineEngine/
 - Optional metrics integration
 
 ### RNG.js
+
 - **Now instance-based** (was static)
 - Weighted symbol generation per reel
 - Reel strip generation
@@ -58,6 +63,7 @@ SlotMachineEngine/
 ## API Changes
 
 ### Before (Static):
+
 ```javascript
 import { RNG } from '../utils/RNG.js';
 const reelStrip = RNG.generateReelStrip(0, 20);
@@ -65,6 +71,7 @@ const winInfo = PaylineEvaluator.evaluateWins(result, bet);
 ```
 
 ### After (Instance-based):
+
 ```javascript
 import { RNG } from '../../SlotMachineEngine/src/utils/RNG.js';
 
@@ -74,11 +81,11 @@ const reelStrip = rng.generateReelStrip(0, 20);
 
 // Initialize PaylineEvaluator with config
 const evaluator = new PaylineEvaluator({
-  symbols: SYMBOLS,
-  symbolHelpers: { getSymbolByEmoji },
-  paylines: GAME_CONFIG.paylines,
-  reelCount: 5,
-  metrics: Metrics
+    symbols: SYMBOLS,
+    symbolHelpers: { getSymbolByEmoji },
+    paylines: GAME_CONFIG.paylines,
+    reelCount: 5,
+    metrics: Metrics
 });
 const winInfo = evaluator.evaluateWins(result, bet);
 ```
@@ -88,30 +95,31 @@ const winInfo = evaluator.evaluateWins(result, bet);
 ### Files Updated in Greedy Squirrel:
 
 1. **src/core/SlotMachine.js**
-   - Import from SlotMachineEngine package
-   - Initialize RNG instance
-   - Pass RNG to SpinEngine
+    - Import from SlotMachineEngine package
+    - Initialize RNG instance
+    - Pass RNG to SpinEngine
 
 2. **src/core/GameOrchestrator.js**
-   - Import PaylineEvaluator from package
-   - Initialize PaylineEvaluator instance
-   - Use instance methods instead of static
+    - Import PaylineEvaluator from package
+    - Initialize PaylineEvaluator instance
+    - Use instance methods instead of static
 
 3. **src/core/SpinEngine.js**
-   - Import EventBus from package
-   - Accept RNG instance in constructor
-   - Use instance methods
+    - Import EventBus from package
+    - Accept RNG instance in constructor
+    - Use instance methods
 
 4. **src/features/Cascade.js**
-   - Remove RNG import
-   - Use game.rng instance
+    - Remove RNG import
+    - Use game.rng instance
 
 5. **src/ui/UIController.js**
-   - Import GAME_EVENTS from package
+    - Import GAME_EVENTS from package
 
 ## What Remains in Greedy Squirrel
 
 **Game-Specific Components:**
+
 - UI (UIController, UIFacade, VisualEffects, Settings, SpinHistory)
 - Features (FreeSpins, BonusGame, Cascade, Autoplay, Gamble, BuyBonus, WinAnticipation, TurboMode)
 - Progression (LevelSystem, Achievements, DailyChallenges, Statistics)
@@ -133,12 +141,12 @@ const winInfo = evaluator.evaluateWins(result, bet);
 
 ```javascript
 import {
-  StateManager,
-  createInitialState,
-  GameState,
-  EventBus,
-  PaylineEvaluator,
-  RNG
+    StateManager,
+    createInitialState,
+    GameState,
+    EventBus,
+    PaylineEvaluator,
+    RNG
 } from './SlotMachineEngine/src/index.js';
 
 // 1. Initialize state
@@ -147,15 +155,15 @@ const gameState = new GameState(stateManager);
 
 // 2. Initialize RNG
 const rng = RNG.create((reelIndex) => {
-  return yourSymbols.filter(s => s.allowedReels.includes(reelIndex));
+    return yourSymbols.filter((s) => s.allowedReels.includes(reelIndex));
 });
 
 // 3. Initialize evaluator
 const evaluator = new PaylineEvaluator({
-  symbols: yourSymbols,
-  symbolHelpers: { getSymbolByEmoji: yourHelper },
-  paylines: yourPaylines,
-  reelCount: 5
+    symbols: yourSymbols,
+    symbolHelpers: { getSymbolByEmoji: yourHelper },
+    paylines: yourPaylines,
+    reelCount: 5
 });
 
 // 4. Initialize event bus
@@ -167,7 +175,7 @@ const reelStrip = rng.generateReelStrip(0, 20);
 const wins = evaluator.evaluateWins(reelResult, bet);
 
 events.on('win:detected', (data) => {
-  console.log('Win:', data.amount);
+    console.log('Win:', data.amount);
 });
 ```
 

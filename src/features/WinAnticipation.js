@@ -136,7 +136,7 @@ export class WinAnticipation {
         if (!finalResult || finalResult.length < 4) return false;
 
         // Check main payline (middle row) for 4+ matching symbols
-        const payline = finalResult.map(reel => reel[1]);
+        const payline = finalResult.map((reel) => reel[1]);
         const highValueSymbols = getHighValueSymbols();
 
         // Count consecutive matches from left
@@ -144,7 +144,11 @@ export class WinAnticipation {
         let currentSymbol = payline[0];
 
         for (let i = 1; i < payline.length; i++) {
-            if (payline[i] === currentSymbol || payline[i] === SYMBOLS.WILD.emoji || currentSymbol === SYMBOLS.WILD.emoji) {
+            if (
+                payline[i] === currentSymbol ||
+                payline[i] === SYMBOLS.WILD.emoji ||
+                currentSymbol === SYMBOLS.WILD.emoji
+            ) {
                 matches++;
             } else {
                 break;
@@ -152,7 +156,10 @@ export class WinAnticipation {
         }
 
         // Big win if 4+ matches and includes high-value symbols
-        return matches >= 4 && (highValueSymbols.includes(currentSymbol) || highValueSymbols.includes(payline[0]));
+        return (
+            matches >= 4 &&
+            (highValueSymbols.includes(currentSymbol) || highValueSymbols.includes(payline[0]))
+        );
     }
 
     /**
@@ -188,9 +195,13 @@ export class WinAnticipation {
             overlay.className = `win-overlay ${className} show`;
 
             // Clear after a moment
-            this.timerManager.setTimeout(() => {
-                overlay.classList.remove('show', className);
-            }, GAME_CONFIG.animations.anticipationDisplay, 'anticipation');
+            this.timerManager.setTimeout(
+                () => {
+                    overlay.classList.remove('show', className);
+                },
+                GAME_CONFIG.animations.anticipationDisplay,
+                'anticipation'
+            );
         }
 
         // Highlight relevant symbols
@@ -205,16 +216,16 @@ export class WinAnticipation {
      */
     highlightAnticipationSymbols(type) {
         const symbols = {
-            'scatter': SYMBOLS.SCATTER.emoji,
-            'bonus': SYMBOLS.BONUS.emoji,
-            'bigwin': null // Will highlight matching symbols
+            scatter: SYMBOLS.SCATTER.emoji,
+            bonus: SYMBOLS.BONUS.emoji,
+            bigwin: null // Will highlight matching symbols
         };
 
         const targetSymbol = symbols[type];
         if (!targetSymbol && type !== 'bigwin') return;
 
         // Find and highlight the relevant symbols
-        document.querySelectorAll('.symbol').forEach(symbol => {
+        document.querySelectorAll('.symbol').forEach((symbol) => {
             if (type === 'bigwin') {
                 // Highlight matching symbols on first two reels
                 const parent = symbol.closest('.reel');
@@ -227,11 +238,15 @@ export class WinAnticipation {
         });
 
         // Remove anticipation class after effect
-        this.timerManager.setTimeout(() => {
-            document.querySelectorAll('.symbol.anticipation').forEach(s => {
-                s.classList.remove('anticipation');
-            });
-        }, GAME_CONFIG.animations.anticipationHighlight, 'anticipation');
+        this.timerManager.setTimeout(
+            () => {
+                document.querySelectorAll('.symbol.anticipation').forEach((s) => {
+                    s.classList.remove('anticipation');
+                });
+            },
+            GAME_CONFIG.animations.anticipationHighlight,
+            'anticipation'
+        );
     }
 
     /**
@@ -256,7 +271,7 @@ export class WinAnticipation {
      */
     reset() {
         this.anticipationActive = false;
-        document.querySelectorAll('.symbol.anticipation').forEach(s => {
+        document.querySelectorAll('.symbol.anticipation').forEach((s) => {
             s.classList.remove('anticipation');
         });
     }

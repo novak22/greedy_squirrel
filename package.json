@@ -1,0 +1,17 @@
+{
+    "name": "greedy_squirrel",
+    "version": "1.0.0",
+    "description": "Greedy Squirrel slot machine web game",
+    "type": "module",
+    "private": true,
+    "scripts": {
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "format": "prettier . --check",
+        "format:write": "prettier . --write"
+    },
+    "devDependencies": {
+        "eslint": "^8.57.0",
+        "prettier": "^3.3.3"
+    }
+}

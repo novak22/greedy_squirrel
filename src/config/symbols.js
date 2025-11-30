@@ -132,17 +132,17 @@ export const SYMBOLS = {
 
 // Get all symbol emojis as array
 export function getAllSymbolEmojis() {
-    return Object.values(SYMBOLS).map(s => s.emoji);
+    return Object.values(SYMBOLS).map((s) => s.emoji);
 }
 
 // Get symbol config by emoji
 export function getSymbolByEmoji(emoji) {
-    return Object.values(SYMBOLS).find(s => s.emoji === emoji);
+    return Object.values(SYMBOLS).find((s) => s.emoji === emoji);
 }
 
 // Get symbols allowed on specific reel
 export function getSymbolsForReel(reelIndex) {
-    return Object.values(SYMBOLS).filter(symbol => {
+    return Object.values(SYMBOLS).filter((symbol) => {
         if (!symbol.allowedReels) {
             return true; // If no restriction, allowed on all reels
         }
@@ -153,13 +153,13 @@ export function getSymbolsForReel(reelIndex) {
 // Get premium symbol emojis
 export function getPremiumSymbols() {
     return Object.values(SYMBOLS)
-        .filter(s => s.tier === 'premium')
-        .map(s => s.emoji);
+        .filter((s) => s.tier === 'premium')
+        .map((s) => s.emoji);
 }
 
 // Get high-value symbol emojis (for big win detection)
 export function getHighValueSymbols() {
     return Object.values(SYMBOLS)
-        .filter(s => s.type === SYMBOL_TYPES.REGULAR && s.tier === 'premium')
-        .map(s => s.emoji);
+        .filter((s) => s.type === SYMBOL_TYPES.REGULAR && s.tier === 'premium')
+        .map((s) => s.emoji);
 }

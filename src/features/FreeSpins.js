@@ -62,7 +62,12 @@ export class FreeSpins {
 
         // Update UI (delegate to renderer)
         if (this.renderer) {
-            this.renderer.updateUI(this.active, this.remainingSpins, this.totalSpins, this.multiplier);
+            this.renderer.updateUI(
+                this.active,
+                this.remainingSpins,
+                this.totalSpins,
+                this.multiplier
+            );
         }
     }
 
@@ -88,7 +93,12 @@ export class FreeSpins {
 
             // Update UI (delegate to renderer)
             if (this.renderer) {
-                this.renderer.updateUI(this.active, this.remainingSpins, this.totalSpins, this.multiplier);
+                this.renderer.updateUI(
+                    this.active,
+                    this.remainingSpins,
+                    this.totalSpins,
+                    this.multiplier
+                );
             }
         }
     }
@@ -106,7 +116,12 @@ export class FreeSpins {
 
         // Update UI (delegate to renderer)
         if (this.renderer) {
-            this.renderer.updateUI(this.active, this.remainingSpins, this.totalSpins, this.multiplier);
+            this.renderer.updateUI(
+                this.active,
+                this.remainingSpins,
+                this.totalSpins,
+                this.multiplier
+            );
         }
 
         return this.remainingSpins > 0;
@@ -138,7 +153,12 @@ export class FreeSpins {
 
         // Show summary (delegate to renderer)
         if (this.renderer) {
-            await this.renderer.showSummary(this.totalSpins, this.totalWon, this.multiplier, this.retriggered);
+            await this.renderer.showSummary(
+                this.totalSpins,
+                this.totalWon,
+                this.multiplier,
+                this.retriggered
+            );
         }
 
         // Reset counters
@@ -156,7 +176,6 @@ export class FreeSpins {
 
         return wonAmount;
     }
-
 
     /**
      * Check if currently in free spins mode

@@ -36,14 +36,14 @@ export class Autoplay {
 
         // Autoplay settings
         this.settings = {
-            stopOnWin: false,             // Stop if any win occurs
-            stopOnBigWin: true,           // Stop if win > X * bet
-            bigWinMultiplier: 50,         // What counts as a big win
-            stopOnFeature: false,         // Stop on free spins/bonus
-            stopOnBalance: false,         // Stop if balance increases by X
-            balanceIncrease: 1000,        // Target balance increase
-            stopOnBalanceLow: true,       // Stop if balance < X
-            balanceLowLimit: 100          // Minimum balance to continue
+            stopOnWin: false, // Stop if any win occurs
+            stopOnBigWin: true, // Stop if win > X * bet
+            bigWinMultiplier: 50, // What counts as a big win
+            stopOnFeature: false, // Stop on free spins/bonus
+            stopOnBalance: false, // Stop if balance increases by X
+            balanceIncrease: 1000, // Target balance increase
+            stopOnBalanceLow: true, // Stop if balance < X
+            balanceLowLimit: 100 // Minimum balance to continue
         };
 
         this.startingBalance = 0;
@@ -138,12 +138,18 @@ export class Autoplay {
         if (this.isActive) {
             // Delay before next spin (reduced in turbo mode)
             const turbo = this.turboMode || this.game.turboMode;
-            const delay = turbo.isActive ? GAME_CONFIG.autoplay.turboDelay : GAME_CONFIG.autoplay.normalDelay;
+            const delay = turbo.isActive
+                ? GAME_CONFIG.autoplay.turboDelay
+                : GAME_CONFIG.autoplay.normalDelay;
             this.clearNextSpinTimeout();
-            this.nextSpinTimeout = this.timerManager.setTimeout(() => {
-                this.nextSpinTimeout = null;
-                this.executeNextSpin();
-            }, delay, 'autoplay');
+            this.nextSpinTimeout = this.timerManager.setTimeout(
+                () => {
+                    this.nextSpinTimeout = null;
+                    this.executeNextSpin();
+                },
+                delay,
+                'autoplay'
+            );
         } else {
             this.stop();
         }
@@ -187,7 +193,10 @@ export class Autoplay {
         }
 
         // Stop on low balance
-        if (this.settings.stopOnBalanceLow && this.game.state.getCredits() < this.settings.balanceLowLimit) {
+        if (
+            this.settings.stopOnBalanceLow &&
+            this.game.state.getCredits() < this.settings.balanceLowLimit
+        ) {
             this.stop('Balance too low');
             return true;
         }
