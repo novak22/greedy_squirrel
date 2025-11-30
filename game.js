@@ -1,6 +1,6 @@
 // Main entry point for Greedy Squirrel slot machine
 // Features: Free Spins, Bonus Game, Cascading Wins, Progression System
-import { SlotMachine } from './src/core/SlotMachine.js';
+import { GameOrchestrator } from './src/core/GameOrchestrator.js';
 import { GAME_EVENTS } from './src/core/EventBus.js';
 import { Logger } from './src/utils/Logger.js';
 import { assertValidConfigs } from './src/config/validation.js';
@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error('Game configuration validation failed. Check console for details.');
     }
 
-    const game = new SlotMachine();
+    const game = new GameOrchestrator();
 
     // Expose to window for debugging
     window.game = game;
