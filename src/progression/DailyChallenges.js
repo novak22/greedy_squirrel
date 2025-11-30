@@ -43,7 +43,7 @@ export class DailyChallenges {
 
         // Shuffle and pick random challenges
         const shuffled = [...allChallenges].sort(() => Math.random() - 0.5);
-        this.challenges = shuffled.slice(0, count).map(challenge => ({
+        this.challenges = shuffled.slice(0, count).map((challenge) => ({
             ...challenge,
             target: challenge.targetGenerator(),
             progress: 0,
@@ -61,7 +61,7 @@ export class DailyChallenges {
     updateChallengeProgress(type, amount = 1) {
         let anyUpdated = false;
 
-        this.challenges.forEach(challenge => {
+        this.challenges.forEach((challenge) => {
             if (challenge.id === type && !challenge.completed) {
                 challenge.progress += amount;
 
@@ -83,7 +83,7 @@ export class DailyChallenges {
      * Claim challenge reward
      */
     async claimChallengeReward(challengeId) {
-        const challenge = this.challenges.find(c => c.id === challengeId);
+        const challenge = this.challenges.find((c) => c.id === challengeId);
 
         if (!challenge || !challenge.completed || challenge.claimed) {
             return false;
@@ -94,7 +94,9 @@ export class DailyChallenges {
         this.game.updateDisplay();
         this.game.saveGameState();
 
-        await this.game.showMessage(`Challenge Complete!\n${challenge.name}\n+${challenge.reward} Credits`);
+        await this.game.showMessage(
+            `Challenge Complete!\n${challenge.name}\n+${challenge.reward} Credits`
+        );
 
         return true;
     }
@@ -115,7 +117,7 @@ export class DailyChallenges {
 
         let html = '<div class="challenges-list">';
 
-        this.challenges.forEach(challenge => {
+        this.challenges.forEach((challenge) => {
             const progress = Math.min((challenge.progress / challenge.target) * 100, 100);
             const description = challenge.description.replace('{target}', challenge.target);
 
@@ -131,10 +133,13 @@ export class DailyChallenges {
                     </div>
                     <div class="challenge-stats">${challenge.progress} / ${challenge.target}</div>
                     <div class="challenge-reward">
-                        ${challenge.completed && !challenge.claimed ?
-                            `<button class="btn-claim" onclick="window.game.dailyChallenges.claimChallengeReward('${challenge.id}')">Claim ${challenge.reward} Credits</button>` :
-                            challenge.claimed ? '✓ Claimed' :
-                            `Reward: ${challenge.reward} Credits`}
+                        ${
+                            challenge.completed && !challenge.claimed
+                                ? `<button class="btn-claim" onclick="window.game.dailyChallenges.claimChallengeReward('${challenge.id}')">Claim ${challenge.reward} Credits</button>`
+                                : challenge.claimed
+                                  ? '✓ Claimed'
+                                  : `Reward: ${challenge.reward} Credits`
+                        }
                     </div>
                 </div>
             `;

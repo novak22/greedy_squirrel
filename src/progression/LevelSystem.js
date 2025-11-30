@@ -29,7 +29,9 @@ export class LevelSystem {
 
         switch (source) {
             case 'spin':
-                xpGained = config.spinBase + (this.game.state.getCurrentBet() / 10) * config.spinMultiplier;
+                xpGained =
+                    config.spinBase +
+                    (this.game.state.getCurrentBet() / 10) * config.spinMultiplier;
                 break;
             case 'win':
                 xpGained = (amount / 20) * config.winMultiplier;

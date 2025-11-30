@@ -59,8 +59,8 @@ export class SpinHistory {
 
         const totalWagered = this.history.reduce((sum, spin) => sum + spin.bet, 0);
         const totalWon = this.history.reduce((sum, spin) => sum + spin.win, 0);
-        const wins = this.history.filter(spin => spin.win > 0).length;
-        const biggestWin = Math.max(...this.history.map(spin => spin.win));
+        const wins = this.history.filter((spin) => spin.win > 0).length;
+        const biggestWin = Math.max(...this.history.map((spin) => spin.win));
 
         return {
             totalSpins: this.history.length,
@@ -123,11 +123,20 @@ export class SpinHistory {
             return;
         }
 
-        const html = this.history.map((spin, index) => {
-            const profitClass = spin.profit > 0 ? 'profit-positive' : spin.profit < 0 ? 'profit-negative' : 'profit-neutral';
-            const featuresHTML = spin.features.length > 0 ? `<div class="history-features">${this.formatFeatures(spin.features)}</div>` : '';
+        const html = this.history
+            .map((spin) => {
+                const profitClass =
+                    spin.profit > 0
+                        ? 'profit-positive'
+                        : spin.profit < 0
+                          ? 'profit-negative'
+                          : 'profit-neutral';
+                const featuresHTML =
+                    spin.features.length > 0
+                        ? `<div class="history-features">${this.formatFeatures(spin.features)}</div>`
+                        : '';
 
-            return `
+                return `
                 <div class="history-item ${spin.isBigWin ? 'big-win' : ''}">
                     <div class="history-item-details">
                         <div class="history-bet">Bet: ${spin.bet}</div>
@@ -138,7 +147,8 @@ export class SpinHistory {
                     ${featuresHTML}
                 </div>
             `;
-        }).join('');
+            })
+            .join('');
 
         container.innerHTML = html;
 
@@ -186,7 +196,7 @@ export class SpinHistory {
             scatter: '✨'
         };
 
-        return features.map(feature => icons[feature] || feature).join(' ');
+        return features.map((feature) => icons[feature] || feature).join(' ');
     }
 
     /**

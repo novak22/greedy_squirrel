@@ -178,7 +178,7 @@ export class BonusGame {
 
         // Check if done
         if (this.picksRemaining <= 0) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise((resolve) => setTimeout(resolve, 1000));
             await this.end();
         }
     }
@@ -198,9 +198,7 @@ export class BonusGame {
             <div class="pick-value">${item.display}</div>
         `;
 
-        await new Promise(resolve =>
-            setTimeout(resolve, FEATURES_CONFIG.bonusGame.revealDelay)
-        );
+        await new Promise((resolve) => setTimeout(resolve, FEATURES_CONFIG.bonusGame.revealDelay));
     }
 
     /**
@@ -234,7 +232,6 @@ export class BonusGame {
             this.renderer.hidePickGame();
         }
     }
-
 
     /**
      * Check if bonus game is active

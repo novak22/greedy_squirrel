@@ -36,7 +36,7 @@ export class BonusGameRenderer {
         `;
         overlay.classList.add('show');
 
-        await new Promise(resolve =>
+        await new Promise((resolve) =>
             setTimeout(resolve, FEATURES_CONFIG.bonusGame.transitionDuration)
         );
 
@@ -119,9 +119,7 @@ export class BonusGameRenderer {
             <div class="pick-value">${item.display}</div>
         `;
 
-        await new Promise(resolve =>
-            setTimeout(resolve, FEATURES_CONFIG.bonusGame.revealDelay)
-        );
+        await new Promise((resolve) => setTimeout(resolve, FEATURES_CONFIG.bonusGame.revealDelay));
     }
 
     /**
@@ -163,7 +161,7 @@ export class BonusGameRenderer {
         `;
         overlay.classList.add('show');
 
-        await new Promise(resolve =>
+        await new Promise((resolve) =>
             setTimeout(resolve, FEATURES_CONFIG.bonusGame.transitionDuration)
         );
 

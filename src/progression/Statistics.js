@@ -162,8 +162,10 @@ export class Statistics {
      */
     getSessionStats() {
         const netProfit = this.session.won - this.session.wagered;
-        const winRate = this.session.spins > 0 ?
-            ((this.session.winCount / this.session.spins) * 100).toFixed(1) : 0;
+        const winRate =
+            this.session.spins > 0
+                ? ((this.session.winCount / this.session.spins) * 100).toFixed(1)
+                : 0;
         const sessionTime = this.getSessionTime();
 
         return {
@@ -179,8 +181,10 @@ export class Statistics {
      */
     getAllTimeStats() {
         const netProfit = this.allTime.totalWon - this.allTime.totalWagered;
-        const rtp = this.allTime.totalWagered > 0 ?
-            ((this.allTime.totalWon / this.allTime.totalWagered) * 100).toFixed(2) : 0;
+        const rtp =
+            this.allTime.totalWagered > 0
+                ? ((this.allTime.totalWon / this.allTime.totalWagered) * 100).toFixed(2)
+                : 0;
 
         return {
             ...this.allTime,

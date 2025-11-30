@@ -15,7 +15,7 @@ export class StatsRenderer {
      * @returns {string} HTML string
      */
     render(tab, data) {
-        switch(tab) {
+        switch (tab) {
             case 'session':
                 return this.renderSession(data.sessionStats);
             case 'allTime':
@@ -36,10 +36,10 @@ export class StatsRenderer {
      */
     renderSession(stats) {
         // Calculate derived stats (session stats don't include these pre-calculated)
-        const rtp = stats.wagered > 0 ? ((stats.won / stats.wagered) * 100) : 0;
-        const hitFrequency = stats.spins > 0 ? ((stats.winCount / stats.spins) * 100) : 0;
-        const bonusFrequency = stats.spins > 0 ? ((stats.bonusTriggers / stats.spins) * 100) : 0;
-        const averageWin = stats.winCount > 0 ? (stats.won / stats.winCount) : 0;
+        const rtp = stats.wagered > 0 ? (stats.won / stats.wagered) * 100 : 0;
+        const hitFrequency = stats.spins > 0 ? (stats.winCount / stats.spins) * 100 : 0;
+        const bonusFrequency = stats.spins > 0 ? (stats.bonusTriggers / stats.spins) * 100 : 0;
+        const averageWin = stats.winCount > 0 ? stats.won / stats.winCount : 0;
 
         return `
             <h3 style="color: #ffd700; margin-bottom: 20px;">🎮 Current Session</h3>
@@ -140,7 +140,9 @@ export class StatsRenderer {
             <h3 style="color: #ffd700; margin-bottom: 10px;">🏅 Achievements (${stats.unlocked}/${stats.total})</h3>
             <p style="text-align: center; color: #b0bec5; margin-bottom: 20px;">Completion: ${stats.completion}%</p>
             <div class="achievements-grid">
-                ${unlocked.map(a => `
+                ${unlocked
+                    .map(
+                        (a) => `
                     <div class="achievement-item unlocked">
                         <div class="achievement-item-icon">${a.icon}</div>
                         <div class="achievement-item-name">${a.name}</div>
@@ -148,15 +150,21 @@ export class StatsRenderer {
                         <div class="achievement-item-reward">+${a.reward} Credits</div>
                         <div class="achievement-item-date">Unlocked ${new Date(a.unlockedAt).toLocaleDateString()}</div>
                     </div>
-                `).join('')}
-                ${locked.map(a => `
+                `
+                    )
+                    .join('')}
+                ${locked
+                    .map(
+                        (a) => `
                     <div class="achievement-item locked">
                         <div class="achievement-item-icon">${a.icon}</div>
                         <div class="achievement-item-name">???</div>
                         <div class="achievement-item-desc">${a.description}</div>
                         <div class="achievement-item-reward">+${a.reward} Credits</div>
                     </div>
-                `).join('')}
+                `
+                    )
+                    .join('')}
             </div>
         `;
     }

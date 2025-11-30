@@ -119,7 +119,7 @@ export class GameState {
         if (value.length !== 5) {
             throw new Error(`Reel positions must have 5 elements, got ${value.length}`);
         }
-        if (!value.every(pos => typeof pos === 'number' && pos >= 0)) {
+        if (!value.every((pos) => typeof pos === 'number' && pos >= 0)) {
             throw new Error(`All reel positions must be non-negative numbers`);
         }
 

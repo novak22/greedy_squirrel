@@ -22,13 +22,7 @@ export class VisualEffects {
     createParticles(x, y, config = {}) {
         if (!this.particlesEnabled || !this.shouldAnimate()) return;
 
-        const {
-            count = 20,
-            emoji = '💰',
-            spread = 100,
-            duration = 1000,
-            gravity = 0.5
-        } = config;
+        const { count = 20, emoji = '💰', spread = 100, duration = 1000, gravity = 0.5 } = config;
 
         this.enqueueParticleEffect(() => {
             this.runParticleEffect(x, y, { count, emoji, spread, duration, gravity });
@@ -41,7 +35,8 @@ export class VisualEffects {
         const now = Date.now();
         const shouldQueue =
             this.activeParticleEffects >= this.maxConcurrentParticleEffects ||
-            (now - this.lastParticleEffectTime < this.effectDebounce && this.effectQueue.length > 0);
+            (now - this.lastParticleEffectTime < this.effectDebounce &&
+                this.effectQueue.length > 0);
 
         if (shouldQueue) {
             this.effectQueue.push({ effectRunner, duration });
@@ -65,7 +60,10 @@ export class VisualEffects {
     processParticleQueue() {
         if (!this.shouldAnimate() || this.effectQueue.length === 0) return;
 
-        while (this.effectQueue.length > 0 && this.activeParticleEffects < this.maxConcurrentParticleEffects) {
+        while (
+            this.effectQueue.length > 0 &&
+            this.activeParticleEffects < this.maxConcurrentParticleEffects
+        ) {
             const nextEffect = this.effectQueue.shift();
             if (!nextEffect) break;
             this.startParticleEffect(nextEffect.effectRunner, nextEffect.duration);
@@ -89,7 +87,7 @@ export class VisualEffects {
             particle.className = 'particle';
             particle.textContent = emoji;
             particle.style.position = 'absolute';
-            particle.style.fontSize = (Math.random() * 20 + 15) + 'px';
+            particle.style.fontSize = Math.random() * 20 + 15 + 'px';
 
             const angle = (Math.PI * 2 * i) / count;
             const velocity = spread * (0.5 + Math.random() * 0.5);
@@ -108,7 +106,8 @@ export class VisualEffects {
      * Animate a single particle
      */
     animateParticle(particle, vx, vy, duration, gravity) {
-        let x = 0, y = 0;
+        let x = 0,
+            y = 0;
         let currentVy = vy;
         const startTime = Date.now();
 
@@ -123,7 +122,7 @@ export class VisualEffects {
             y += currentVy * 0.05;
 
             particle.style.transform = `translate(${x}px, ${y}px)`;
-            particle.style.opacity = 1 - (elapsed / duration);
+            particle.style.opacity = 1 - elapsed / duration;
 
             requestAnimationFrame(animate);
         };
@@ -147,19 +146,49 @@ export class VisualEffects {
         // Different effects based on win size
         if (multiplier >= 100) {
             // Mega win - massive celebration
-            this.createParticles(centerX, centerY, { count: 50, emoji: '💎', spread: 200, duration: 2000 });
-            this.createParticles(centerX, centerY, { count: 30, emoji: '⭐', spread: 150, duration: 2000 });
+            this.createParticles(centerX, centerY, {
+                count: 50,
+                emoji: '💎',
+                spread: 200,
+                duration: 2000
+            });
+            this.createParticles(centerX, centerY, {
+                count: 30,
+                emoji: '⭐',
+                spread: 150,
+                duration: 2000
+            });
             this.showScreenFlash('gold');
         } else if (multiplier >= 50) {
             // Big win
-            this.createParticles(centerX, centerY, { count: 30, emoji: '💰', spread: 150, duration: 1500 });
-            this.createParticles(centerX, centerY, { count: 20, emoji: '✨', spread: 120, duration: 1500 });
+            this.createParticles(centerX, centerY, {
+                count: 30,
+                emoji: '💰',
+                spread: 150,
+                duration: 1500
+            });
+            this.createParticles(centerX, centerY, {
+                count: 20,
+                emoji: '✨',
+                spread: 120,
+                duration: 1500
+            });
         } else if (multiplier >= 20) {
             // Good win
-            this.createParticles(centerX, centerY, { count: 20, emoji: '💵', spread: 100, duration: 1200 });
+            this.createParticles(centerX, centerY, {
+                count: 20,
+                emoji: '💵',
+                spread: 100,
+                duration: 1200
+            });
         } else if (winAmount > 0) {
             // Small win
-            this.createParticles(centerX, centerY, { count: 10, emoji: '💛', spread: 80, duration: 1000 });
+            this.createParticles(centerX, centerY, {
+                count: 10,
+                emoji: '💛',
+                spread: 80,
+                duration: 1000
+            });
         }
     }
 
@@ -348,6 +377,7 @@ export class VisualEffects {
         if (!data) return;
 
         this.particlesEnabled = data.particlesEnabled !== undefined ? data.particlesEnabled : true;
-        this.animationsEnabled = data.animationsEnabled !== undefined ? data.animationsEnabled : true;
+        this.animationsEnabled =
+            data.animationsEnabled !== undefined ? data.animationsEnabled : true;
     }
 }

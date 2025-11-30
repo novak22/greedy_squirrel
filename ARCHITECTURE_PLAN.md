@@ -12,6 +12,7 @@ SlotMachine (1500+ lines)
 ```
 
 **Problems:**
+
 - Can't test game logic without DOM
 - State changes scattered across methods
 - UI updates interleaved with business logic
@@ -55,12 +56,14 @@ SlotMachine (1500+ lines)
 ## StateManager Design
 
 ### Responsibilities
+
 1. **Store all game state** in a single object
 2. **Notify subscribers** when state changes
 3. **Provide getters/setters** for type-safe access
 4. **Support nested paths** (e.g., `game.credits`, `features.freeSpins.active`)
 
 ### State Structure
+
 ```javascript
 {
     game: {
@@ -87,6 +90,7 @@ SlotMachine (1500+ lines)
 ```
 
 ### API
+
 ```javascript
 // Set state (triggers subscribers)
 stateManager.setState('game.credits', 1500);
@@ -112,12 +116,14 @@ stateManager.subscribe('*', (state) => {
 ## UIController Design
 
 ### Responsibilities
+
 1. **Update DOM** based on state changes
 2. **Handle user input** (button clicks, keyboard)
 3. **Trigger animations** (winning symbols, etc.)
 4. **No business logic** - just UI concerns
 
 ### API
+
 ```javascript
 class UIController {
     constructor(stateManager, eventBus, domCache) {
@@ -163,14 +169,16 @@ class UIController {
 ## Integration Flow
 
 ### Before (Current)
+
 ```javascript
 // In SlotMachine.spin()
-this.credits -= this.currentBet;           // State change
-this.updateDisplay();                      // UI update
-document.getElementById('spinBtn').disabled = true;  // DOM manipulation
+this.credits -= this.currentBet; // State change
+this.updateDisplay(); // UI update
+document.getElementById('spinBtn').disabled = true; // DOM manipulation
 ```
 
 ### After (Target)
+
 ```javascript
 // In SlotMachine.spin()
 this.state.setState('game.credits', this.state.get('game.credits') - bet);
@@ -186,18 +194,21 @@ this.state.setState('game.isSpinning', true);
 ## Migration Strategy
 
 ### Phase 1: StateManager (Priority)
+
 1. Create StateManager class
 2. Move game state to StateManager
 3. Replace direct property access with getters/setters
 4. Test that game still works
 
 ### Phase 2: UIController (After StateManager)
+
 1. Create UIController class
 2. Move DOM manipulation methods to UIController
 3. Subscribe UIController to StateManager
 4. Remove UI code from SlotMachine
 
 ### Phase 3: Cleanup
+
 1. SlotMachine becomes pure game logic
 2. Update tests (can test without DOM!)
 3. Document new architecture
@@ -207,18 +218,20 @@ this.state.setState('game.isSpinning', true);
 ## Benefits
 
 ### For Testing
+
 ```javascript
 // Before: Need full DOM to test
 const game = new SlotMachine();
-game.spin();  // ERROR: document.getElementById not found
+game.spin(); // ERROR: document.getElementById not found
 
 // After: Pure logic testing
 const state = new StateManager(initialState);
 const game = new SlotMachine(state);
-game.spin();  // Works! No DOM needed
+game.spin(); // Works! No DOM needed
 ```
 
 ### For Maintainability
+
 ```javascript
 // Before: UI and logic mixed
 async spin() {
@@ -237,6 +250,7 @@ async spin() {
 ```
 
 ### For Extensibility
+
 ```javascript
 // Want to add a new UI?
 class MobileUIController extends UIController {
@@ -292,4 +306,3 @@ get credits() {
 - [ ] Game testable without DOM
 - [ ] 100% backward compatible
 - [ ] No bugs introduced
-

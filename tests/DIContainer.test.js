@@ -19,12 +19,16 @@ function expect(actual) {
     return {
         toBe(expected) {
             if (actual !== expected) {
-                throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+                throw new Error(
+                    `Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`
+                );
             }
         },
         toEqual(expected) {
             if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-                throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+                throw new Error(
+                    `Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`
+                );
             }
         },
         toThrow(expectedMessage) {
@@ -33,7 +37,9 @@ function expect(actual) {
                 throw new Error('Expected function to throw');
             } catch (error) {
                 if (expectedMessage && !error.message.includes(expectedMessage)) {
-                    throw new Error(`Expected error message to include "${expectedMessage}", got "${error.message}"`);
+                    throw new Error(
+                        `Expected error message to include "${expectedMessage}", got "${error.message}"`
+                    );
                 }
             }
         },
@@ -312,7 +318,9 @@ test('should resolve complex dependency graph', () => {
     const container = new DIContainer();
 
     class Logger {
-        log(msg) { return `LOG: ${msg}`; }
+        log(msg) {
+            return `LOG: ${msg}`;
+        }
     }
 
     class Database {
@@ -353,7 +361,9 @@ test('should handle constructor with no dependencies', () => {
     const container = new DIContainer();
 
     class SimpleService {
-        getValue() { return 42; }
+        getValue() {
+            return 42;
+        }
     }
 
     container.singleton('simple', SimpleService);

@@ -14,12 +14,12 @@ Reusable slot machine game engine extracted from Greedy Squirrel.
 
 ```javascript
 import {
-  StateManager,
-  createInitialState,
-  GameState,
-  EventBus,
-  PaylineEvaluator,
-  RNG
+    StateManager,
+    createInitialState,
+    GameState,
+    EventBus,
+    PaylineEvaluator,
+    RNG
 } from './SlotMachineEngine/src/index.js';
 
 // Initialize state management
@@ -31,17 +31,17 @@ const events = new EventBus();
 
 // Initialize RNG with your symbol configuration
 const rng = RNG.create((reelIndex) => {
-  // Return available symbols for this reel
-  return yourSymbolConfig.filter(s => s.allowedReels.includes(reelIndex));
+    // Return available symbols for this reel
+    return yourSymbolConfig.filter((s) => s.allowedReels.includes(reelIndex));
 });
 
 // Initialize payline evaluator
 const paylineEvaluator = new PaylineEvaluator({
-  symbols: yourSymbols,
-  symbolHelpers: { getSymbolByEmoji: yourHelper },
-  paylines: yourPaylines,
-  reelCount: 5,
-  metrics: optionalMetricsInstance
+    symbols: yourSymbols,
+    symbolHelpers: { getSymbolByEmoji: yourHelper },
+    paylines: yourPaylines,
+    reelCount: 5,
+    metrics: optionalMetricsInstance
 });
 
 // Use the engine
@@ -55,14 +55,18 @@ const winInfo = paylineEvaluator.evaluateWins(reelResult, bet);
 ## Architecture
 
 ### StateManager
+
 Observable state container with:
+
 - Immutable updates
 - Subscription system
 - Batch updates
 - Versioning
 
 ### GameState
+
 Type-safe wrapper providing:
+
 - Validated getters/setters
 - Credits management
 - Bet management
@@ -70,20 +74,26 @@ Type-safe wrapper providing:
 - Checkpoint/restore
 
 ### EventBus
+
 Pub/sub pattern for:
+
 - Feature triggers
 - Win events
 - Game lifecycle events
 
 ### PaylineEvaluator
+
 Configurable win logic:
+
 - Wild substitution
 - Scatter pays
 - Bonus triggers
 - Customizable via config
 
 ### RNG
+
 Weighted random generation:
+
 - Per-reel symbol configuration
 - Reel strip generation
 - Position selection

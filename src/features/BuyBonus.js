@@ -57,11 +57,15 @@ export class BuyBonus {
                 <div class="balance-amount ${canAfford ? 'sufficient' : 'insufficient'}">${this.game.state.getCredits()}</div>
             </div>
 
-            ${!canAfford ? `
+            ${
+                !canAfford
+                    ? `
                 <div class="buy-bonus-warning">
                     ⚠️ Insufficient credits to buy bonus!
                 </div>
-            ` : ''}
+            `
+                    : ''
+            }
 
             <div class="buy-bonus-buttons">
                 <button class="btn-buy-bonus ${canAfford ? '' : 'disabled'}" id="confirmBuyBonus" ${!canAfford ? 'disabled' : ''}>
@@ -125,7 +129,7 @@ export class BuyBonus {
         this.game.statistics.recordFeatureTrigger('buyBonus', { cost });
 
         // Small delay for effect
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
         // Trigger bonus game with random count (3-5)
         const bonusCount = 3 + Math.floor(Math.random() * 3); // 3, 4, or 5

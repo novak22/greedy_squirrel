@@ -13,7 +13,6 @@ import { RNG } from '../../SlotMachineEngine/src/utils/RNG.js';
 import { EventBus } from '../../SlotMachineEngine/src/core/EventBus.js';
 import { StateManager, createInitialState } from '../../SlotMachineEngine/src/core/StateManager.js';
 import { GameState } from '../../SlotMachineEngine/src/core/GameState.js';
-import { PaylineEvaluator } from '../../SlotMachineEngine/src/core/PaylineEvaluator.js';
 
 import { TimerManager } from '../utils/TimerManager.js';
 import { Metrics } from '../utils/Metrics.js';
@@ -37,11 +36,6 @@ import { SoundManager } from '../audio/SoundManager.js';
 import { VisualEffects } from '../effects/VisualEffects.js';
 import { Settings } from '../ui/Settings.js';
 import { SpinHistory } from '../ui/SpinHistory.js';
-import { UIController } from '../ui/UIController.js';
-import { UIFacade } from '../ui/UIFacade.js';
-
-import { SpinEngine } from './SpinEngine.js';
-import { FeatureManager } from './FeatureManager.js';
 
 /**
  * Register all game services with the DI container
@@ -55,9 +49,10 @@ export function registerServices(container) {
     container.value('featuresConfig', FEATURES_CONFIG);
 
     // Debug mode (check if window exists for Node.js compatibility)
-    const debugMode = typeof window !== 'undefined'
-        ? new URLSearchParams(window.location.search).get('debug') === 'true'
-        : false;
+    const debugMode =
+        typeof window !== 'undefined'
+            ? new URLSearchParams(window.location.search).get('debug') === 'true'
+            : false;
     container.value('debugMode', debugMode);
 
     // ============================================
@@ -92,16 +87,16 @@ export function registerServices(container) {
     // ============================================
     // Features
     // ============================================
-    container.factory('freeSpins', (c) => {
+    container.factory('freeSpins', () => {
         // FreeSpins needs access to some game methods, we'll handle this in refactor
         return new FreeSpins(null); // Will be injected later
     });
 
-    container.factory('bonusGame', (c) => {
+    container.factory('bonusGame', () => {
         return new BonusGame(null); // Will be injected later
     });
 
-    container.factory('cascade', (c) => {
+    container.factory('cascade', () => {
         return new Cascade(null); // Will be injected later
     });
 
@@ -123,34 +118,34 @@ export function registerServices(container) {
         });
     });
 
-    container.factory('gamble', (c) => {
+    container.factory('gamble', () => {
         return new Gamble(null); // Will be injected later
     });
 
-    container.factory('buyBonus', (c) => {
+    container.factory('buyBonus', () => {
         return new BuyBonus(null); // Will be injected later
     });
 
-    container.factory('winAnticipation', (c) => {
+    container.factory('winAnticipation', () => {
         return new WinAnticipation(null); // Will be injected later
     });
 
     // ============================================
     // Progression Systems
     // ============================================
-    container.factory('levelSystem', (c) => {
+    container.factory('levelSystem', () => {
         return new LevelSystem(null); // Will be injected later
     });
 
-    container.factory('achievements', (c) => {
+    container.factory('achievements', () => {
         return new Achievements(null); // Will be injected later
     });
 
-    container.factory('dailyChallenges', (c) => {
+    container.factory('dailyChallenges', () => {
         return new DailyChallenges(null); // Will be injected later
     });
 
-    container.factory('statistics', (c) => {
+    container.factory('statistics', () => {
         return new Statistics(null); // Will be injected later
     });
 
@@ -159,11 +154,11 @@ export function registerServices(container) {
     // ============================================
     container.singleton('soundManager', SoundManager);
 
-    container.factory('visualEffects', (c) => {
+    container.factory('visualEffects', () => {
         return new VisualEffects(null); // Will be injected later
     });
 
-    container.factory('settings', (c) => {
+    container.factory('settings', () => {
         return new Settings(null); // Will be injected later
     });
 
@@ -177,7 +172,7 @@ export function registerServices(container) {
     // ============================================
     container.value('metrics', Metrics);
 
-    container.factory('errorHandler', (c) => {
+    container.factory('errorHandler', () => {
         // ErrorHandler is static, but we can initialize it
         return ErrorHandler;
     });
@@ -200,8 +195,8 @@ export function registerServices(container) {
  * Create configured DI container for the game
  * @returns {DIContainer}
  */
-export function createConfiguredContainer() {
-    const { DIContainer } = require('./DIContainer.js');
+export async function createConfiguredContainer() {
+    const { DIContainer } = await import('./DIContainer.js');
     const container = new DIContainer();
     registerServices(container);
     return container;

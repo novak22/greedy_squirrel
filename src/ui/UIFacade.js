@@ -158,35 +158,49 @@ export class UIFacade {
             overlay.classList.add('show');
             const duration = this.turboMode.getMessageDelay();
 
-            this.timerManager.setTimeout(() => {
-                overlay.classList.remove('show');
-                resolve();
-            }, duration, 'win-overlay');
+            this.timerManager.setTimeout(
+                () => {
+                    overlay.classList.remove('show');
+                    resolve();
+                },
+                duration,
+                'win-overlay'
+            );
         });
     }
 
     animateWinCounter(overlay, finalAmount, baseMessage) {
-        const duration = this.turboMode.isActive ? GAME_CONFIG.animations.winCounterFast : GAME_CONFIG.animations.winCounterNormal;
-        const steps = this.turboMode.isActive ? GAME_CONFIG.animations.winCounterStepsFast : GAME_CONFIG.animations.winCounterStepsNormal;
+        const duration = this.turboMode.isActive
+            ? GAME_CONFIG.animations.winCounterFast
+            : GAME_CONFIG.animations.winCounterNormal;
+        const steps = this.turboMode.isActive
+            ? GAME_CONFIG.animations.winCounterStepsFast
+            : GAME_CONFIG.animations.winCounterStepsNormal;
         const stepDuration = duration / steps;
         const increment = finalAmount / steps;
 
         let currentAmount = 0;
         let step = 0;
 
-        this.winCounterInterval = this.timerManager.setInterval(() => {
-            step++;
-            currentAmount = Math.min(Math.floor(increment * step), finalAmount);
+        this.winCounterInterval = this.timerManager.setInterval(
+            () => {
+                step++;
+                currentAmount = Math.min(Math.floor(increment * step), finalAmount);
 
-            let message = baseMessage.replace(/WIN: \d+/, `WIN: ${formatNumber(currentAmount)}`);
-            overlay.textContent = message;
+                let message = baseMessage.replace(
+                    /WIN: \d+/,
+                    `WIN: ${formatNumber(currentAmount)}`
+                );
+                overlay.textContent = message;
 
-            if (currentAmount >= finalAmount) {
-                this.timerManager.clearInterval(this.winCounterInterval);
-                this.winCounterInterval = null;
-                overlay.textContent = baseMessage;
-            }
-        }, stepDuration, 'win-counter');
+                if (currentAmount >= finalAmount) {
+                    this.timerManager.clearInterval(this.winCounterInterval);
+                    this.winCounterInterval = null;
+                    overlay.textContent = baseMessage;
+                }
+            },
+            stepDuration,
+            'win-counter'
+        );
     }
 }
-

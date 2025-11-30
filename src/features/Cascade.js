@@ -93,15 +93,17 @@ export class Cascade {
 
                 // Fill empty spaces with new symbols (delegate to renderer)
                 if (this.renderer) {
-                    await this.renderer.fillEmptySpaces(
-                        currentWinningPositions,
-                        (reelIndex, row) => this.getNewSymbol(reelIndex)
+                    await this.renderer.fillEmptySpaces(currentWinningPositions, (reelIndex) =>
+                        this.getNewSymbol(reelIndex)
                     );
                 }
 
                 // Check for new wins
                 const result = this.game.getReelResult();
-                const winInfo = await this.game.evaluateWinsWithoutDisplay(result, this.game.paylineEvaluator);
+                const winInfo = await this.game.evaluateWinsWithoutDisplay(
+                    result,
+                    this.game.paylineEvaluator
+                );
 
                 if (winInfo.totalWin > 0) {
                     this.cascadeCount++;
@@ -162,11 +164,8 @@ export class Cascade {
      * Show cascade win message
      */
     async showCascadeWin(winAmount, multiplier) {
-        await this.game.showMessage(
-            `CASCADE WIN!\n${winAmount}\n${multiplier}x MULTIPLIER`
-        );
+        await this.game.showMessage(`CASCADE WIN!\n${winAmount}\n${multiplier}x MULTIPLIER`);
     }
-
 
     /**
      * Get save data for persistence

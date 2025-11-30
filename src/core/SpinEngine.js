@@ -72,10 +72,15 @@ export class SpinEngine {
                 let duration = this.turboMode.getReelSpinTime(i);
 
                 if (i === anticipationTriggerReel) {
-                    const extraDelay = this.winAnticipation.getDramaticDelay(anticipationConfig.intensity);
+                    const extraDelay = this.winAnticipation.getDramaticDelay(
+                        anticipationConfig.intensity
+                    );
                     duration += extraDelay;
 
-                    this.winAnticipation.applyAnticipationEffects(anticipationConfig, anticipationConfig.intensity);
+                    this.winAnticipation.applyAnticipationEffects(
+                        anticipationConfig,
+                        anticipationConfig.intensity
+                    );
 
                     for (let j = i; j < this.reelCount; j++) {
                         const reel = this.dom.reels[j];
@@ -83,7 +88,12 @@ export class SpinEngine {
                     }
                 }
 
-                await this.spinReel(i, duration, reelPositions[i], predeterminedSymbols ? predeterminedSymbols[i] : null);
+                await this.spinReel(
+                    i,
+                    duration,
+                    reelPositions[i],
+                    predeterminedSymbols ? predeterminedSymbols[i] : null
+                );
 
                 const reel = this.dom.reels[i];
                 if (reel) reel.classList.remove('dramatic-slow');
@@ -92,7 +102,14 @@ export class SpinEngine {
             const spinPromises = [];
             for (let i = 0; i < this.reelCount; i++) {
                 const duration = this.turboMode.getReelSpinTime(i);
-                spinPromises.push(this.spinReel(i, duration, reelPositions[i], predeterminedSymbols ? predeterminedSymbols[i] : null));
+                spinPromises.push(
+                    this.spinReel(
+                        i,
+                        duration,
+                        reelPositions[i],
+                        predeterminedSymbols ? predeterminedSymbols[i] : null
+                    )
+                );
             }
             await Promise.all(spinPromises);
         }
@@ -125,9 +142,15 @@ export class SpinEngine {
             });
 
             if (winMultiplier >= GAME_CONFIG.winThresholds.mega) {
-                this.events.emit(GAME_EVENTS.MEGA_WIN, { amount: winInfo.totalWin, multiplier: winMultiplier });
+                this.events.emit(GAME_EVENTS.MEGA_WIN, {
+                    amount: winInfo.totalWin,
+                    multiplier: winMultiplier
+                });
             } else if (winMultiplier >= GAME_CONFIG.winThresholds.big) {
-                this.events.emit(GAME_EVENTS.BIG_WIN, { amount: winInfo.totalWin, multiplier: winMultiplier });
+                this.events.emit(GAME_EVENTS.BIG_WIN, {
+                    amount: winInfo.totalWin,
+                    multiplier: winMultiplier
+                });
             }
 
             this.ui.highlightWinningSymbols(winInfo.winningPositions);
@@ -199,40 +222,63 @@ export class SpinEngine {
             reel.classList.add('spinning');
 
             const randomPosition = this.rng.getRandomPosition(this.symbolsPerReel);
-            const randomSymbols = this.rng.getSymbolsAtPosition(this.reelStrips[reelIndex], randomPosition, this.rowCount);
+            const randomSymbols = this.rng.getSymbolsAtPosition(
+                this.reelStrips[reelIndex],
+                randomPosition,
+                this.rowCount
+            );
             symbols.forEach((symbol, index) => {
                 symbol.textContent = randomSymbols[index];
             });
 
-            this.timerManager.setTimeout(() => {
-                reel.classList.remove('spinning');
-                reel.classList.add('stopping');
+            this.timerManager.setTimeout(
+                () => {
+                    reel.classList.remove('spinning');
+                    reel.classList.add('stopping');
 
-                let finalSymbols;
-                if (predeterminedSymbols) {
-                    finalSymbols = predeterminedSymbols;
-                } else {
-                    const finalPosition = predeterminedPosition !== null ? predeterminedPosition : this.rng.getRandomPosition(this.symbolsPerReel);
-                    this.state.setReelPosition(reelIndex, finalPosition);
-                    finalSymbols = this.rng.getSymbolsAtPosition(this.reelStrips[reelIndex], finalPosition, this.rowCount);
-                }
+                    let finalSymbols;
+                    if (predeterminedSymbols) {
+                        finalSymbols = predeterminedSymbols;
+                    } else {
+                        const finalPosition =
+                            predeterminedPosition !== null
+                                ? predeterminedPosition
+                                : this.rng.getRandomPosition(this.symbolsPerReel);
+                        this.state.setReelPosition(reelIndex, finalPosition);
+                        finalSymbols = this.rng.getSymbolsAtPosition(
+                            this.reelStrips[reelIndex],
+                            finalPosition,
+                            this.rowCount
+                        );
+                    }
 
-                for (let i = 0; i < this.rowCount; i++) {
-                    symbols[i].textContent = finalSymbols[i];
+                    for (let i = 0; i < this.rowCount; i++) {
+                        symbols[i].textContent = finalSymbols[i];
 
-                    symbols[i].classList.add('landed');
-                    this.timerManager.setTimeout(() => symbols[i].classList.remove('landed'), GAME_CONFIG.animations.symbolLanded, 'reels');
+                        symbols[i].classList.add('landed');
+                        this.timerManager.setTimeout(
+                            () => symbols[i].classList.remove('landed'),
+                            GAME_CONFIG.animations.symbolLanded,
+                            'reels'
+                        );
 
-                    this.ui.applySymbolClasses?.(symbols[i], finalSymbols[i]);
-                }
+                        this.ui.applySymbolClasses?.(symbols[i], finalSymbols[i]);
+                    }
 
-                this.soundManager.playReelStop();
+                    this.soundManager.playReelStop();
 
-                this.timerManager.setTimeout(() => {
-                    reel.classList.remove('stopping');
-                    resolve();
-                }, GAME_CONFIG.animations.reelStopping, 'reels');
-            }, duration, 'reels');
+                    this.timerManager.setTimeout(
+                        () => {
+                            reel.classList.remove('stopping');
+                            resolve();
+                        },
+                        GAME_CONFIG.animations.reelStopping,
+                        'reels'
+                    );
+                },
+                duration,
+                'reels'
+            );
         });
     }
 
@@ -268,12 +314,18 @@ export class SpinEngine {
                 this.levelSystem.awardXP('bigWin');
             }
 
-            this.dailyChallenges.updateChallengeProgress('big_win', winMultiplier >= GAME_CONFIG.winThresholds.big ? 1 : 0);
+            this.dailyChallenges.updateChallengeProgress(
+                'big_win',
+                winMultiplier >= GAME_CONFIG.winThresholds.big ? 1 : 0
+            );
 
-            this.ui.updateDisplay(this.state.getCredits(), this.state.getCurrentBet(), this.state.getLastWin());
+            this.ui.updateDisplay(
+                this.state.getCredits(),
+                this.state.getCurrentBet(),
+                this.state.getLastWin()
+            );
         } else {
             this.statistics.recordSpin(this.state.getCurrentBet(), 0, false);
         }
     }
 }
-

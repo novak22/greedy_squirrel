@@ -27,8 +27,8 @@ export class TurboMode {
         this.unlocked = true; // Unlocked from start
 
         // Turbo speeds (in milliseconds)
-        this.normalReelSpinTime = 2000;  // Base time for first reel
-        this.turboReelSpinTime = 800;    // Turbo time for first reel
+        this.normalReelSpinTime = 2000; // Base time for first reel
+        this.turboReelSpinTime = 800; // Turbo time for first reel
 
         this.normalMessageDelay = 2000;
         this.turboMessageDelay = 800;
@@ -55,9 +55,7 @@ export class TurboMode {
         this.isActive = !this.isActive;
         this.updateUI();
 
-        const message = this.isActive
-            ? '🚀 Turbo mode activated'
-            : 'Turbo mode deactivated';
+        const message = this.isActive ? '🚀 Turbo mode activated' : 'Turbo mode deactivated';
 
         this.eventBus.emit('message:show', message);
         this.eventBus.emit(GAME_EVENTS.TURBO_TOGGLE, { isActive: this.isActive });
@@ -68,7 +66,7 @@ export class TurboMode {
      */
     getReelSpinTime(reelIndex) {
         const baseTime = this.isActive ? this.turboReelSpinTime : this.normalReelSpinTime;
-        return baseTime + (reelIndex * (this.isActive ? 100 : 200));
+        return baseTime + reelIndex * (this.isActive ? 100 : 200);
     }
 
     /**

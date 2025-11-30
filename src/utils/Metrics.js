@@ -54,7 +54,8 @@ export class Metrics {
      * @returns {{ end: (extra?: Object) => number }}
      */
     static startTimer(metric, metadata = {}) {
-        const hasPerformance = typeof performance !== 'undefined' && typeof performance.now === 'function';
+        const hasPerformance =
+            typeof performance !== 'undefined' && typeof performance.now === 'function';
         const start = hasPerformance ? performance.now() : Date.now();
 
         return {

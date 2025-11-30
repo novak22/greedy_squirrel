@@ -70,7 +70,9 @@ export class StateManager {
      */
     update(path, value, { silent = false, expectedVersion } = {}) {
         if (expectedVersion !== undefined && expectedVersion !== this.version) {
-            throw new Error(`State version mismatch. Expected ${expectedVersion}, actual ${this.version}`);
+            throw new Error(
+                `State version mismatch. Expected ${expectedVersion}, actual ${this.version}`
+            );
         }
 
         const keys = path.split('.');
@@ -92,9 +94,9 @@ export class StateManager {
             const sourceChild = cursorOld?.[key];
             const clonedChild = Array.isArray(sourceChild)
                 ? [...sourceChild]
-                : (sourceChild && typeof sourceChild === 'object')
-                    ? { ...sourceChild }
-                    : {};
+                : sourceChild && typeof sourceChild === 'object'
+                  ? { ...sourceChild }
+                  : {};
 
             cursorNew[key] = clonedChild;
             cursorOld = sourceChild || {};
@@ -185,7 +187,7 @@ export class StateManager {
         // Notify exact path subscribers
         const callbacks = this.subscribers.get(path);
         if (callbacks) {
-            callbacks.forEach(callback => {
+            callbacks.forEach((callback) => {
                 try {
                     callback(newValue, oldValue, path);
                 } catch (error) {
@@ -201,18 +203,21 @@ export class StateManager {
             const parentCallbacks = this.subscribers.get(parentPath);
             if (parentCallbacks) {
                 const parentValue = this.select(parentPath);
-                parentCallbacks.forEach(callback => {
+                parentCallbacks.forEach((callback) => {
                     try {
                         callback(parentValue, undefined, parentPath);
                     } catch (error) {
-                        console.error(`Error in parent state subscriber for "${parentPath}":`, error);
+                        console.error(
+                            `Error in parent state subscriber for "${parentPath}":`,
+                            error
+                        );
                     }
                 });
             }
         }
 
         // Notify wildcard subscribers
-        this.wildcardSubscribers.forEach(callback => {
+        this.wildcardSubscribers.forEach((callback) => {
             try {
                 callback(this.state, path);
             } catch (error) {
@@ -306,12 +311,12 @@ export class StateManager {
 
         // Fallback: recursive clone for complex objects
         if (Array.isArray(obj)) {
-            return obj.map(item => this.deepClone(item));
+            return obj.map((item) => this.deepClone(item));
         }
 
         const cloned = {};
         for (const key in obj) {
-            if (obj.hasOwnProperty(key)) {
+            if (Object.prototype.hasOwnProperty.call(obj, key)) {
                 cloned[key] = this.deepClone(obj[key]);
             }
         }

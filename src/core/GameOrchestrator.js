@@ -156,7 +156,6 @@ export class GameOrchestrator extends SlotMachine {
         });
     }
 
-
     createReels() {
         this.ui.createReels(
             this.reelCount,
@@ -170,7 +169,11 @@ export class GameOrchestrator extends SlotMachine {
     }
 
     updateDisplay() {
-        this.ui.updateDisplay(this.state.getCredits(), this.state.getCurrentBet(), this.state.getLastWin());
+        this.ui.updateDisplay(
+            this.state.getCredits(),
+            this.state.getCurrentBet(),
+            this.state.getLastWin()
+        );
     }
 
     /**
@@ -273,10 +276,9 @@ export class GameOrchestrator extends SlotMachine {
             this.turboMode.unlock();
         }
 
-        await new Promise(resolve => setTimeout(resolve, GAME_CONFIG.animations.levelUpMessage));
+        await new Promise((resolve) => setTimeout(resolve, GAME_CONFIG.animations.levelUpMessage));
         this.ui.hideFeatureOverlay();
     }
-
 
     /**
      * Phase 5: Trigger screen shake effect for mega wins
@@ -285,9 +287,13 @@ export class GameOrchestrator extends SlotMachine {
         if (this.dom.gameContainer) {
             this.dom.gameContainer.classList.add('screen-shake');
 
-            this.timerManager.setTimeout(() => {
-                this.dom.gameContainer.classList.remove('screen-shake');
-            }, GAME_CONFIG.animations.screenShake, 'visual-effects');
+            this.timerManager.setTimeout(
+                () => {
+                    this.dom.gameContainer.classList.remove('screen-shake');
+                },
+                GAME_CONFIG.animations.screenShake,
+                'visual-effects'
+            );
         }
 
         this.ui.triggerScreenShake();
@@ -341,44 +347,42 @@ export class GameOrchestrator extends SlotMachine {
      * Phase 5: Offer gamble feature after win
      */
     async offerGamble(winAmount) {
-        return new Promise(async (resolve) => {
-            if (this.autoCollectEnabled) {
-                this.soundManager.playClick();
-                resolve(winAmount);
-                return;
-            }
+        if (this.autoCollectEnabled) {
+            this.soundManager.playClick();
+            return winAmount;
+        }
 
-            const overlay = this.ui.showFeatureOverlay(`
-                <div class="gamble-container">
-                    <h2 class="gamble-title">🎴 DOUBLE UP</h2>
+        const overlay = this.ui.showFeatureOverlay(`
+            <div class="gamble-container">
+                <h2 class="gamble-title">🎴 DOUBLE UP</h2>
 
-                    <div class="gamble-current-win">
-                        <div class="gamble-label">You Won:</div>
-                        <div class="gamble-amount">${winAmount}</div>
-                    </div>
-
-                    <div class="gamble-message">
-                        Try to double your win?<br>
-                        Guess the card color!
-                    </div>
-
-                    <div class="gamble-timer">Auto-collect in: <span class="timer-value" id="gambleOfferTimer">5</span>s</div>
-
-                    <div class="gamble-buttons">
-                        <button class="btn btn-small" id="gambleAccept">
-                            🎲 DOUBLE UP
-                        </button>
-                        <button class="btn btn-small" id="gambleDecline">
-                            💰 COLLECT
-                        </button>
-                    </div>
+                <div class="gamble-current-win">
+                    <div class="gamble-label">You Won:</div>
+                    <div class="gamble-amount">${winAmount}</div>
                 </div>
-            `);
-            if (!overlay) {
-                resolve(winAmount);
-                return;
-            }
 
+                <div class="gamble-message">
+                    Try to double your win?<br>
+                    Guess the card color!
+                </div>
+
+                <div class="gamble-timer">Auto-collect in: <span class="timer-value" id="gambleOfferTimer">5</span>s</div>
+
+                <div class="gamble-buttons">
+                    <button class="btn btn-small" id="gambleAccept">
+                        🎲 DOUBLE UP
+                    </button>
+                    <button class="btn btn-small" id="gambleDecline">
+                        💰 COLLECT
+                    </button>
+                </div>
+            </div>
+        `);
+        if (!overlay) {
+            return winAmount;
+        }
+
+        return new Promise((resolve) => {
             let autoCollectTimer = null;
 
             const clearAutoCollect = () => {
@@ -392,19 +396,23 @@ export class GameOrchestrator extends SlotMachine {
             // Start auto-collect countdown
             const timerDisplay = overlay.querySelector('#gambleOfferTimer');
             let timeLeft = FEATURES_CONFIG.gamble.offerTimeout;
-            autoCollectTimer = this.timerManager.setInterval(() => {
-                timeLeft -= 1;
-                if (timerDisplay) {
-                    timerDisplay.textContent = timeLeft;
-                }
+            autoCollectTimer = this.timerManager.setInterval(
+                () => {
+                    timeLeft -= 1;
+                    if (timerDisplay) {
+                        timerDisplay.textContent = timeLeft;
+                    }
 
-                if (timeLeft <= 0) {
-                    clearAutoCollect();
-                    this.ui.hideFeatureOverlay();
-                    this.soundManager.playClick();
-                    resolve(winAmount);
-                }
-            }, 1000, 'gamble-offer');
+                    if (timeLeft <= 0) {
+                        clearAutoCollect();
+                        this.ui.hideFeatureOverlay();
+                        this.soundManager.playClick();
+                        resolve(winAmount);
+                    }
+                },
+                1000,
+                'gamble-offer'
+            );
 
             overlay.querySelector('#gambleAccept')?.addEventListener('click', async () => {
                 clearAutoCollect();
@@ -571,9 +579,17 @@ export class GameOrchestrator extends SlotMachine {
         let anticipationTriggerReel = -1;
 
         // Quick check: will anticipation trigger on any reel?
-        for (let reelIndex = 2; reelIndex < this.reelCount - 1 && !shouldTriggerAnticipation; reelIndex++) {
+        for (
+            let reelIndex = 2;
+            reelIndex < this.reelCount - 1 && !shouldTriggerAnticipation;
+            reelIndex++
+        ) {
             const stoppedReelsSymbols = predeterminedSymbols.slice(0, reelIndex);
-            const anticipationCheck = this.winAnticipation.checkAnticipation(reelIndex, stoppedReelsSymbols, predeterminedSymbols);
+            const anticipationCheck = this.winAnticipation.checkAnticipation(
+                reelIndex,
+                stoppedReelsSymbols,
+                predeterminedSymbols
+            );
             if (anticipationCheck) {
                 shouldTriggerAnticipation = true;
                 anticipationTriggerReel = reelIndex;
@@ -636,7 +652,11 @@ export class GameOrchestrator extends SlotMachine {
 
             this.updateCreditsAndStats(totalWin);
 
-            const shouldExecuteFreeSpins = await this.handleFeatureTriggers(winInfo, bonusInfo, isFreeSpin);
+            const shouldExecuteFreeSpins = await this.handleFeatureTriggers(
+                winInfo,
+                bonusInfo,
+                isFreeSpin
+            );
 
             await this.finalizeSpin(totalWin, winInfo, bonusInfo, isFreeSpin);
 
@@ -653,7 +673,6 @@ export class GameOrchestrator extends SlotMachine {
                 winInfo,
                 isFreeSpin
             });
-
         } catch (error) {
             spinError = error;
             await ErrorHandler.handle(error, {
@@ -690,7 +709,12 @@ export class GameOrchestrator extends SlotMachine {
 
         try {
             while (this.freeSpins.isActive() && this.freeSpins.remainingSpins > 0) {
-                Logger.debug('Free spin loop - remaining:', this.freeSpins.remainingSpins, 'isActive:', this.freeSpins.isActive());
+                Logger.debug(
+                    'Free spin loop - remaining:',
+                    this.freeSpins.remainingSpins,
+                    'isActive:',
+                    this.freeSpins.isActive()
+                );
 
                 // Update button text to show auto-spinning
                 if (this.dom.spinBtn) {

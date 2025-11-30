@@ -34,7 +34,7 @@ export class SoundManager {
         if (!this.audioContext || this.audioContext.state === 'running') return;
         if (!this.enabled) return;
 
-        this.audioContext.resume().catch(error => {
+        this.audioContext.resume().catch((error) => {
             console.warn('Failed to resume audio context:', error);
         });
     }
@@ -45,7 +45,7 @@ export class SoundManager {
     suspendAudioContext() {
         if (!this.audioContext || this.audioContext.state === 'suspended') return;
 
-        this.audioContext.suspend().catch(error => {
+        this.audioContext.suspend().catch((error) => {
             console.warn('Failed to suspend audio context:', error);
         });
     }

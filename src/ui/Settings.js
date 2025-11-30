@@ -201,20 +201,20 @@ export class Settings {
     confirmReset() {
         const confirmed = confirm(
             'Are you sure you want to reset ALL game data?\n\n' +
-            'This will delete:\n' +
-            '• All credits and progress\n' +
-            '• Levels and XP\n' +
-            '• All achievements\n' +
-            '• Statistics and history\n' +
-            '• Daily rewards streak\n\n' +
-            'This action CANNOT be undone!'
+                'This will delete:\n' +
+                '• All credits and progress\n' +
+                '• Levels and XP\n' +
+                '• All achievements\n' +
+                '• Statistics and history\n' +
+                '• Daily rewards streak\n\n' +
+                'This action CANNOT be undone!'
         );
 
         if (confirmed) {
             const doubleConfirm = confirm(
                 'FINAL WARNING!\n\n' +
-                'This will permanently delete all your game data.\n\n' +
-                'Are you absolutely sure?'
+                    'This will permanently delete all your game data.\n\n' +
+                    'Are you absolutely sure?'
             );
 
             if (doubleConfirm) {

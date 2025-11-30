@@ -85,7 +85,7 @@ export class TimerManager {
         }
 
         // Notify all affected listeners
-        clearedLabels.forEach(label => this._notifyClearListeners(label));
+        clearedLabels.forEach((label) => this._notifyClearListeners(label));
     }
 
     _clearHandle(handle, type) {
@@ -100,7 +100,7 @@ export class TimerManager {
     _notifyClearListeners(label) {
         const listeners = this.clearListeners.get(label);
         if (listeners) {
-            listeners.forEach(callback => {
+            listeners.forEach((callback) => {
                 try {
                     callback();
                 } catch (error) {

@@ -5,8 +5,6 @@
  * Run with: node tests/DI.integration.test.js
  */
 
-import { DIContainer } from '../src/core/DIContainer.js';
-import { registerServices } from '../src/core/ServiceRegistry.js';
 import { GameFactory } from '../src/core/GameFactory.js';
 import { TurboMode } from '../src/features/TurboMode.js';
 import { Autoplay } from '../src/features/Autoplay.js';
@@ -23,7 +21,9 @@ function expect(actual) {
     return {
         toBe(expected) {
             if (actual !== expected) {
-                throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+                throw new Error(
+                    `Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`
+                );
             }
         },
         toBeTruthy() {
@@ -111,7 +111,7 @@ test('should emit events when TurboMode toggles', () => {
     turboMode.toggle();
 
     expect(events.length > 0).toBeTruthy();
-    const messageEvent = events.find(e => e.event === 'message:show');
+    const messageEvent = events.find((e) => e.event === 'message:show');
     expect(messageEvent).toBeTruthy();
 });
 
