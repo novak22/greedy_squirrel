@@ -7,18 +7,12 @@ export class BonusGame {
      * @param {Object} deps - Dependencies (or legacy game instance)
      * @param {Object} deps.renderer - BonusGameRenderer instance for UI
      */
-    constructor(deps) {
-        // Backward compatibility: support both new DI pattern and old game instance pattern
-        const isNewDI = deps && deps.renderer !== undefined;
-
-        if (isNewDI) {
-            // New DI pattern: { renderer }
-            this.renderer = deps.renderer;
-        } else {
-            // Old pattern: BonusGame(game) - renderer will be set later
-            this.game = deps; // Store game reference temporarily
-            this.renderer = null;
+    constructor({ renderer }) {
+        if (!renderer) {
+            throw new Error('BonusGame requires a renderer instance');
         }
+
+        this.renderer = renderer;
 
         this.active = false;
         this.picks = [];
@@ -26,14 +20,6 @@ export class BonusGame {
         this.picksRemaining = 0;
         this.totalWon = 0;
         this.pickedItems = [];
-    }
-
-    /**
-     * Set renderer (backward compatibility method)
-     * @param {Object} renderer - BonusGameRenderer instance
-     */
-    setRenderer(renderer) {
-        this.renderer = renderer;
     }
 
     /**

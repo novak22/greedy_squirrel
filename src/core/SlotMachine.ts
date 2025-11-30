@@ -108,7 +108,19 @@ export class SlotMachine {
 
     saveGameState?(): void;
 
-    constructor() {
+    constructor({
+        dom = {},
+        paylineEvaluator,
+        cascadeRenderer,
+        bonusGameRenderer,
+        freeSpinsRenderer
+    }: {
+        dom?: Record<string, unknown>;
+        paylineEvaluator: unknown;
+        cascadeRenderer: unknown;
+        bonusGameRenderer: unknown;
+        freeSpinsRenderer: unknown;
+    } = {}) {
         // Core systems
         this.timerManager = new TimerManager();
         this.events = new EventBus();
@@ -132,6 +144,18 @@ export class SlotMachine {
             this.reelStrips.push(this.rng.generateReelStrip(i, this.symbolsPerReel));
         }
 
+        // DOM element cache (populated in init)
+        this.dom = dom;
+
+        if (!paylineEvaluator) {
+            throw new Error('SlotMachine requires a paylineEvaluator');
+        }
+        if (!cascadeRenderer || !bonusGameRenderer || !freeSpinsRenderer) {
+            throw new Error('SlotMachine requires feature renderers');
+        }
+
+        this.paylineEvaluator = paylineEvaluator as any;
+
         // Game state is now managed by GameState wrapper
         // Initialize state with config defaults
         this.state.setCredits(this.gameConfig.initialCredits);
@@ -141,19 +165,27 @@ export class SlotMachine {
         this.state.setSpinning(false);
         this.state.setReelPositions([0, 0, 0, 0, 0]);
 
-        // Initialize bonus features
-        this.freeSpins = new FreeSpins(this);
-        this.bonusGame = new BonusGame(this);
-        this.cascade = new Cascade(this);
-
         // Initialize progression systems
         this.levelSystem = new LevelSystem(this);
         this.achievements = new Achievements(this);
         this.dailyChallenges = new DailyChallenges(this);
         this.statistics = new Statistics(this);
 
-        // DOM element cache (populated in init)
-        this.dom = {};
+        // Initialize bonus features
+        this.freeSpins = new FreeSpins({ renderer: freeSpinsRenderer });
+        this.bonusGame = new BonusGame({ renderer: bonusGameRenderer });
+        this.cascade = new Cascade({
+            renderer: cascadeRenderer,
+            rng: this.rng,
+            reelStrips: this.reelStrips,
+            symbolsPerReel: this.symbolsPerReel,
+            paylineEvaluator: this.paylineEvaluator,
+            statistics: this.statistics,
+            eventBus: this.events,
+            getReelResult: () => this.getReelResult(),
+            evaluateWinsWithoutDisplay: (result, evaluator) =>
+                this.evaluateWinsWithoutDisplay?.(result, evaluator)
+        });
 
         // Initialize advanced features
         this.soundManager = new SoundManager();

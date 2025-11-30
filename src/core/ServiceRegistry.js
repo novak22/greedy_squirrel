@@ -37,6 +37,9 @@ import { SoundManager } from '../audio/SoundManager.js';
 import { VisualEffects } from '../effects/VisualEffects.js';
 import { Settings } from '../ui/Settings.js';
 import { SpinHistory } from '../ui/SpinHistory.js';
+import { CascadeRenderer } from '../ui/renderers/CascadeRenderer.js';
+import { BonusGameRenderer } from '../ui/renderers/BonusGameRenderer.js';
+import { FreeSpinsRenderer } from '../ui/renderers/FreeSpinsRenderer.js';
 
 /**
  * Register all game services with the DI container
@@ -114,14 +117,40 @@ export function registerServices(container) {
 
     // Cascade with DI - needs renderer, rng, reelStrips, symbolsPerReel, paylineEvaluator, statistics, eventBus
     container.factory('cascade', (c) => {
+        const paylineEvaluator = c.resolve('paylineEvaluator');
+        const gameState = c.resolve('gameState');
+        const gameConfig = c.resolve('gameConfig');
+        const getReelResult = () => {
+            const dom = c.resolve('dom');
+            const reels = dom.reels || [];
+            const result = [];
+
+            for (let i = 0; i < gameConfig.reelCount; i++) {
+                const reel = reels[i];
+                const symbols = reel?.querySelectorAll ? reel.querySelectorAll('.symbol') : [];
+                const reelSymbols = [];
+
+                for (let j = 0; j < gameConfig.rowCount; j++) {
+                    reelSymbols.push(symbols[j]?.textContent ?? '');
+                }
+
+                result.push(reelSymbols);
+            }
+
+            return result;
+        };
+
         return new Cascade({
             renderer: c.resolve('cascadeRenderer'),
             rng: c.resolve('rng'),
             reelStrips: c.resolve('reelStrips'),
-            symbolsPerReel: c.resolve('gameConfig').symbolsPerReel,
-            paylineEvaluator: c.resolve('paylineEvaluator'),
+            symbolsPerReel: gameConfig.symbolsPerReel,
+            paylineEvaluator,
             statistics: c.resolve('statistics'),
-            eventBus: c.resolve('eventBus')
+            eventBus: c.resolve('eventBus'),
+            getReelResult,
+            evaluateWinsWithoutDisplay: (result, evaluator) =>
+                evaluator.evaluateWins(result, gameState.getCurrentBet())
         });
     });
 
@@ -201,6 +230,18 @@ export function registerServices(container) {
 
     container.factory('settings', () => {
         return new Settings(null); // Will be injected later
+    });
+
+    container.factory('cascadeRenderer', (c) => {
+        return new CascadeRenderer(c.resolve('dom'));
+    });
+
+    container.factory('bonusGameRenderer', () => {
+        return new BonusGameRenderer();
+    });
+
+    container.factory('freeSpinsRenderer', () => {
+        return new FreeSpinsRenderer();
     });
 
     container.factory('spinHistory', (c) => {

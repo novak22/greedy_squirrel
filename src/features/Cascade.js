@@ -13,45 +13,44 @@ export class Cascade {
      * @param {Statistics} deps.statistics - For tracking cascades
      * @param {EventBus} deps.eventBus - For UI updates and messages
      */
-    constructor(deps) {
-        // Backward compatibility: support both new DI pattern and old game instance pattern
-        const isNewDI = deps && (deps.renderer !== undefined || deps.rng !== undefined);
-
-        if (isNewDI) {
-            // New DI pattern: { renderer, rng, reelStrips, ... }
-            this.renderer = deps.renderer;
-            this.rng = deps.rng;
-            this.reelStrips = deps.reelStrips;
-            this.symbolsPerReel = deps.symbolsPerReel;
-            this.paylineEvaluator = deps.paylineEvaluator;
-            this.statistics = deps.statistics;
-            this.eventBus = deps.eventBus;
-            // Still need game reference for board state methods
-            this.game = null;
-        } else {
-            // Old pattern: Cascade(game) - dependencies will be set later or accessed via game
-            this.game = deps;
-            this.renderer = null;
-            this.rng = null;
-            this.reelStrips = null;
-            this.symbolsPerReel = null;
-            this.paylineEvaluator = null;
-            this.statistics = null;
-            this.eventBus = null;
+    constructor({
+        renderer,
+        rng,
+        reelStrips,
+        symbolsPerReel,
+        paylineEvaluator,
+        statistics,
+        eventBus,
+        getReelResult,
+        evaluateWinsWithoutDisplay
+    }) {
+        if (!renderer) {
+            throw new Error('Cascade requires a renderer instance');
         }
+        if (!paylineEvaluator) {
+            throw new Error('Cascade requires a paylineEvaluator instance');
+        }
+        if (typeof getReelResult !== 'function') {
+            throw new Error('Cascade requires a getReelResult function');
+        }
+        if (typeof evaluateWinsWithoutDisplay !== 'function') {
+            throw new Error('Cascade requires an evaluateWinsWithoutDisplay function');
+        }
+
+        this.renderer = renderer;
+        this.rng = rng;
+        this.reelStrips = reelStrips;
+        this.symbolsPerReel = symbolsPerReel;
+        this.paylineEvaluator = paylineEvaluator;
+        this.statistics = statistics;
+        this.eventBus = eventBus;
+        this.getReelResult = getReelResult;
+        this.evaluateWinsWithoutDisplay = evaluateWinsWithoutDisplay;
 
         this.enabled = FEATURES_CONFIG.cascade.enabled;
         this.currentMultiplier = 1;
         this.cascadeCount = 0;
         this.totalCascadeWins = 0;
-    }
-
-    /**
-     * Set renderer (backward compatibility method)
-     * @param {Object} renderer - CascadeRenderer instance
-     */
-    setRenderer(renderer) {
-        this.renderer = renderer;
     }
 
     /**
@@ -129,10 +128,10 @@ export class Cascade {
                 }
 
                 // Check for new wins
-                const result = this.game.getReelResult();
-                const winInfo = await this.game.evaluateWinsWithoutDisplay(
+                const result = this.getReelResult();
+                const winInfo = await this.evaluateWinsWithoutDisplay(
                     result,
-                    this.game.paylineEvaluator
+                    this.paylineEvaluator
                 );
 
                 if (winInfo.totalWin > 0) {
@@ -145,18 +144,12 @@ export class Cascade {
                     this.totalCascadeWins += cascadeWin;
 
                     // Track cascade in statistics
-                    const statistics = this.statistics || this.game?.statistics;
-                    if (statistics) {
-                        statistics.recordFeatureTrigger('cascade');
-                    }
+                    this.statistics?.recordFeatureTrigger('cascade');
 
                     // Highlight new wins
                     if (this.eventBus) {
                         this.eventBus.emit('ui:highlightWinningSymbols', winInfo.winningPositions);
                         this.eventBus.emit('ui:showWinningPaylines', winInfo.winningLines);
-                    } else if (this.game) {
-                        this.game.highlightWinningSymbols(winInfo.winningPositions);
-                        this.game.showWinningPaylines(winInfo.winningLines);
                     }
 
                     // Show cascade win
@@ -177,7 +170,7 @@ export class Cascade {
             return totalWins;
         } catch (error) {
             console.error('Cascade execution failed:', error);
-            this.hideMultiplierUI();
+            this.renderer?.hideMultiplierUI();
             this.reset();
             return 0;
         }
@@ -189,14 +182,9 @@ export class Cascade {
      * @returns {string} Symbol emoji
      */
     getNewSymbol(reelIndex) {
-        // Support both DI and legacy patterns
-        const rng = this.rng || this.game.rng;
-        const symbolsPerReel = this.symbolsPerReel || this.game.symbolsPerReel;
-        const reelStrips = this.reelStrips || this.game.reelStrips;
-
-        const position = rng.getRandomPosition(symbolsPerReel);
-        const newSymbols = rng.getSymbolsAtPosition(
-            reelStrips[reelIndex],
+        const position = this.rng.getRandomPosition(this.symbolsPerReel);
+        const newSymbols = this.rng.getSymbolsAtPosition(
+            this.reelStrips[reelIndex],
             position,
             1
         );
@@ -207,11 +195,8 @@ export class Cascade {
      * Show cascade win message
      */
     async showCascadeWin(winAmount, multiplier) {
-        // Support both DI and legacy patterns
         if (this.eventBus) {
             this.eventBus.emit('message:show', `CASCADE WIN!\n${winAmount}\n${multiplier}x MULTIPLIER`);
-        } else if (this.game) {
-            await this.game.showMessage(`CASCADE WIN!\n${winAmount}\n${multiplier}x MULTIPLIER`);
         }
     }
 
