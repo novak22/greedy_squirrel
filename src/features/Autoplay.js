@@ -1,5 +1,6 @@
 // Autoplay system with configurable settings and stop conditions
 import { GAME_CONFIG } from '../config/game.js';
+import { GAME_EVENTS } from '../../SlotMachineEngine/src/core/EventBus.js';
 
 export class Autoplay {
     /**
@@ -117,7 +118,7 @@ export class Autoplay {
 
         // Execute spin - emit event or call game method
         if (this.eventBus) {
-            this.eventBus.emit('spin:request');
+            this.eventBus.emit(GAME_EVENTS.SPIN_START);
         } else if (this.game) {
             await this.game.spin();
         }
@@ -169,15 +170,17 @@ export class Autoplay {
      * Check if any stop conditions are met
      */
     checkStopConditions() {
+        const state = this.gameState || this.game.state;
+
         // Stop on any win
-        if (this.settings.stopOnWin && this.game.state.getLastWin() > 0) {
+        if (this.settings.stopOnWin && state.getLastWin() > 0) {
             this.stop('Win detected');
             return true;
         }
 
         // Stop on big win
-        const lastWin = this.game.state.getLastWin();
-        const currentBet = this.game.state.getCurrentBet();
+        const lastWin = state.getLastWin();
+        const currentBet = state.getCurrentBet();
         if (this.settings.stopOnBigWin && lastWin >= currentBet * this.settings.bigWinMultiplier) {
             this.stop(`Big win (${Math.floor(lastWin / currentBet)}x)`);
             return true;
@@ -185,7 +188,7 @@ export class Autoplay {
 
         // Stop on balance increase
         if (this.settings.stopOnBalance) {
-            const balanceChange = this.game.state.getCredits() - this.startingBalance;
+            const balanceChange = state.getCredits() - this.startingBalance;
             if (balanceChange >= this.settings.balanceIncrease) {
                 this.stop(`Balance increased by ${balanceChange}`);
                 return true;
@@ -193,10 +196,7 @@ export class Autoplay {
         }
 
         // Stop on low balance
-        if (
-            this.settings.stopOnBalanceLow &&
-            this.game.state.getCredits() < this.settings.balanceLowLimit
-        ) {
+        if (this.settings.stopOnBalanceLow && state.getCredits() < this.settings.balanceLowLimit) {
             this.stop('Balance too low');
             return true;
         }

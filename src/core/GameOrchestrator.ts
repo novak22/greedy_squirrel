@@ -15,6 +15,7 @@ import { FreeSpinsRenderer } from '../ui/renderers/FreeSpinsRenderer.js';
 import { DOMCache } from '../ui/DOMCache.js';
 import { StatsController } from '../ui/StatsController.js';
 import { GameStateLoader } from './GameStateLoader.js';
+import { assertValidConfigs } from '../config/validation.js';
 
 type WinningPositions = Set<string>;
 
@@ -52,6 +53,14 @@ export class GameOrchestrator extends SlotMachine {
 
     constructor() {
         super();
+
+        // Validate game configuration before initialization
+        const configErrors = assertValidConfigs(Logger);
+        if (configErrors.length > 0) {
+            throw new Error(
+                `Configuration validation failed:\n${configErrors.map((e) => `  - ${e}`).join('\n')}`
+            );
+        }
 
         // Initialize PaylineEvaluator instance for the game
         this.paylineEvaluator = new PaylineEvaluator({
@@ -106,6 +115,10 @@ export class GameOrchestrator extends SlotMachine {
         // Initialize progression UI
         this.levelSystem.updateUI();
         this.dailyChallenges.updateChallengesUI();
+
+        // Update feature UI to reflect loaded state
+        this.turboMode.updateUI();
+        this.updateAutoCollectUI();
     }
 
     /**
@@ -151,7 +164,6 @@ export class GameOrchestrator extends SlotMachine {
         }
 
         if (this.dom.autoCollectBtn) {
-            this.updateAutoCollectUI();
             this.dom.autoCollectBtn.addEventListener('click', () => {
                 this.soundManager.playClick();
                 this.autoCollectEnabled = !this.autoCollectEnabled;
