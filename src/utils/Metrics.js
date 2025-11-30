@@ -1,4 +1,5 @@
 import { Logger } from './Logger.js';
+import { GAME_CONFIG } from '../config/game.js';
 
 /**
  * Lightweight metrics helper for timing instrumentation.
@@ -10,6 +11,7 @@ import { Logger } from './Logger.js';
  */
 export class Metrics {
     static reporter = null;
+    static budgets = GAME_CONFIG.performanceBudgets || {};
 
     /**
      * Register a metrics reporter. Reporters receive a single payload object
@@ -62,9 +64,30 @@ export class Metrics {
             end: (extra = {}) => {
                 const endTime = hasPerformance ? performance.now() : Date.now();
                 const duration = endTime - start;
+
+                // Check performance budget and warn if exceeded
+                Metrics.checkBudget(metric, duration);
+
                 Metrics.record(metric, { ...metadata, ...extra, duration });
                 return duration;
             }
         };
+    }
+
+    /**
+     * Check if a metric exceeds its performance budget and log a warning
+     * @param {string} metric - Metric name (e.g., 'spin.total', 'spin.evaluation')
+     * @param {number} duration - Measured duration in milliseconds
+     */
+    static checkBudget(metric, duration) {
+        // Extract budget key from metric name (e.g., 'spin.total' -> 'spinTotal')
+        const budgetKey = metric.replace(/\./g, '');
+        const budget = Metrics.budgets[budgetKey];
+
+        if (budget && duration > budget) {
+            Logger.warn(
+                `Performance budget exceeded for "${metric}": ${duration.toFixed(2)}ms (budget: ${budget}ms)`
+            );
+        }
     }
 }

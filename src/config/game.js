@@ -87,6 +87,15 @@ export const GAME_CONFIG = {
         dramaticDelayMedium: 400 // Extra delay for medium-intensity anticipation (ms)
     },
 
+    // Performance budgets (ms) - warn if exceeded
+    performanceBudgets: {
+        spinTotal: 5000, // Total spin cycle should complete within 5s
+        spinEvaluation: 50, // Win evaluation should complete within 50ms
+        reelAnimation: 3500, // Reel animations should complete within 3.5s
+        stateUpdate: 10, // State updates should complete within 10ms
+        rendering: 16 // UI rendering should complete within 16ms (60fps)
+    },
+
     // localStorage key
     storageKey: 'greedy_squirrel_save'
 };

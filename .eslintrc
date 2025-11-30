@@ -9,6 +9,7 @@
     "ecmaVersion": "latest",
     "sourceType": "module"
   },
+  "ignorePatterns": ["dist", "node_modules"],
   "overrides": [
     {
       "files": ["tests/**/*.js", "**/*.config.js"],
