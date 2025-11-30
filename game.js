@@ -12,7 +12,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const configErrors = assertValidConfigs(Logger);
     if (configErrors.length) {
-        throw new Error('Game configuration validation failed. Check console for details.');
+        const errorMessage = 'Game configuration validation failed. Please contact support or refresh after fixing configuration issues.';
+        Logger.error('Critical configuration errors prevent the game from starting.');
+
+        const errorBanner = document.createElement('div');
+        errorBanner.className = 'game-error-banner';
+        errorBanner.setAttribute('role', 'alert');
+        errorBanner.textContent = errorMessage;
+
+        const mountPoint = document.querySelector('.game-container') || document.body;
+        mountPoint.prepend(errorBanner);
+        return;
     }
 
     const game = new GameOrchestrator();

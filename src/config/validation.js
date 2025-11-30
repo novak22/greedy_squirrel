@@ -200,8 +200,8 @@ export function validateConfigs() {
     return errors;
 }
 
-export function assertValidConfigs(logger) {
-    const errors = validateConfigs();
+export function assertValidConfigs(logger, validator = validateConfigs) {
+    const errors = validator();
 
     if (errors.length) {
         errors.forEach((error) => {
