@@ -24,7 +24,8 @@ export class SpinEngine {
         levelSystem,
         visualEffects,
         ui,
-        triggerScreenShake
+        triggerScreenShake,
+        metrics = null
     }) {
         this.reelCount = reelCount;
         this.rowCount = rowCount;
@@ -45,6 +46,7 @@ export class SpinEngine {
         this.visualEffects = visualEffects;
         this.ui = ui;
         this.triggerScreenShake = triggerScreenShake;
+        this.metrics = metrics;
     }
 
     setUI(ui) {
@@ -59,6 +61,11 @@ export class SpinEngine {
             anticipationConfig,
             anticipationTriggerReel
         } = reelData;
+
+        const spinTimer = this.metrics?.startTimer?.('spin.reels', {
+            mode: shouldTriggerAnticipation ? 'anticipation' : 'standard',
+            reelCount: this.reelCount
+        });
 
         if (shouldTriggerAnticipation) {
             for (let i = 0; i < this.reelCount; i++) {
@@ -89,9 +96,16 @@ export class SpinEngine {
             }
             await Promise.all(spinPromises);
         }
+
+        spinTimer?.end({
+            turbo: this.turboMode.isActive
+        });
     }
 
     async processWins(winInfo, isFreeSpin) {
+        const renderTimer = this.metrics?.startTimer?.('spin.render', {
+            isFreeSpin
+        });
         let totalWin = 0;
 
         if (winInfo.totalWin > 0) {
@@ -149,6 +163,11 @@ export class SpinEngine {
                 }
             }
         }
+
+        renderTimer?.end({
+            totalWin,
+            hasScatter: winInfo.hasScatterWin
+        });
 
         return totalWin;
     }

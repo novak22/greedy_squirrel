@@ -1,6 +1,7 @@
 // Payline evaluation with WILD and SCATTER support
 import { SYMBOLS, SYMBOL_TYPES, getSymbolByEmoji } from '../config/symbols.js';
 import { GAME_CONFIG } from '../config/game.js';
+import { Metrics } from '../utils/Metrics.js';
 
 export class PaylineEvaluator {
     /**
@@ -21,6 +22,7 @@ export class PaylineEvaluator {
             throw new Error(`Invalid bet amount: ${betAmount}. Must be a positive number`);
         }
 
+        const evalTimer = Metrics.startTimer('spin.evaluation', { betAmount });
         let totalWin = 0;
         const winningPositions = new Set();
         const winningLines = [];
@@ -41,7 +43,7 @@ export class PaylineEvaluator {
             winDetails.push(...scatterWins.details);
         }
 
-        return {
+        const response = {
             totalWin,
             winningPositions,
             winningLines,
@@ -49,6 +51,10 @@ export class PaylineEvaluator {
             hasScatterWin: scatterWins.totalWin > 0,
             scatterCount: scatterWins.count
         };
+
+        evalTimer.end({ totalWin, scatterCount: scatterWins.count });
+
+        return response;
     }
 
     /**
