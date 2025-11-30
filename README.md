@@ -2,32 +2,19 @@
 
 A browser-based slot machine game with advanced mechanics and progression systems.
 
-## Current Status: Phase 1 Complete ✅
+## Architecture Overview
 
-### Phase 1 Features (Implemented)
+- **StateManager**: Centralized, observable state that drives UI updates and enforces immutable transitions.
+- **GameOrchestrator**: High-level controller that wires the SlotMachine core to renderers, feature controllers, and persistence.
+- **Dependency Injection (DI)**: `DIContainer` and `ServiceRegistry` define explicit dependencies so features can be tested and swapped independently.
+- **SlotMachineEngine**: Extracted engine package containing the reusable StateManager, EventBus, PaylineEvaluator, and RNG primitives.
 
-- **Special Symbols**:
-    - 🃏 WILD - Substitutes for regular symbols (appears on reels 2, 3, 4)
-    - ⭐ SCATTER - Pays anywhere on reels (3+ triggers message)
-    - 🎁 BONUS - Appears on reels 1, 3, 5 (3+ triggers message)
+### Gameplay Highlights
 
-- **Weighted RNG System**: Symbols have different probabilities
-    - High-value symbols appear less frequently
-    - Special symbols are rare
-    - Each reel has pre-generated weighted strips
-
-- **Persistence**: Game state auto-saves to localStorage
-    - Credits persist across sessions
-    - Statistics tracked
-    - Bet amount remembered
-
-- **Statistics Tracking**:
-    - Total spins played
-    - Total wagered
-    - Total won
-    - Biggest win
-    - Scatter hits
-    - Bonus triggers
+- **Special Symbols**: 🃏 WILD (reels 2–4), ⭐ SCATTER (pays anywhere), 🎁 BONUS (reels 1, 3, 5)
+- **Weighted RNG System**: Reel strips are generated with per-symbol rarity for authentic slot pacing.
+- **Persistence**: Credits, bets, and statistics auto-save to `localStorage` via the state layer.
+- **Statistics Tracking**: Total spins, wagered amount, total won, biggest win, scatter hits, and bonus triggers.
 
 ## How to Run
 
@@ -118,28 +105,11 @@ localStorage.removeItem('greedy_squirrel_save');
 location.reload();
 ```
 
-## Project Structure
+## Development
 
-```
-slotgame1/
-├── index.html              # Main HTML file
-├── game.js                 # Entry point (ES6 module)
-├── style.css               # All styles
-├── src/
-│   ├── config/
-│   │   ├── symbols.js      # Symbol definitions & weights
-│   │   └── game.js         # Game configuration
-│   ├── core/
-│   │   ├── SlotMachine.js  # Main game controller
-│   │   └── PaylineEvaluator.js  # Win calculation with WILD/SCATTER
-│   └── utils/
-│       ├── RNG.js          # Weighted random number generator
-│       └── Storage.js      # localStorage wrapper
-├── CLAUDE.md               # AI coding guide
-├── EVOLUTION_PLAN.md       # Full feature roadmap
-└── PHASE1_TESTING.md       # Testing checklist
-
-```
+- **Architecture & setup:** See [`docs/development.md`](docs/development.md) for a current overview of module boundaries, DI usage, and local development commands.
+- **Engine package:** See [`SlotMachineEngine/README.md`](SlotMachineEngine/README.md) for details on the extracted core engine.
+- **Roadmap:** See [EVOLUTION_PLAN.md](EVOLUTION_PLAN.md) for upcoming phases.
 
 ## Upcoming Features
 
