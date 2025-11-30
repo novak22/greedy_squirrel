@@ -1,4 +1,6 @@
 import { GAME_CONFIG } from '../config/game.js';
+import { SYMBOLS, getPremiumSymbols } from '../config/symbols.js';
+import { FEATURES_CONFIG } from '../config/features.js';
 import { PaylineEvaluator } from './PaylineEvaluator.js';
 import { SlotMachine } from './SlotMachine.js';
 import { Storage } from '../utils/Storage.js';
@@ -8,6 +10,10 @@ import { RNG } from '../utils/RNG.js';
 import { Logger } from '../utils/Logger.js';
 import { Metrics } from '../utils/Metrics.js';
 import { GAME_EVENTS } from './EventBus.js';
+import { LevelSystem } from '../progression/LevelSystem.js';
+import { Achievements } from '../progression/Achievements.js';
+import { DailyChallenges } from '../progression/DailyChallenges.js';
+import { Statistics } from '../progression/Statistics.js';
 
 export class GameOrchestrator extends SlotMachine {
     constructor() {
@@ -139,6 +145,490 @@ export class GameOrchestrator extends SlotMachine {
             if (!this.state.isSpinning() && !this.autoplay.isActive) {
                 this.spin();
             }
+        });
+    }
+
+    /**
+     * Cache frequently accessed DOM elements for performance
+     */
+    cacheDOM() {
+        this.dom = {
+            // Display elements
+            credits: document.getElementById('credits'),
+            bet: document.getElementById('bet'),
+            betDisplay: document.getElementById('betDisplay'),
+            win: document.getElementById('win'),
+
+            // Control elements
+            spinBtn: document.getElementById('spinBtn'),
+            increaseBet: document.getElementById('increaseBet'),
+            decreaseBet: document.getElementById('decreaseBet'),
+            maxBet: document.getElementById('maxBet'),
+
+            // Overlay elements
+            winOverlay: document.getElementById('winOverlay'),
+            featureOverlay: document.getElementById('featureOverlay'),
+
+            // Modal elements
+            paytableModal: document.getElementById('paytableModal'),
+            statsModal: document.getElementById('statsModal'),
+            statsContentArea: document.getElementById('statsContentArea'),
+            statsTabs: Array.from(document.querySelectorAll('.stats-tab')),
+            paytableBtn: document.getElementById('paytableBtn'),
+            closePaytable: document.getElementById('closePaytable'),
+            statsBtn: document.getElementById('statsBtn'),
+            closeStats: document.getElementById('closeStats'),
+            historyBtn: document.getElementById('historyBtn'),
+            closeHistory: document.getElementById('closeHistory'),
+
+            // Containers
+            gameContainer: document.querySelector('.game-container'),
+            slotMachineContainer: document.querySelector('.slot-machine'),
+            paylines: Array.from(document.querySelectorAll('.payline')),
+            freeSpinsCounter: document.getElementById('freeSpinsCounter'),
+
+            // Advanced controls
+            autoplayBtn: document.getElementById('autoplayBtn'),
+            turboBtn: document.getElementById('turboBtn'),
+            autoCollectBtn: document.getElementById('autoCollectBtn'),
+            autoplayCounter: document.getElementById('autoplayCounter'),
+
+            // Reel containers (cache these for frequent access)
+            reels: [
+                document.getElementById('reel-0'),
+                document.getElementById('reel-1'),
+                document.getElementById('reel-2'),
+                document.getElementById('reel-3'),
+                document.getElementById('reel-4')
+            ]
+        };
+    }
+
+    createReels() {
+        this.ui.createReels(
+            this.reelCount,
+            this.symbolsPerReel,
+            this.rowCount,
+            this.reelStrips,
+            this.state,
+            (symbol, text) => this.applySymbolClasses(symbol, text),
+            RNG
+        );
+    }
+
+    updateDisplay() {
+        this.ui.updateDisplay(this.state.getCredits(), this.state.getCurrentBet(), this.state.getLastWin());
+    }
+
+    /**
+     * Update auto collect toggle UI
+     */
+    updateAutoCollectUI() {
+        this.ui.updateAutoCollectUI(this.autoCollectEnabled);
+    }
+
+    /**
+     * Highlight symbols that are part of winning combinations
+     * @param {Set<string>} winningPositions - Set of position strings (e.g., "0-1", "2-3")
+     */
+    highlightWinningSymbols(winningPositions) {
+        this.ui.highlightWinningSymbols(winningPositions);
+    }
+
+    clearWinningSymbols() {
+        this.ui.clearWinningSymbols();
+    }
+
+    /**
+     * Phase 5: Apply special CSS classes to symbols based on their type
+     */
+    applySymbolClasses(symbolElement, symbolText) {
+        // Remove existing special classes
+        symbolElement.classList.remove('premium', 'scatter');
+
+        // Premium symbols (high-value symbols)
+        const premiumSymbols = getPremiumSymbols();
+        if (premiumSymbols.includes(symbolText)) {
+            symbolElement.classList.add('premium');
+        }
+
+        // Scatter symbol
+        if (symbolText === SYMBOLS.SCATTER.emoji) {
+            symbolElement.classList.add('scatter');
+        }
+    }
+
+    showWinningPaylines(winningLines) {
+        this.ui.showWinningPaylines(winningLines);
+    }
+
+    hidePaylines() {
+        this.ui.hidePaylines();
+    }
+
+    showMessage(message, winAmount = 0) {
+        return this.ui.showMessage(message, winAmount);
+    }
+
+    /**
+     * Phase 5: Animate win counter from 0 to final amount
+     */
+    animateWinCounter(overlay, finalAmount, baseMessage) {
+        return this.ui.animateWinCounter(overlay, finalAmount, baseMessage);
+    }
+
+    togglePaytable(show) {
+        if (!this.dom.paytableModal) return;
+
+        if (show) {
+            this.dom.paytableModal.classList.add('show');
+        } else {
+            this.dom.paytableModal.classList.remove('show');
+        }
+    }
+
+    /**
+     * Phase 3: Show level up message
+     */
+    async showLevelUpMessage(level, reward) {
+        let rewardText = '';
+        if (reward) {
+            rewardText = `<p class="level-reward">+${reward.credits} Credits</p>`;
+            if (reward.type === 'feature') {
+                rewardText += `<p class="level-unlock">✨ ${reward.value.toUpperCase()} UNLOCKED!</p>`;
+            }
+        }
+
+        const overlay = this.ui.showFeatureOverlay(`
+            <div class="feature-transition">
+                <div class="feature-icon">🎉</div>
+                <h1 class="feature-title">LEVEL UP!</h1>
+                <div class="feature-details">
+                    <p class="level-number-big">LEVEL ${level}</p>
+                    ${rewardText}
+                </div>
+            </div>
+        `);
+        if (!overlay) return;
+
+        // Level up sound and visual effects
+        this.soundManager.playLevelUp();
+        this.visualEffects.showLevelUpEffect();
+
+        // Unlock turbo mode at level 10
+        if (level === 10 && reward?.type === 'feature' && reward?.value === 'turbo') {
+            this.turboMode.unlock();
+        }
+
+        await new Promise(resolve => setTimeout(resolve, GAME_CONFIG.animations.levelUpMessage));
+        this.ui.hideFeatureOverlay();
+    }
+
+    /**
+     * Phase 3: Toggle statistics dashboard
+     */
+    toggleStats() {
+        const shouldShow = !this.state.select('ui.statsOpen');
+
+        if (shouldShow) {
+            this.currentStatsTab = 'session';
+            this.updateStatsDisplay('session');
+        }
+
+        this.state.update('ui.statsOpen', shouldShow);
+        this.ui.toggleStatsModal(shouldShow);
+    }
+
+    /**
+     * Phase 3: Update statistics display with tabs
+     */
+    updateStatsDisplay(tab = 'session') {
+        // Update active tab
+        this.ui.setActiveStatsTab(tab);
+
+        const sessionStats = this.statistics.getSessionStats();
+        const allTimeStats = this.statistics.getAllTimeStats();
+        const achievementStats = this.achievements.getStats();
+
+        let html = '';
+
+        switch(tab) {
+            case 'session':
+                html = `
+                    <h3 style="color: #ffd700; margin-bottom: 20px;">🎮 Current Session</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Spins</div>
+                            <div class="stat-value">${sessionStats.spins}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total Bet</div>
+                            <div class="stat-value">${sessionStats.totalBet}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total Win</div>
+                            <div class="stat-value">${sessionStats.totalWin}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">RTP</div>
+                            <div class="stat-value">${sessionStats.rtp.toFixed(1)}%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Best Win</div>
+                            <div class="stat-value">${sessionStats.bestWin}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Hit Frequency</div>
+                            <div class="stat-value">${sessionStats.hitFrequency.toFixed(1)}%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Bonus Frequency</div>
+                            <div class="stat-value">${sessionStats.bonusFrequency.toFixed(1)}%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Avg Win</div>
+                            <div class="stat-value">${sessionStats.averageWin.toFixed(1)}</div>
+                        </div>
+                    </div>
+                `;
+                break;
+
+            case 'allTime':
+                html = `
+                    <h3 style="color: #ffd700; margin-bottom: 20px;">📊 Lifetime Stats</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Total Spins</div>
+                            <div class="stat-value">${allTimeStats.totalSpins}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total Bet</div>
+                            <div class="stat-value">${allTimeStats.totalBet}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total Win</div>
+                            <div class="stat-value">${allTimeStats.totalWin}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">RTP</div>
+                            <div class="stat-value">${allTimeStats.rtp.toFixed(1)}%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Best Win</div>
+                            <div class="stat-value">${allTimeStats.bestWin}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Hit Frequency</div>
+                            <div class="stat-value">${allTimeStats.hitFrequency.toFixed(1)}%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Bonus Frequency</div>
+                            <div class="stat-value">${allTimeStats.bonusFrequency.toFixed(1)}%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Avg Win</div>
+                            <div class="stat-value">${allTimeStats.averageWin.toFixed(1)}</div>
+                        </div>
+                    </div>
+                `;
+                break;
+
+            case 'achievements':
+                const unlocked = this.achievements.getUnlocked();
+                const locked = this.achievements.getLocked();
+
+                html = `
+                    <h3 style="color: #ffd700; margin-bottom: 10px;">🏅 Achievements (${achievementStats.unlocked}/${achievementStats.total})</h3>
+                    <p style="text-align: center; color: #b0bec5; margin-bottom: 20px;">Completion: ${achievementStats.completion}%</p>
+                    <div class="achievements-grid">
+                        ${unlocked.map(a => `
+                            <div class="achievement-item unlocked">
+                                <div class="achievement-item-icon">${a.icon}</div>
+                                <div class="achievement-item-name">${a.name}</div>
+                                <div class="achievement-item-desc">${a.description}</div>
+                                <div class="achievement-item-reward">+${a.reward} Credits</div>
+                                <div class="achievement-item-date">Unlocked ${new Date(a.unlockedAt).toLocaleDateString()}</div>
+                            </div>
+                        `).join('')}
+                        ${locked.map(a => `
+                            <div class="achievement-item locked">
+                                <div class="achievement-item-icon">${a.icon}</div>
+                                <div class="achievement-item-name">???</div>
+                                <div class="achievement-item-desc">${a.description}</div>
+                                <div class="achievement-item-reward">+${a.reward} Credits</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                break;
+
+            case 'challenges':
+                html = `
+                    <h3 style="color: #ffd700; margin-bottom: 20px;">📅 Daily Challenges</h3>
+                    <div id="challengesListArea" style="margin-top: 30px;"></div>
+                `;
+                this.ui.renderStatsContent(html);
+                this.dailyChallenges.updateChallengesUI();
+                return;
+        }
+
+        this.ui.renderStatsContent(html);
+    }
+
+    /**
+     * Phase 5: Trigger screen shake effect for mega wins
+     */
+    triggerScreenShake() {
+        if (this.dom.gameContainer) {
+            this.dom.gameContainer.classList.add('screen-shake');
+
+            this.timerManager.setTimeout(() => {
+                this.dom.gameContainer.classList.remove('screen-shake');
+            }, GAME_CONFIG.animations.screenShake, 'visual-effects');
+        }
+
+        this.ui.triggerScreenShake();
+    }
+
+    /**
+     * Clear tracked timers either by label or entirely.
+     */
+    cleanupTimers(label = null) {
+        if (label) {
+            this.timerManager.clearByLabel(label);
+        } else {
+            this.timerManager.clearAll();
+        }
+
+        if (!label || label === 'win-counter') {
+            this.winCounterInterval = null;
+        }
+
+        if (!label) {
+            this.autoplay.isActive = false;
+            this.autoplay.updateUI();
+            this.state.setSpinning(false);
+
+            if (this.dom.spinBtn) {
+                this.dom.spinBtn.disabled = false;
+            }
+        }
+    }
+
+    /**
+     * Fully dispose of timer resources to prevent leaks during teardown.
+     */
+    dispose() {
+        this.cleanupTimers();
+        this.timerManager.dispose();
+    }
+
+    /**
+     * Phase 5: Reset all game data
+     */
+    resetAllData() {
+        // Clear localStorage
+        Storage.clear();
+
+        // Reset all game state using GameState
+        this.state.setCredits(GAME_CONFIG.initialCredits);
+        this.state.setCurrentBet(GAME_CONFIG.betOptions[0]);
+        this.state.setCurrentBetIndex(0);
+        this.state.setLastWin(0);
+
+        // Clear all subsystems (stats are managed by Statistics class)
+        this.levelSystem = new LevelSystem(this);
+        this.achievements = new Achievements(this);
+        this.dailyChallenges = new DailyChallenges(this);
+        this.statistics = new Statistics(this);
+        this.spinHistory.clear();
+
+        this.updateDisplay();
+    }
+
+    /**
+     * Phase 5: Offer gamble feature after win
+     */
+    async offerGamble(winAmount) {
+        return new Promise(async (resolve) => {
+            if (this.autoCollectEnabled) {
+                this.soundManager.playClick();
+                resolve(winAmount);
+                return;
+            }
+
+            const overlay = this.ui.showFeatureOverlay(`
+                <div class="gamble-container">
+                    <h2 class="gamble-title">🎴 DOUBLE UP</h2>
+
+                    <div class="gamble-current-win">
+                        <div class="gamble-label">You Won:</div>
+                        <div class="gamble-amount">${winAmount}</div>
+                    </div>
+
+                    <div class="gamble-message">
+                        Try to double your win?<br>
+                        Guess the card color!
+                    </div>
+
+                    <div class="gamble-timer">Auto-collect in: <span class="timer-value" id="gambleOfferTimer">5</span>s</div>
+
+                    <div class="gamble-buttons">
+                        <button class="btn btn-small" id="gambleAccept">
+                            🎲 DOUBLE UP
+                        </button>
+                        <button class="btn btn-small" id="gambleDecline">
+                            💰 COLLECT
+                        </button>
+                    </div>
+                </div>
+            `);
+            if (!overlay) {
+                resolve(winAmount);
+                return;
+            }
+
+            let autoCollectTimer = null;
+
+            const clearAutoCollect = () => {
+                if (autoCollectTimer) {
+                    this.timerManager.clearInterval(autoCollectTimer);
+                    autoCollectTimer = null;
+                }
+                this.cleanupTimers('gamble-offer');
+            };
+
+            // Start auto-collect countdown
+            const timerDisplay = overlay.querySelector('#gambleOfferTimer');
+            let timeLeft = FEATURES_CONFIG.gamble.offerTimeout;
+            autoCollectTimer = this.timerManager.setInterval(() => {
+                timeLeft -= 1;
+                if (timerDisplay) {
+                    timerDisplay.textContent = timeLeft;
+                }
+
+                if (timeLeft <= 0) {
+                    clearAutoCollect();
+                    this.ui.hideFeatureOverlay();
+                    this.soundManager.playClick();
+                    resolve(winAmount);
+                }
+            }, 1000, 'gamble-offer');
+
+            overlay.querySelector('#gambleAccept')?.addEventListener('click', async () => {
+                clearAutoCollect();
+                this.ui.hideFeatureOverlay();
+                // start() now returns a promise that resolves with the final win amount
+                const finalAmount = await this.gamble.start(winAmount);
+                resolve(finalAmount);
+            });
+
+            overlay.querySelector('#gambleDecline')?.addEventListener('click', () => {
+                clearAutoCollect();
+                this.ui.hideFeatureOverlay();
+                this.soundManager.playClick();
+                resolve(winAmount);
+            });
         });
     }
 
