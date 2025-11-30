@@ -2,7 +2,6 @@ import { GAME_CONFIG } from '../config/game.js';
 import { PaylineEvaluator } from './PaylineEvaluator.js';
 import { SlotMachine } from './SlotMachine.js';
 import { Storage } from '../utils/Storage.js';
-import { formatNumber } from '../utils/formatters.js';
 import { ErrorHandler, ERROR_TYPES } from './ErrorHandler.js';
 import { UIController } from '../ui/UIController.js';
 import { RNG } from '../utils/RNG.js';
@@ -21,7 +20,9 @@ export class GameOrchestrator extends SlotMachine {
         this.cacheDOM();
 
         // Initialize UIController (handles all UI updates via StateManager)
-        this.ui = new UIController(this.stateManager, this.events, this.dom);
+        const uiController = new UIController(this.stateManager, this.events, this.dom);
+        this.uiFacade.bindController(uiController);
+        this.ui = this.uiFacade;
 
         this.updateDisplay();
         this.createReels();
@@ -428,29 +429,7 @@ export class GameOrchestrator extends SlotMachine {
      * @param {number} totalWin - Total win amount to add to credits
      */
     updateCreditsAndStats(totalWin) {
-        if (totalWin > 0) {
-            this.state.addCredits(totalWin);
-            this.state.setLastWin(totalWin);
-
-            // Award win XP and track stats
-            this.levelSystem.awardXP('win', totalWin);
-            this.statistics.recordSpin(this.state.getCurrentBet(), totalWin, true);
-            this.dailyChallenges.updateChallengeProgress('win_amount', totalWin);
-
-            // Check for big win
-            const winMultiplier = totalWin / this.state.getCurrentBet();
-            if (winMultiplier >= GAME_CONFIG.winThresholds.mega) {
-                this.levelSystem.awardXP('bigWin');
-            }
-
-            // Update daily challenges
-            this.dailyChallenges.updateChallengeProgress('big_win', winMultiplier >= GAME_CONFIG.winThresholds.big ? 1 : 0);
-
-            this.updateDisplay();
-        } else {
-            // Track loss
-            this.statistics.recordSpin(this.state.getCurrentBet(), 0, false);
-        }
+        return super.updateCreditsAndStats(totalWin);
     }
 
     /**
@@ -463,55 +442,7 @@ export class GameOrchestrator extends SlotMachine {
      * @returns {Promise<void>}
      */
     async handleFeatureTriggers(winInfo, bonusInfo, isFreeSpin) {
-        let shouldExecuteFreeSpins = false;
-
-        // Check for Free Spins trigger
-        if (winInfo.hasScatterWin && this.freeSpins.shouldTrigger(winInfo.scatterCount)) {
-            if (isFreeSpin) {
-                // Re-trigger during free spins
-                await this.freeSpins.retrigger(winInfo.scatterCount);
-            } else {
-                // Initial trigger
-                // Track free spins trigger
-                this.statistics.recordFeatureTrigger('freeSpins');
-                this.levelSystem.awardXP('freeSpins');
-                this.dailyChallenges.updateChallengeProgress('trigger_freespins', 1);
-
-                // Free spins trigger sound
-                this.soundManager.playFreeSpinsTrigger();
-
-                await this.freeSpins.trigger(winInfo.scatterCount);
-
-                // Signal to execute free spins after this spin completes
-                shouldExecuteFreeSpins = true;
-            }
-        }
-
-        // Check for Bonus trigger
-        if (bonusInfo.triggered && !isFreeSpin) {
-            // Track bonus trigger
-            this.statistics.recordFeatureTrigger('bonus');
-            this.levelSystem.awardXP('bonus');
-            this.dailyChallenges.updateChallengeProgress('trigger_bonus', 1);
-
-            // Bonus trigger sound
-            this.soundManager.playBonusTrigger();
-
-            const bonusCount = bonusInfo.bonusLines[0].count;
-            await this.bonusGame.trigger(bonusCount);
-
-            const bonusWin = await this.bonusGame.end();
-            if (bonusWin > 0) {
-                this.state.addCredits(bonusWin);
-                this.state.setLastWin(this.state.getLastWin() + bonusWin);
-                // Bonus wins tracked via Statistics class
-
-                this.updateDisplay();
-                await this.showMessage(`BONUS WIN: ${formatNumber(bonusWin)}`);
-            }
-        }
-
-        return shouldExecuteFreeSpins;
+        return this.featureManager.handleFeatureTriggers(winInfo, bonusInfo, isFreeSpin);
     }
 
     /**
@@ -523,73 +454,6 @@ export class GameOrchestrator extends SlotMachine {
      * @returns {Promise<void>}
      */
     async finalizeSpin(totalWin, winInfo, bonusInfo, isFreeSpin) {
-        Logger.debug('finalizeSpin - isFreeSpin:', isFreeSpin, 'remaining before:', this.freeSpins.remainingSpins);
-
-        // Handle free spins countdown
-        if (isFreeSpin) {
-            const hasMoreSpins = await this.freeSpins.executeSpin();
-            Logger.debug('After executeSpin - hasMoreSpins:', hasMoreSpins, 'remaining:', this.freeSpins.remainingSpins);
-            if (!hasMoreSpins) {
-                await this.freeSpins.end();
-            }
-        }
-
-        // Check achievements
-        this.achievements.checkAchievements(
-            this.statistics.allTime,
-            this.state.getLastWin(),
-            this.state.getCurrentBet(),
-            this.state.getCredits()
-        );
-
-        // Offer gamble on regular wins (not during free spins/bonus)
-        if (
-            totalWin > 0 &&
-            !isFreeSpin &&
-            !bonusInfo.triggered &&
-            this.gamble.canGamble(totalWin) &&
-            !this.autoCollectEnabled
-        ) {
-            // Remove the win from credits before gamble (already added in updateCreditsAndStats)
-            const currentCredits = this.state.getCredits();
-            this.state.setCredits(currentCredits - totalWin);
-            this.updateDisplay();
-
-            // Offer gamble
-            const gambleResult = await this.offerGamble(totalWin);
-
-            // Add gamble result back
-            this.state.setCredits(this.state.getCredits() + gambleResult);
-            totalWin = gambleResult;
-            this.state.setLastWin(gambleResult);
-            this.updateDisplay();
-
-            // Track gamble in statistics if they won more
-            if (gambleResult > 0) {
-                this.statistics.recordSpin(this.state.getCurrentBet(), gambleResult, true);
-            }
-        }
-
-        // Record spin in history
-        const features = [];
-        if (this.freeSpins.isActive()) features.push('freeSpins');
-        if (winInfo.hasScatterWin) features.push('scatter');
-        if (bonusInfo.triggered) features.push('bonus');
-        if (this.cascade.enabled && totalWin > winInfo.totalWin) features.push('cascade');
-
-        this.spinHistory.recordSpin(this.state.getCurrentBet(), totalWin, features);
-
-        // Save game state after each spin
-        this.saveGameState();
-
-        this.state.setSpinning(false);
-        if (this.dom.spinBtn) this.dom.spinBtn.disabled = false;
-
-        if (this.state.getCredits() === 0 && !isFreeSpin) {
-            await this.showMessage('GAME OVER\nResetting to 1000 credits');
-            this.state.setCredits(GAME_CONFIG.initialCredits);
-            this.updateDisplay();
-            this.saveGameState();
-        }
+        return this.featureManager.finalizeSpin(totalWin, winInfo, bonusInfo, isFreeSpin);
     }
 }
