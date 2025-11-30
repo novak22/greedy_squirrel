@@ -5,11 +5,11 @@
  * - Single source of truth for all game state
  * - Notify subscribers when state changes
  * - Support nested property paths (e.g., 'game.credits')
- * - Type-safe getters and setters
+ * - Immutable updates with versioning safeguards
  *
  * Usage:
  *   const state = new StateManager(initialState);
- *   state.setState('game.credits', 1500);
+ *   state.update('game.credits', 1500);
  *   state.subscribe('game.credits', (newVal, oldVal) => { ... });
  */
 
@@ -18,15 +18,16 @@ export class StateManager {
         this.state = this.deepClone(initialState);
         this.subscribers = new Map(); // path -> [callbacks]
         this.wildcardSubscribers = []; // callbacks for '*'
+        this.version = 0; // increments on every mutation
     }
 
     /**
-     * Get state value at path
-     * @param {string} path - Dot-notation path (e.g., 'game.credits')
-     * @returns {*} Value at path
+     * Internal getter that returns the raw state reference for equality checks
+     * @param {string|null} path
+     * @returns {*} Raw value
      */
-    getState(path = null) {
-        if (!path) return this.deepClone(this.state);
+    getValueAtPath(path = null) {
+        if (!path) return this.state;
 
         const keys = path.split('.');
         let value = this.state;
@@ -40,36 +41,78 @@ export class StateManager {
     }
 
     /**
-     * Set state value at path and notify subscribers
-     * @param {string} path - Dot-notation path
-     * @param {*} value - New value
-     * @param {boolean} silent - If true, don't notify subscribers
+     * Read state value at path.
+     * Returns a cloned value to prevent external mutation of internal state.
+     * @param {string|null} path - Dot-notation path (e.g., 'game.credits')
+     * @returns {*} Cloned value at path
      */
-    setState(path, value, silent = false) {
-        const keys = path.split('.');
-        const lastKey = keys.pop();
+    select(path = null) {
+        if (!path) return this.deepClone(this.state);
 
-        // Navigate to parent object
-        let parent = this.state;
+        const keys = path.split('.');
+        let value = this.state;
+
         for (const key of keys) {
-            if (!(key in parent)) {
-                parent[key] = {};
-            }
-            parent = parent[key];
+            if (value === undefined || value === null) return undefined;
+            value = value[key];
         }
 
-        const oldValue = parent[lastKey];
+        return this.deepClone(value);
+    }
 
-        // Only update if value changed
-        if (this.isEqual(oldValue, value)) {
+    /**
+     * Apply an immutable update to the state and notify subscribers.
+     * @param {string} path - Dot-notation path
+     * @param {*} value - New value or updater function(prevValue)
+     * @param {Object} options
+     * @param {boolean} options.silent - If true, don't notify subscribers
+     * @param {number} [options.expectedVersion] - Optional optimistic lock guard
+     */
+    update(path, value, { silent = false, expectedVersion } = {}) {
+        if (expectedVersion !== undefined && expectedVersion !== this.version) {
+            throw new Error(`State version mismatch. Expected ${expectedVersion}, actual ${this.version}`);
+        }
+
+        const keys = path.split('.');
+        const lastKey = keys[keys.length - 1];
+        const currentValue = this.getValueAtPath(path);
+        const oldValue = this.deepClone(currentValue);
+
+        const newValue = typeof value === 'function' ? value(oldValue) : value;
+        if (this.isEqual(currentValue, newValue)) {
             return;
         }
 
-        parent[lastKey] = value;
+        const nextState = Array.isArray(this.state) ? [...this.state] : { ...this.state };
+        let cursorOld = this.state;
+        let cursorNew = nextState;
+
+        for (let i = 0; i < keys.length - 1; i++) {
+            const key = keys[i];
+            const sourceChild = cursorOld?.[key];
+            const clonedChild = Array.isArray(sourceChild)
+                ? [...sourceChild]
+                : (sourceChild && typeof sourceChild === 'object')
+                    ? { ...sourceChild }
+                    : {};
+
+            cursorNew[key] = clonedChild;
+            cursorOld = sourceChild || {};
+            cursorNew = clonedChild;
+        }
+
+        const finalValue = this.deepClone(newValue);
+        cursorNew[lastKey] = finalValue;
+
+        const previousState = this.state;
+        this.state = nextState;
+        this.version += 1;
 
         if (!silent) {
-            this.notify(path, value, oldValue);
+            this.notify(path, finalValue, oldValue);
         }
+
+        return { state: this.select(), previousState, version: this.version };
     }
 
     /**
@@ -80,9 +123,9 @@ export class StateManager {
         const changes = [];
 
         for (const [path, value] of Object.entries(updates)) {
-            const oldValue = this.getState(path);
-            this.setState(path, value, true); // Silent updates
-            if (!this.isEqual(oldValue, value)) {
+            const oldValue = this.deepClone(this.getValueAtPath(path));
+            const result = this.update(path, value, { silent: true });
+            if (result && !this.isEqual(oldValue, value)) {
                 changes.push({ path, value, oldValue });
             }
         }
@@ -157,7 +200,7 @@ export class StateManager {
         if (parentPath) {
             const parentCallbacks = this.subscribers.get(parentPath);
             if (parentCallbacks) {
-                const parentValue = this.getState(parentPath);
+                const parentValue = this.select(parentPath);
                 parentCallbacks.forEach(callback => {
                     try {
                         callback(parentValue, undefined, parentPath);
@@ -198,9 +241,10 @@ export class StateManager {
     reset(path = null, value = {}) {
         if (!path) {
             this.state = this.deepClone(value);
+            this.version += 1;
             this.notify('*', this.state, undefined);
         } else {
-            this.setState(path, value);
+            this.update(path, value);
         }
     }
 
@@ -213,6 +257,14 @@ export class StateManager {
     }
 
     /**
+     * Read the current state version for optimistic updates
+     * @returns {number}
+     */
+    getVersion() {
+        return this.version;
+    }
+
+    /**
      * Load state from snapshot
      * @param {Object} snapshot - State snapshot
      * @param {boolean} silent - If true, don't notify subscribers
@@ -220,6 +272,7 @@ export class StateManager {
     loadSnapshot(snapshot, silent = false) {
         const oldState = this.state;
         this.state = this.deepClone(snapshot);
+        this.version += 1;
 
         if (!silent) {
             this.notify('*', this.state, oldState);
