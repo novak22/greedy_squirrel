@@ -1,9 +1,15 @@
 // Achievement system with tracking and notifications
 import { PROGRESSION_CONFIG } from '../config/progression.js';
+import { GAME_EVENTS } from '../core/EventBus.js';
 
 export class Achievements {
-    constructor(game) {
-        this.game = game;
+    constructor({ gameState, updateDisplay = () => {}, saveGameState = () => {}, eventBus = null } = {}) {
+        this.gameState = gameState || {
+            addCredits: () => {}
+        };
+        this.updateDisplay = updateDisplay;
+        this.saveGameState = saveGameState;
+        this.eventBus = eventBus;
         this.achievements = [];
         this.pendingNotifications = [];
 
@@ -55,7 +61,7 @@ export class Achievements {
 
                     // Award credits using GameState
                     if (achievement.reward) {
-                        this.game.state.addCredits(achievement.reward);
+                        this.gameState.addCredits(achievement.reward);
                     }
                 }
             }
@@ -64,8 +70,9 @@ export class Achievements {
         // Show notifications for newly unlocked
         if (newlyUnlocked.length > 0) {
             this.queueNotifications(newlyUnlocked);
-            this.game.updateDisplay();
-            this.game.saveGameState();
+            this.eventBus?.emit?.(GAME_EVENTS.ACHIEVEMENT_UNLOCKED, newlyUnlocked);
+            this.updateDisplay();
+            this.saveGameState();
         }
 
         return newlyUnlocked;

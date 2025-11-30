@@ -1,7 +1,7 @@
 // Comprehensive statistics tracking
 export class Statistics {
-    constructor(game) {
-        this.game = game;
+    constructor({ betOptions = [] } = {}) {
+        this.betOptions = betOptions;
 
         // Session stats (reset on page load)
         this.session = {
@@ -103,11 +103,11 @@ export class Statistics {
         }
 
         // Track bet patterns
-        if (bet === this.game.betOptions[this.game.betOptions.length - 1]) {
+        if (bet === this.betOptions[this.betOptions.length - 1]) {
             this.allTime.maxBetCount++;
         }
 
-        if (bet === this.game.betOptions[0]) {
+        if (bet === this.betOptions[0]) {
             this.allTime.minBetCount++;
         }
 

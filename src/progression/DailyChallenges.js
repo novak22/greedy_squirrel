@@ -1,9 +1,22 @@
 // Daily challenges system
 import { PROGRESSION_CONFIG } from '../config/progression.js';
+import { GAME_EVENTS } from '../core/EventBus.js';
 
 export class DailyChallenges {
-    constructor(game) {
-        this.game = game;
+    constructor({
+        gameState,
+        updateDisplay = () => {},
+        saveGameState = () => {},
+        showMessage = async () => {},
+        eventBus = null
+    } = {}) {
+        this.gameState = gameState || {
+            addCredits: () => {}
+        };
+        this.updateDisplay = updateDisplay;
+        this.saveGameState = saveGameState;
+        this.showMessage = showMessage;
+        this.eventBus = eventBus;
         this.challenges = [];
         this.challengeProgress = {};
     }
@@ -52,7 +65,7 @@ export class DailyChallenges {
         }));
 
         this.challengeProgress = {};
-        this.game.saveGameState();
+        this.saveGameState();
     }
 
     /**
@@ -74,7 +87,7 @@ export class DailyChallenges {
         });
 
         if (anyUpdated) {
-            this.game.saveGameState();
+            this.saveGameState();
             this.updateChallengesUI();
         }
     }
@@ -90,13 +103,12 @@ export class DailyChallenges {
         }
 
         challenge.claimed = true;
-        this.game.state.addCredits(challenge.reward);
-        this.game.updateDisplay();
-        this.game.saveGameState();
+        this.gameState.addCredits(challenge.reward);
+        this.updateDisplay();
+        this.saveGameState();
 
-        await this.game.showMessage(
-            `Challenge Complete!\n${challenge.name}\n+${challenge.reward} Credits`
-        );
+        await this.showMessage(`Challenge Complete!\n${challenge.name}\n+${challenge.reward} Credits`);
+        this.eventBus?.emit?.(GAME_EVENTS.CHALLENGE_COMPLETED, challenge);
 
         return true;
     }

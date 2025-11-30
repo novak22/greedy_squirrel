@@ -166,12 +166,7 @@ export class SlotMachine {
         this.state.setReelPositions([0, 0, 0, 0, 0]);
 
         // Initialize progression systems
-        this.levelSystem = new LevelSystem(this);
-        this.achievements = new Achievements(this);
-        this.dailyChallenges = new DailyChallenges(this);
-        this.statistics = new Statistics(this);
-
-        // Initialize bonus features
+        this.statistics = new Statistics({ betOptions: this.betOptions });
         this.freeSpins = new FreeSpins({ renderer: freeSpinsRenderer });
         this.bonusGame = new BonusGame({ renderer: bonusGameRenderer });
         this.cascade = new Cascade({
@@ -185,6 +180,28 @@ export class SlotMachine {
             getReelResult: () => this.getReelResult(),
             evaluateWinsWithoutDisplay: (result, evaluator) =>
                 this.evaluateWinsWithoutDisplay?.(result, evaluator)
+        });
+        this.levelSystem = new LevelSystem({
+            gameState: this.state,
+            cascade: this.cascade,
+            eventBus: this.events,
+            showLevelUpMessage: (level: number, reward: unknown) =>
+                this.showLevelUpMessage(level, reward as any),
+            updateDisplay: () => this.updateDisplay(),
+            saveGameState: () => this.saveGameState?.()
+        });
+        this.achievements = new Achievements({
+            gameState: this.state,
+            updateDisplay: () => this.updateDisplay(),
+            saveGameState: () => this.saveGameState?.(),
+            eventBus: this.events
+        });
+        this.dailyChallenges = new DailyChallenges({
+            gameState: this.state,
+            updateDisplay: () => this.updateDisplay(),
+            saveGameState: () => this.saveGameState?.(),
+            showMessage: (message: string) => this.showMessage(message),
+            eventBus: this.events
         });
 
         // Initialize advanced features

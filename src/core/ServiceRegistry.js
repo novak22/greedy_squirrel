@@ -203,20 +203,45 @@ export function registerServices(container) {
     // ============================================
     // Progression Systems
     // ============================================
-    container.factory('levelSystem', () => {
-        return new LevelSystem(null); // Will be injected later
+    container.factory('levelSystem', (c) => {
+        const eventBus = c.resolve('eventBus');
+        return new LevelSystem({
+            gameState: c.resolve('gameState'),
+            cascade: c.resolve('cascade'),
+            eventBus,
+            showLevelUpMessage: async (level, reward) => {
+                eventBus.emit('ui:levelUp', { level, reward });
+            },
+            updateDisplay: () => eventBus.emit('ui:updateDisplay'),
+            saveGameState: () => eventBus.emit('game:save')
+        });
     });
 
-    container.factory('achievements', () => {
-        return new Achievements(null); // Will be injected later
+    container.factory('achievements', (c) => {
+        const eventBus = c.resolve('eventBus');
+        return new Achievements({
+            gameState: c.resolve('gameState'),
+            updateDisplay: () => eventBus.emit('ui:updateDisplay'),
+            saveGameState: () => eventBus.emit('game:save'),
+            eventBus
+        });
     });
 
-    container.factory('dailyChallenges', () => {
-        return new DailyChallenges(null); // Will be injected later
+    container.factory('dailyChallenges', (c) => {
+        const eventBus = c.resolve('eventBus');
+        return new DailyChallenges({
+            gameState: c.resolve('gameState'),
+            updateDisplay: () => eventBus.emit('ui:updateDisplay'),
+            saveGameState: () => eventBus.emit('game:save'),
+            showMessage: async (message) => {
+                eventBus.emit('ui:message', { message });
+            },
+            eventBus
+        });
     });
 
-    container.factory('statistics', () => {
-        return new Statistics(null); // Will be injected later
+    container.factory('statistics', (c) => {
+        return new Statistics({ betOptions: c.resolve('gameConfig').betOptions });
     });
 
     // ============================================

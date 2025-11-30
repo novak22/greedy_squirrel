@@ -1,9 +1,28 @@
 // Level and XP progression system
 import { PROGRESSION_CONFIG, getLevelFromXP } from '../config/progression.js';
+import { GAME_EVENTS } from '../core/EventBus.js';
 
 export class LevelSystem {
-    constructor(game) {
-        this.game = game;
+    constructor({
+        gameState,
+        cascade = null,
+        eventBus = null,
+        showLevelUpMessage = async () => {},
+        updateDisplay = () => {},
+        saveGameState = () => {}
+    } = {}) {
+        this.gameState =
+            gameState ||
+            {
+                getCurrentBet: () => 0,
+                addCredits: () => {}
+            };
+        this.cascade = cascade;
+        this.eventBus = eventBus;
+        this.showLevelUpMessage = showLevelUpMessage;
+        this.updateDisplay = updateDisplay;
+        this.saveGameState = saveGameState;
+
         this.xp = 0;
         this.level = 1;
         this.unlockedFeatures = new Set();
@@ -31,7 +50,7 @@ export class LevelSystem {
             case 'spin':
                 xpGained =
                     config.spinBase +
-                    (this.game.state.getCurrentBet() / 10) * config.spinMultiplier;
+                    (this.gameState.getCurrentBet() / 10) * config.spinMultiplier;
                 break;
             case 'win':
                 xpGained = (amount / 20) * config.winMultiplier;
@@ -84,12 +103,12 @@ export class LevelSystem {
         const reward = PROGRESSION_CONFIG.levels.rewards[newLevel];
 
         if (reward) {
-            await this.game.showLevelUpMessage(newLevel, reward);
+            await this.showLevelUpMessage(newLevel, reward);
 
             // Apply reward using GameState
             if (reward.credits) {
-                this.game.state.addCredits(reward.credits);
-                this.game.updateDisplay();
+                this.gameState.addCredits(reward.credits);
+                this.updateDisplay();
             }
 
             // Unlock features
@@ -98,10 +117,11 @@ export class LevelSystem {
                 await this.unlockFeature(reward.value);
             }
         } else {
-            await this.game.showLevelUpMessage(newLevel, null);
+            await this.showLevelUpMessage(newLevel, null);
         }
 
-        this.game.saveGameState();
+        this.eventBus?.emit?.(GAME_EVENTS.LEVEL_UP, { level: newLevel, reward });
+        this.saveGameState();
     }
 
     /**
@@ -117,7 +137,7 @@ export class LevelSystem {
                 break;
             case 'cascade':
                 console.log('✨ Cascading wins unlocked!');
-                this.game.cascade.setEnabled(true);
+                this.cascade?.setEnabled?.(true);
                 break;
         }
     }
