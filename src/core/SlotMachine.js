@@ -708,14 +708,14 @@ export class SlotMachine {
      * Phase 3: Toggle statistics dashboard
      */
     toggleStats() {
-        const shouldShow = !this.state.getState('ui.statsOpen');
+        const shouldShow = !this.state.select('ui.statsOpen');
 
         if (shouldShow) {
             this.currentStatsTab = 'session';
             this.updateStatsDisplay('session');
         }
 
-        this.state.setState('ui.statsOpen', shouldShow);
+        this.state.update('ui.statsOpen', shouldShow);
         this.ui.toggleStatsModal(shouldShow);
     }
 
