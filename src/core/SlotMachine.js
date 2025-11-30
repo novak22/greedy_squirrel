@@ -1,11 +1,11 @@
 // Main SlotMachine class with Phase 1, 2, 3 & 4 enhancements
-import { getAllSymbolEmojis } from '../config/symbols.js';
+import { getAllSymbolEmojis, getSymbolsForReel } from '../config/symbols.js';
 import { GAME_CONFIG } from '../config/game.js';
 import { FEATURES_CONFIG } from '../config/features.js';
-import { RNG } from '../utils/RNG.js';
-import { EventBus } from './EventBus.js';
-import { StateManager, createInitialState } from './StateManager.js';
-import { GameState } from './GameState.js';
+import { RNG } from '../../SlotMachineEngine/src/utils/RNG.js';
+import { EventBus } from '../../SlotMachineEngine/src/core/EventBus.js';
+import { StateManager, createInitialState } from '../../SlotMachineEngine/src/core/StateManager.js';
+import { GameState } from '../../SlotMachineEngine/src/core/GameState.js';
 import { FreeSpins } from '../features/FreeSpins.js';
 import { BonusGame } from '../features/BonusGame.js';
 import { Cascade } from '../features/Cascade.js';
@@ -43,10 +43,13 @@ export class SlotMachine {
         this.symbolsPerReel = GAME_CONFIG.symbolsPerReel;
         this.betOptions = GAME_CONFIG.betOptions;
 
+        // Initialize RNG with symbol configuration
+        this.rng = RNG.create(getSymbolsForReel);
+
         // Reel strips (generated once with weighted symbols)
         this.reelStrips = [];
         for (let i = 0; i < this.reelCount; i++) {
-            this.reelStrips.push(RNG.generateReelStrip(i, this.symbolsPerReel));
+            this.reelStrips.push(this.rng.generateReelStrip(i, this.symbolsPerReel));
         }
 
         // Game state is now managed by GameState wrapper
@@ -127,7 +130,8 @@ export class SlotMachine {
             visualEffects: this.visualEffects,
             ui: this.uiFacade,
             triggerScreenShake: () => this.triggerScreenShake(),
-            metrics: this.metrics
+            metrics: this.metrics,
+            rng: this.rng
         });
 
         this.featureManager = new FeatureManager({
@@ -187,10 +191,11 @@ export class SlotMachine {
     /**
      * Evaluate wins without displaying (used by cascade feature)
      * @param {Array<Array<string>>} result - 2D array of reel symbols
+     * @param {PaylineEvaluator} paylineEvaluator - PaylineEvaluator instance
      * @returns {Promise<Object>} Win information from PaylineEvaluator
      */
-    async evaluateWinsWithoutDisplay(result) {
-        return this.spinEngine.evaluateWinsWithoutDisplay(result);
+    async evaluateWinsWithoutDisplay(result, paylineEvaluator) {
+        return this.spinEngine.evaluateWinsWithoutDisplay(result, paylineEvaluator);
     }
 
     updateCreditsAndStats(totalWin) {

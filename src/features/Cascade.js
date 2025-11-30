@@ -1,6 +1,5 @@
 // Cascading Wins (Tumble) feature implementation
 import { FEATURES_CONFIG } from '../config/features.js';
-import { RNG } from '../utils/RNG.js';
 
 export class Cascade {
     constructor(game) {
@@ -78,7 +77,7 @@ export class Cascade {
 
                 // Check for new wins
                 const result = this.game.getReelResult();
-                const winInfo = await this.game.evaluateWinsWithoutDisplay(result);
+                const winInfo = await this.game.evaluateWinsWithoutDisplay(result, this.game.paylineEvaluator);
 
                 if (winInfo.totalWin > 0) {
                     this.cascadeCount++;
@@ -216,8 +215,8 @@ export class Cascade {
             symbols.forEach((symbol, row) => {
                 if (symbol.textContent === '') {
                     // Get new symbol from reel strip
-                    const position = RNG.getRandomPosition(this.game.symbolsPerReel);
-                    const newSymbols = RNG.getSymbolsAtPosition(
+                    const position = this.game.rng.getRandomPosition(this.game.symbolsPerReel);
+                    const newSymbols = this.game.rng.getSymbolsAtPosition(
                         this.game.reelStrips[reelIndex],
                         position,
                         1

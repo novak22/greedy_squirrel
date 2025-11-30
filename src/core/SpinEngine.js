@@ -1,8 +1,6 @@
 import { GAME_CONFIG } from '../config/game.js';
 import { formatNumber } from '../utils/formatters.js';
-import { RNG } from '../utils/RNG.js';
-import { PaylineEvaluator } from './PaylineEvaluator.js';
-import { GAME_EVENTS } from './EventBus.js';
+import { GAME_EVENTS } from '../../SlotMachineEngine/src/core/EventBus.js';
 
 export class SpinEngine {
     constructor({
@@ -25,7 +23,8 @@ export class SpinEngine {
         visualEffects,
         ui,
         triggerScreenShake,
-        metrics = null
+        metrics = null,
+        rng = null
     }) {
         this.reelCount = reelCount;
         this.rowCount = rowCount;
@@ -47,6 +46,7 @@ export class SpinEngine {
         this.ui = ui;
         this.triggerScreenShake = triggerScreenShake;
         this.metrics = metrics;
+        this.rng = rng;
     }
 
     setUI(ui) {
@@ -172,8 +172,8 @@ export class SpinEngine {
         return totalWin;
     }
 
-    async evaluateWinsWithoutDisplay(result) {
-        return PaylineEvaluator.evaluateWins(result, this.state.getCurrentBet());
+    async evaluateWinsWithoutDisplay(result, paylineEvaluator) {
+        return paylineEvaluator.evaluateWins(result, this.state.getCurrentBet());
     }
 
     spinReel(reelIndex, duration, predeterminedPosition = null, predeterminedSymbols = null) {
@@ -198,8 +198,8 @@ export class SpinEngine {
 
             reel.classList.add('spinning');
 
-            const randomPosition = RNG.getRandomPosition(this.symbolsPerReel);
-            const randomSymbols = RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], randomPosition, this.rowCount);
+            const randomPosition = this.rng.getRandomPosition(this.symbolsPerReel);
+            const randomSymbols = this.rng.getSymbolsAtPosition(this.reelStrips[reelIndex], randomPosition, this.rowCount);
             symbols.forEach((symbol, index) => {
                 symbol.textContent = randomSymbols[index];
             });
@@ -212,9 +212,9 @@ export class SpinEngine {
                 if (predeterminedSymbols) {
                     finalSymbols = predeterminedSymbols;
                 } else {
-                    const finalPosition = predeterminedPosition !== null ? predeterminedPosition : RNG.getRandomPosition(this.symbolsPerReel);
+                    const finalPosition = predeterminedPosition !== null ? predeterminedPosition : this.rng.getRandomPosition(this.symbolsPerReel);
                     this.state.setReelPosition(reelIndex, finalPosition);
-                    finalSymbols = RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], finalPosition, this.rowCount);
+                    finalSymbols = this.rng.getSymbolsAtPosition(this.reelStrips[reelIndex], finalPosition, this.rowCount);
                 }
 
                 for (let i = 0; i < this.rowCount; i++) {

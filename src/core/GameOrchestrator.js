@@ -1,15 +1,14 @@
 import { GAME_CONFIG } from '../config/game.js';
-import { SYMBOLS, getPremiumSymbols } from '../config/symbols.js';
+import { SYMBOLS, getPremiumSymbols, getSymbolByEmoji } from '../config/symbols.js';
 import { FEATURES_CONFIG } from '../config/features.js';
-import { PaylineEvaluator } from './PaylineEvaluator.js';
+import { PaylineEvaluator } from '../../SlotMachineEngine/src/core/PaylineEvaluator.js';
 import { SlotMachine } from './SlotMachine.js';
 import { Storage } from '../utils/Storage.js';
 import { ErrorHandler, ERROR_TYPES } from './ErrorHandler.js';
 import { UIController } from '../ui/UIController.js';
-import { RNG } from '../utils/RNG.js';
 import { Logger } from '../utils/Logger.js';
 import { Metrics } from '../utils/Metrics.js';
-import { GAME_EVENTS } from './EventBus.js';
+import { GAME_EVENTS } from '../../SlotMachineEngine/src/core/EventBus.js';
 import { LevelSystem } from '../progression/LevelSystem.js';
 import { Achievements } from '../progression/Achievements.js';
 import { DailyChallenges } from '../progression/DailyChallenges.js';
@@ -18,6 +17,16 @@ import { Statistics } from '../progression/Statistics.js';
 export class GameOrchestrator extends SlotMachine {
     constructor() {
         super();
+
+        // Initialize PaylineEvaluator instance for the game
+        this.paylineEvaluator = new PaylineEvaluator({
+            symbols: SYMBOLS,
+            symbolHelpers: { getSymbolByEmoji },
+            paylines: GAME_CONFIG.paylines,
+            reelCount: GAME_CONFIG.reelCount,
+            metrics: Metrics
+        });
+
         this.loadGameState();
         this.init();
     }
@@ -152,56 +161,55 @@ export class GameOrchestrator extends SlotMachine {
      * Cache frequently accessed DOM elements for performance
      */
     cacheDOM() {
-        this.dom = {
-            // Display elements
-            credits: document.getElementById('credits'),
-            bet: document.getElementById('bet'),
-            betDisplay: document.getElementById('betDisplay'),
-            win: document.getElementById('win'),
+        // Mutate existing this.dom object instead of replacing it
+        // (UIFacade and SpinEngine hold references to it)
+        this.dom.credits = document.getElementById('credits');
+        this.dom.bet = document.getElementById('bet');
+        this.dom.betDisplay = document.getElementById('betDisplay');
+        this.dom.win = document.getElementById('win');
 
-            // Control elements
-            spinBtn: document.getElementById('spinBtn'),
-            increaseBet: document.getElementById('increaseBet'),
-            decreaseBet: document.getElementById('decreaseBet'),
-            maxBet: document.getElementById('maxBet'),
+        // Control elements
+        this.dom.spinBtn = document.getElementById('spinBtn');
+        this.dom.increaseBet = document.getElementById('increaseBet');
+        this.dom.decreaseBet = document.getElementById('decreaseBet');
+        this.dom.maxBet = document.getElementById('maxBet');
 
-            // Overlay elements
-            winOverlay: document.getElementById('winOverlay'),
-            featureOverlay: document.getElementById('featureOverlay'),
+        // Overlay elements
+        this.dom.winOverlay = document.getElementById('winOverlay');
+        this.dom.featureOverlay = document.getElementById('featureOverlay');
 
-            // Modal elements
-            paytableModal: document.getElementById('paytableModal'),
-            statsModal: document.getElementById('statsModal'),
-            statsContentArea: document.getElementById('statsContentArea'),
-            statsTabs: Array.from(document.querySelectorAll('.stats-tab')),
-            paytableBtn: document.getElementById('paytableBtn'),
-            closePaytable: document.getElementById('closePaytable'),
-            statsBtn: document.getElementById('statsBtn'),
-            closeStats: document.getElementById('closeStats'),
-            historyBtn: document.getElementById('historyBtn'),
-            closeHistory: document.getElementById('closeHistory'),
+        // Modal elements
+        this.dom.paytableModal = document.getElementById('paytableModal');
+        this.dom.statsModal = document.getElementById('statsModal');
+        this.dom.statsContentArea = document.getElementById('statsContentArea');
+        this.dom.statsTabs = Array.from(document.querySelectorAll('.stats-tab'));
+        this.dom.paytableBtn = document.getElementById('paytableBtn');
+        this.dom.closePaytable = document.getElementById('closePaytable');
+        this.dom.statsBtn = document.getElementById('statsBtn');
+        this.dom.closeStats = document.getElementById('closeStats');
+        this.dom.historyBtn = document.getElementById('historyBtn');
+        this.dom.closeHistory = document.getElementById('closeHistory');
 
-            // Containers
-            gameContainer: document.querySelector('.game-container'),
-            slotMachineContainer: document.querySelector('.slot-machine'),
-            paylines: Array.from(document.querySelectorAll('.payline')),
-            freeSpinsCounter: document.getElementById('freeSpinsCounter'),
+        // Containers
+        this.dom.gameContainer = document.querySelector('.game-container');
+        this.dom.slotMachineContainer = document.querySelector('.slot-machine');
+        this.dom.paylines = Array.from(document.querySelectorAll('.payline'));
+        this.dom.freeSpinsCounter = document.getElementById('freeSpinsCounter');
 
-            // Advanced controls
-            autoplayBtn: document.getElementById('autoplayBtn'),
-            turboBtn: document.getElementById('turboBtn'),
-            autoCollectBtn: document.getElementById('autoCollectBtn'),
-            autoplayCounter: document.getElementById('autoplayCounter'),
+        // Advanced controls
+        this.dom.autoplayBtn = document.getElementById('autoplayBtn');
+        this.dom.turboBtn = document.getElementById('turboBtn');
+        this.dom.autoCollectBtn = document.getElementById('autoCollectBtn');
+        this.dom.autoplayCounter = document.getElementById('autoplayCounter');
 
-            // Reel containers (cache these for frequent access)
-            reels: [
-                document.getElementById('reel-0'),
-                document.getElementById('reel-1'),
-                document.getElementById('reel-2'),
-                document.getElementById('reel-3'),
-                document.getElementById('reel-4')
-            ]
-        };
+        // Reel containers (cache these for frequent access)
+        this.dom.reels = [
+            document.getElementById('reel-0'),
+            document.getElementById('reel-1'),
+            document.getElementById('reel-2'),
+            document.getElementById('reel-3'),
+            document.getElementById('reel-4')
+        ];
     }
 
     createReels() {
@@ -212,7 +220,7 @@ export class GameOrchestrator extends SlotMachine {
             this.reelStrips,
             this.state,
             (symbol, text) => this.applySymbolClasses(symbol, text),
-            RNG
+            this.rng
         );
     }
 
@@ -766,12 +774,12 @@ export class GameOrchestrator extends SlotMachine {
         // Pre-generate all reel positions for anticipation peeking
         const reelPositions = [];
         for (let i = 0; i < this.reelCount; i++) {
-            reelPositions.push(RNG.getRandomPosition(this.symbolsPerReel));
+            reelPositions.push(this.rng.getRandomPosition(this.symbolsPerReel));
         }
 
         // Calculate predetermined symbols for anticipation system to analyze
         const predeterminedSymbols = reelPositions.map((pos, reelIndex) => {
-            return RNG.getSymbolsAtPosition(this.reelStrips[reelIndex], pos, this.rowCount);
+            return this.rng.getSymbolsAtPosition(this.reelStrips[reelIndex], pos, this.rowCount);
         });
 
         // Pre-check if we should trigger anticipation effects (before spinning any reels)
@@ -835,8 +843,8 @@ export class GameOrchestrator extends SlotMachine {
 
             Logger.debug('Reel result:', result);
 
-            let winInfo = PaylineEvaluator.evaluateWins(result, this.state.getCurrentBet());
-            const bonusInfo = PaylineEvaluator.checkBonusTrigger(result);
+            let winInfo = this.paylineEvaluator.evaluateWins(result, this.state.getCurrentBet());
+            const bonusInfo = this.paylineEvaluator.checkBonusTrigger(result);
 
             Logger.debug('Win info:', winInfo);
             Logger.debug('Scatter count:', winInfo.scatterCount);

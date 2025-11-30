@@ -1,0 +1,24 @@
+{
+  "name": "slot-machine-engine",
+  "version": "1.0.0",
+  "description": "Reusable slot machine game engine with state management, payline evaluation, and RNG",
+  "main": "src/index.js",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./core/StateManager": "./src/core/StateManager.js",
+    "./core/GameState": "./src/core/GameState.js",
+    "./core/EventBus": "./src/core/EventBus.js",
+    "./core/PaylineEvaluator": "./src/core/PaylineEvaluator.js",
+    "./utils/RNG": "./src/utils/RNG.js"
+  },
+  "keywords": [
+    "slot-machine",
+    "game-engine",
+    "casino",
+    "rng",
+    "state-management"
+  ],
+  "author": "",
+  "license": "MIT"
+}
