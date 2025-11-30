@@ -2,10 +2,37 @@
 import { GAME_CONFIG } from '../config/game.js';
 
 export class Autoplay {
-    constructor(slotMachine, timerManager) {
-        this.game = slotMachine;
+    /**
+     * Create Autoplay with dependency injection
+     * @param {Object} deps - Dependencies (can be game instance for backward compat or deps object)
+     * @param {TimerManager} deps.timerManager - Timer manager (when using DI)
+     * @param {GameState} deps.gameState - Game state (when using DI)
+     * @param {EventBus} deps.eventBus - Event bus (when using DI)
+     * @param {TurboMode} deps.turboMode - Turbo mode reference (when using DI)
+     */
+    constructor(deps, timerManagerLegacy) {
+        // Support both old API and new DI API
+        // Check if second param exists - that means old API: new Autoplay(game, timerManager)
+        // Or check if deps has gameState (only DI pattern has this)
+        const isNewDI = !timerManagerLegacy && deps && deps.gameState;
+
+        if (isNewDI) {
+            // New DI pattern: new Autoplay({ timerManager, gameState, eventBus, turboMode })
+            this.timerManager = deps.timerManager;
+            this.gameState = deps.gameState;
+            this.eventBus = deps.eventBus;
+            this.turboMode = deps.turboMode;
+            this.game = null;
+        } else {
+            // Old pattern: new Autoplay(game, timerManager)
+            this.game = deps;
+            this.timerManager = timerManagerLegacy || deps?.timerManager;
+            this.gameState = null;
+            this.eventBus = null;
+            this.turboMode = null;
+        }
+
         this.isActive = false;
-        this.timerManager = timerManager;
 
         // Autoplay settings
         this.settings = {
@@ -35,7 +62,8 @@ export class Autoplay {
         if (this.isActive) return;
 
         this.isActive = true;
-        this.startingBalance = this.game.state.getCredits();
+        const state = this.gameState || this.game.state;
+        this.startingBalance = state.getCredits();
         this.clearNextSpinTimeout();
 
         this.updateUI();
@@ -49,12 +77,22 @@ export class Autoplay {
         if (!this.isActive && !this.nextSpinTimeout) return;
 
         this.isActive = false;
-        this.game.cleanupTimers('autoplay');
+
+        if (this.game) {
+            this.game.cleanupTimers('autoplay');
+        } else {
+            this.timerManager.clearByLabel('autoplay');
+        }
+
         this.clearNextSpinTimeout();
         this.updateUI();
 
         if (reason) {
-            this.game.showMessage(`Autoplay stopped: ${reason}`);
+            if (this.eventBus) {
+                this.eventBus.emit('message:show', `Autoplay stopped: ${reason}`);
+            } else if (this.game) {
+                this.game.showMessage(`Autoplay stopped: ${reason}`);
+            }
         }
     }
 
@@ -67,19 +105,26 @@ export class Autoplay {
             return;
         }
 
+        const state = this.gameState || this.game.state;
+
         // Check if can afford spin
-        if (this.game.state.getCredits() < this.game.state.getCurrentBet()) {
+        if (state.getCredits() < state.getCurrentBet()) {
             this.stop('Insufficient credits');
             return;
         }
 
         this.updateUI();
 
-        // Execute spin
-        await this.game.spin();
+        // Execute spin - emit event or call game method
+        if (this.eventBus) {
+            this.eventBus.emit('spin:request');
+        } else if (this.game) {
+            await this.game.spin();
+        }
 
         // Check if free spins were triggered (active flag is set after transition)
-        if (this.settings.stopOnFeature && this.game.freeSpins.active) {
+        const freeSpinsActive = this.game?.freeSpins?.active || false;
+        if (this.settings.stopOnFeature && freeSpinsActive) {
             this.stop('Free spins triggered');
             return;
         }
@@ -92,7 +137,8 @@ export class Autoplay {
         // Continue to next spin if still active
         if (this.isActive) {
             // Delay before next spin (reduced in turbo mode)
-            const delay = this.game.turboMode.isActive ? GAME_CONFIG.autoplay.turboDelay : GAME_CONFIG.autoplay.normalDelay;
+            const turbo = this.turboMode || this.game.turboMode;
+            const delay = turbo.isActive ? GAME_CONFIG.autoplay.turboDelay : GAME_CONFIG.autoplay.normalDelay;
             this.clearNextSpinTimeout();
             this.nextSpinTimeout = this.timerManager.setTimeout(() => {
                 this.nextSpinTimeout = null;

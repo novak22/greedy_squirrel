@@ -1,27 +1,28 @@
-// Turbo mode for faster spin animations
+/**
+ * TurboMode - REFACTORED with Dependency Injection
+ *
+ * BEFORE: Received entire game instance (`this`)
+ * AFTER: Receives only what it needs (eventBus, dom reference)
+ *
+ * Benefits:
+ * - Testable without full game instance
+ * - Clear dependencies (only eventBus, dom)
+ * - No circular references
+ * - Can be tested in isolation
+ */
+
 import { GAME_EVENTS } from '../../SlotMachineEngine/src/core/EventBus.js';
 
 export class TurboMode {
     /**
-     * Create TurboMode with dependency injection
-     * @param {Object} deps - Dependencies (optional for backward compatibility)
+     * Create TurboMode with explicit dependencies
+     * @param {Object} deps - Dependencies object
      * @param {EventBus} deps.eventBus - Event bus for communication
      * @param {Object} deps.dom - DOM element cache
      */
-    constructor(deps) {
-        // Support both old API (game instance) and new API (deps object)
-        if (deps && (deps.eventBus || deps.dom)) {
-            // New DI pattern
-            this.eventBus = deps.eventBus;
-            this.dom = deps.dom;
-            this.game = null; // No game reference needed
-        } else {
-            // Old pattern (backward compatible)
-            this.game = deps;
-            this.eventBus = null;
-            this.dom = null;
-        }
-
+    constructor({ eventBus, dom }) {
+        this.eventBus = eventBus;
+        this.dom = dom;
         this.isActive = false;
         this.unlocked = true; // Unlocked from start
 
@@ -44,12 +45,7 @@ export class TurboMode {
 
         this.unlocked = true;
         this.updateUI();
-
-        if (this.eventBus) {
-            this.eventBus.emit('message:show', '🚀 TURBO MODE UNLOCKED!');
-        } else if (this.game) {
-            this.game.showMessage('🚀 TURBO MODE UNLOCKED!');
-        }
+        this.eventBus.emit('message:show', '🚀 TURBO MODE UNLOCKED!');
     }
 
     /**
@@ -63,12 +59,8 @@ export class TurboMode {
             ? '🚀 Turbo mode activated'
             : 'Turbo mode deactivated';
 
-        if (this.eventBus) {
-            this.eventBus.emit('message:show', message);
-            this.eventBus.emit(GAME_EVENTS.TURBO_TOGGLE, { isActive: this.isActive });
-        } else if (this.game) {
-            this.game.showMessage(message);
-        }
+        this.eventBus.emit('message:show', message);
+        this.eventBus.emit(GAME_EVENTS.TURBO_TOGGLE, { isActive: this.isActive });
     }
 
     /**
@@ -95,11 +87,10 @@ export class TurboMode {
 
     /**
      * Update turbo mode UI
+     * Now uses dom reference instead of game.dom
      */
     updateUI() {
-        // Get DOM reference from either DI or game instance
-        const dom = this.dom || this.game?.dom;
-        const turboBtn = dom?.turboBtn;
+        const turboBtn = this.dom?.turboBtn;
         if (!turboBtn) return;
 
         if (!this.unlocked) {
@@ -113,13 +104,8 @@ export class TurboMode {
             turboBtn.classList.toggle('active', this.isActive);
         }
 
-        // Emit event for UI updates (new pattern)
-        if (this.eventBus) {
-            this.eventBus.emit('ui:turboModeChanged', { isActive: this.isActive });
-        } else if (this.game?.ui) {
-            // Fallback to old pattern
-            this.game.ui.updateTurboMode(this.isActive);
-        }
+        // Emit event for UI updates instead of direct call
+        this.eventBus.emit('ui:turboModeChanged', { isActive: this.isActive });
     }
 
     /**
@@ -143,3 +129,53 @@ export class TurboMode {
         this.updateUI();
     }
 }
+
+// ============================================
+// COMPARISON: Before vs After
+// ============================================
+
+/*
+
+BEFORE (Tight Coupling):
+-----------------------
+constructor(slotMachine) {
+    this.game = slotMachine;  // Receives entire game!
+    // Can access EVERYTHING: game.state, game.dom, game.showMessage, etc.
+}
+
+Problems:
+- Can't test without full game instance
+- Unclear what it actually uses
+- Circular dependency risk
+- Hard to mock
+
+
+AFTER (Loose Coupling):
+----------------------
+constructor({ eventBus, dom }) {
+    this.eventBus = eventBus;  // Only what it needs!
+    this.dom = dom;
+}
+
+Benefits:
+- Crystal clear dependencies
+- Easy to test (mock eventBus and dom)
+- No circular references
+- Can reuse in other contexts
+
+
+USAGE WITH DI CONTAINER:
+------------------------
+// Register in ServiceRegistry.js
+container.singleton('turboMode', TurboMode, ['eventBus', 'dom']);
+
+// Resolve
+const turboMode = container.resolve('turboMode');
+
+// Or create manually (for testing)
+const turboMode = new TurboMode({
+    eventBus: mockEventBus,
+    dom: mockDom
+});
+
+*/
