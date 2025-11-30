@@ -1,16 +1,29 @@
 // Free Spins feature implementation
 import { FEATURES_CONFIG } from '../config/features.js';
-import { formatNumber } from '../utils/formatters.js';
 
 export class FreeSpins {
-    constructor(game) {
+    /**
+     * Create FreeSpins feature
+     * @param {Object} game - Game instance
+     * @param {Object} renderer - FreeSpinsRenderer instance for UI
+     */
+    constructor(game, renderer = null) {
         this.game = game;
+        this.renderer = renderer;
         this.active = false;
         this.remainingSpins = 0;
         this.totalSpins = 0;
         this.totalWon = 0;
         this.multiplier = 1;
         this.retriggered = 0;
+    }
+
+    /**
+     * Set the renderer (for dependency injection)
+     * @param {Object} renderer - FreeSpinsRenderer instance
+     */
+    setRenderer(renderer) {
+        this.renderer = renderer;
     }
 
     /**
@@ -42,11 +55,15 @@ export class FreeSpins {
         const multipliers = FEATURES_CONFIG.freeSpins.multipliers;
         this.multiplier = multipliers[Math.floor(Math.random() * multipliers.length)];
 
-        // Show transition UI
-        await this.showTransition(scatterCount, spinsAwarded);
+        // Show transition UI (delegate to renderer)
+        if (this.renderer) {
+            await this.renderer.showTransition(scatterCount, spinsAwarded, this.multiplier);
+        }
 
-        // Update UI
-        this.updateUI();
+        // Update UI (delegate to renderer)
+        if (this.renderer) {
+            this.renderer.updateUI(this.active, this.remainingSpins, this.totalSpins, this.multiplier);
+        }
     }
 
     /**
@@ -64,35 +81,15 @@ export class FreeSpins {
             this.totalSpins += additionalSpins;
             this.retriggered++;
 
-            // Show retrigger popup that requires user click
-            const overlay = document.getElementById('featureOverlay');
-            if (overlay) {
-                overlay.innerHTML = `
-                    <div class="feature-transition">
-                        <div class="feature-icon">🎉</div>
-                        <h1 class="feature-title">RETRIGGERED!</h1>
-                        <div class="feature-details">
-                            <p class="spins-awarded">+${formatNumber(additionalSpins)} FREE SPINS</p>
-                            <p class="multiplier-info">${formatNumber(this.remainingSpins)} SPINS REMAINING</p>
-                        </div>
-                        <p class="feature-start">Click to continue...</p>
-                    </div>
-                `;
-                overlay.classList.add('show');
-
-                // Wait for user click
-                await new Promise(resolve => {
-                    const clickHandler = () => {
-                        overlay.removeEventListener('click', clickHandler);
-                        resolve();
-                    };
-                    overlay.addEventListener('click', clickHandler);
-                });
-
-                overlay.classList.remove('show');
+            // Show retrigger popup (delegate to renderer)
+            if (this.renderer) {
+                await this.renderer.showRetrigger(additionalSpins, this.remainingSpins);
             }
 
-            this.updateUI();
+            // Update UI (delegate to renderer)
+            if (this.renderer) {
+                this.renderer.updateUI(this.active, this.remainingSpins, this.totalSpins, this.multiplier);
+            }
         }
     }
 
@@ -106,7 +103,11 @@ export class FreeSpins {
         }
 
         this.remainingSpins--;
-        this.updateUI();
+
+        // Update UI (delegate to renderer)
+        if (this.renderer) {
+            this.renderer.updateUI(this.active, this.remainingSpins, this.totalSpins, this.multiplier);
+        }
 
         return this.remainingSpins > 0;
     }
@@ -135,137 +136,27 @@ export class FreeSpins {
     async end() {
         this.active = false;
 
-        // Show summary
-        await this.showSummary();
+        // Show summary (delegate to renderer)
+        if (this.renderer) {
+            await this.renderer.showSummary(this.totalSpins, this.totalWon, this.multiplier, this.retriggered);
+        }
 
         // Reset counters
+        const wonAmount = this.totalWon;
         this.remainingSpins = 0;
         this.totalSpins = 0;
         this.retriggered = 0;
         this.multiplier = 1;
-
-        const wonAmount = this.totalWon;
         this.totalWon = 0;
 
-        // Hide UI
-        this.hideUI();
+        // Hide UI (delegate to renderer)
+        if (this.renderer) {
+            this.renderer.hideUI();
+        }
 
         return wonAmount;
     }
 
-    /**
-     * Show transition into free spins
-     */
-    async showTransition(scatterCount, spinsAwarded) {
-        const overlay = document.getElementById('featureOverlay');
-        if (!overlay) return;
-
-        overlay.innerHTML = `
-            <div class="feature-transition">
-                <div class="feature-icon">⭐⭐⭐</div>
-                <h1 class="feature-title">FREE SPINS!</h1>
-                <div class="feature-details">
-                    <p class="spins-awarded">${formatNumber(spinsAwarded)} FREE SPINS</p>
-                    <p class="multiplier-info">All wins × ${this.multiplier}</p>
-                    <p class="scatter-info">${formatNumber(scatterCount)} SCATTERS landed!</p>
-                </div>
-                <p class="feature-start">Click to continue...</p>
-            </div>
-        `;
-        overlay.classList.add('show');
-
-        // Wait for user click
-        await new Promise(resolve => {
-            const clickHandler = () => {
-                overlay.removeEventListener('click', clickHandler);
-                resolve();
-            };
-            overlay.addEventListener('click', clickHandler);
-        });
-
-        overlay.classList.remove('show');
-    }
-
-    /**
-     * Show free spins summary
-     */
-    async showSummary() {
-        const overlay = document.getElementById('featureOverlay');
-        if (!overlay) return;
-
-        overlay.innerHTML = `
-            <div class="feature-summary">
-                <h1 class="feature-title">FREE SPINS COMPLETE!</h1>
-                <div class="summary-stats">
-                    <div class="stat-item">
-                        <span class="stat-label">Total Spins</span>
-                        <span class="stat-value">${formatNumber(this.totalSpins)}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Total Won</span>
-                        <span class="stat-value highlight">${formatNumber(this.totalWon)}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Multiplier</span>
-                        <span class="stat-value">${this.multiplier}x</span>
-                    </div>
-                    ${this.retriggered > 0 ? `
-                        <div class="stat-item">
-                            <span class="stat-label">Retriggered</span>
-                            <span class="stat-value">${formatNumber(this.retriggered)} times</span>
-                        </div>
-                    ` : ''}
-                </div>
-                <p class="feature-end">Click to continue...</p>
-            </div>
-        `;
-        overlay.classList.add('show');
-
-        // Wait for user click
-        await new Promise(resolve => {
-            const clickHandler = () => {
-                overlay.removeEventListener('click', clickHandler);
-                resolve();
-            };
-            overlay.addEventListener('click', clickHandler);
-        });
-
-        overlay.classList.remove('show');
-    }
-
-    /**
-     * Update free spins UI counter
-     */
-    updateUI() {
-        const container = document.getElementById('freeSpinsUI');
-        if (!container) return;
-
-        if (this.active) {
-            container.innerHTML = `
-                <div class="free-spins-banner">
-                    <div class="fs-icon">⭐</div>
-                    <div class="fs-info">
-                        <div class="fs-label">FREE SPINS</div>
-                        <div class="fs-count">${formatNumber(this.remainingSpins)} / ${formatNumber(this.totalSpins)}</div>
-                    </div>
-                    <div class="fs-multiplier">${this.multiplier}x</div>
-                </div>
-            `;
-            container.classList.add('active');
-        } else {
-            container.classList.remove('active');
-        }
-    }
-
-    /**
-     * Hide free spins UI
-     */
-    hideUI() {
-        const container = document.getElementById('freeSpinsUI');
-        if (container) {
-            container.classList.remove('active');
-        }
-    }
 
     /**
      * Check if currently in free spins mode

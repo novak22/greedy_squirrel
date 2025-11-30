@@ -3,16 +3,18 @@ import { SYMBOLS, getPremiumSymbols, getSymbolByEmoji } from '../config/symbols.
 import { FEATURES_CONFIG } from '../config/features.js';
 import { PaylineEvaluator } from '../../SlotMachineEngine/src/core/PaylineEvaluator.js';
 import { SlotMachine } from './SlotMachine.js';
-import { Storage } from '../utils/Storage.js';
 import { ErrorHandler, ERROR_TYPES } from './ErrorHandler.js';
 import { UIController } from '../ui/UIController.js';
 import { Logger } from '../utils/Logger.js';
 import { Metrics } from '../utils/Metrics.js';
 import { GAME_EVENTS } from '../../SlotMachineEngine/src/core/EventBus.js';
-import { LevelSystem } from '../progression/LevelSystem.js';
-import { Achievements } from '../progression/Achievements.js';
-import { DailyChallenges } from '../progression/DailyChallenges.js';
-import { Statistics } from '../progression/Statistics.js';
+import { StatsRenderer } from '../ui/renderers/StatsRenderer.js';
+import { CascadeRenderer } from '../ui/renderers/CascadeRenderer.js';
+import { BonusGameRenderer } from '../ui/renderers/BonusGameRenderer.js';
+import { FreeSpinsRenderer } from '../ui/renderers/FreeSpinsRenderer.js';
+import { DOMCache } from '../ui/DOMCache.js';
+import { StatsController } from '../ui/StatsController.js';
+import { GameStateLoader } from './GameStateLoader.js';
 
 export class GameOrchestrator extends SlotMachine {
     constructor() {
@@ -27,13 +29,37 @@ export class GameOrchestrator extends SlotMachine {
             metrics: Metrics
         });
 
-        this.loadGameState();
+        // Initialize state loader
+        this.stateLoader = new GameStateLoader(this);
+        this.stateLoader.load();
+
         this.init();
     }
 
     init() {
-        // Cache frequently accessed DOM elements
-        this.cacheDOM();
+        // Initialize DOM cache (populate existing this.dom object to preserve references)
+        new DOMCache(this.dom);
+
+        // Initialize feature renderers (after DOM cache available)
+        const cascadeRenderer = new CascadeRenderer(this.dom);
+        this.cascade.setRenderer(cascadeRenderer);
+
+        const bonusGameRenderer = new BonusGameRenderer();
+        this.bonusGame.setRenderer(bonusGameRenderer);
+
+        const freeSpinsRenderer = new FreeSpinsRenderer();
+        this.freeSpins.setRenderer(freeSpinsRenderer);
+
+        // Initialize stats controller
+        const statsRenderer = new StatsRenderer();
+        this.statsController = new StatsController({
+            statistics: this.statistics,
+            achievements: this.achievements,
+            dailyChallenges: this.dailyChallenges,
+            renderer: statsRenderer,
+            ui: this.uiFacade,
+            stateManager: this.stateManager
+        });
 
         // Initialize UIController (handles all UI updates via StateManager)
         const uiController = new UIController(this.stateManager, this.events, this.dom);
@@ -50,37 +76,10 @@ export class GameOrchestrator extends SlotMachine {
     }
 
     /**
-     * Load game state from localStorage
-     */
-    loadGameState() {
-        const savedData = Storage.load();
-        this.state.setCredits(savedData.credits);
-        this.state.setCurrentBet(savedData.currentBet);
-        this.state.setCurrentBetIndex(savedData.currentBetIndex);
-
-        this.levelSystem.init(savedData.progression.levelSystem);
-        this.achievements.init(savedData.progression.achievements);
-        this.dailyChallenges.init(savedData.progression.dailyChallenges);
-        this.statistics.init(savedData.progression.statistics);
-
-        this.soundManager.init(savedData.phase4.sound);
-        this.visualEffects.init(savedData.phase4.visualEffects);
-        this.turboMode.init(savedData.phase4.turboMode);
-        this.autoplay.init(savedData.phase4.autoplay);
-        this.cascade.init(savedData.phase4.cascade);
-
-        this.spinHistory.init(savedData.phase5.spinHistory);
-        this.autoCollectEnabled = savedData.phase5.autoCollectEnabled;
-
-        Logger.info('Game state loaded from localStorage');
-    }
-
-    /**
      * Save game state to localStorage
      */
     saveGameState() {
-        const payload = Storage.createSavePayload(this);
-        Storage.save(payload);
+        this.stateLoader.save();
     }
 
     attachEventListeners() {
@@ -93,8 +92,8 @@ export class GameOrchestrator extends SlotMachine {
 
         // Stats modal
         this.ui.bindStatsControls(
-            () => this.toggleStats(),
-            (tab) => this.updateStatsDisplay(tab)
+            () => this.statsController.toggle(),
+            (tab) => this.statsController.updateDisplay(tab)
         );
 
         // Autoplay and advanced controls (feature-specific, not duplicated)
@@ -157,60 +156,6 @@ export class GameOrchestrator extends SlotMachine {
         });
     }
 
-    /**
-     * Cache frequently accessed DOM elements for performance
-     */
-    cacheDOM() {
-        // Mutate existing this.dom object instead of replacing it
-        // (UIFacade and SpinEngine hold references to it)
-        this.dom.credits = document.getElementById('credits');
-        this.dom.bet = document.getElementById('bet');
-        this.dom.betDisplay = document.getElementById('betDisplay');
-        this.dom.win = document.getElementById('win');
-
-        // Control elements
-        this.dom.spinBtn = document.getElementById('spinBtn');
-        this.dom.increaseBet = document.getElementById('increaseBet');
-        this.dom.decreaseBet = document.getElementById('decreaseBet');
-        this.dom.maxBet = document.getElementById('maxBet');
-
-        // Overlay elements
-        this.dom.winOverlay = document.getElementById('winOverlay');
-        this.dom.featureOverlay = document.getElementById('featureOverlay');
-
-        // Modal elements
-        this.dom.paytableModal = document.getElementById('paytableModal');
-        this.dom.statsModal = document.getElementById('statsModal');
-        this.dom.statsContentArea = document.getElementById('statsContentArea');
-        this.dom.statsTabs = Array.from(document.querySelectorAll('.stats-tab'));
-        this.dom.paytableBtn = document.getElementById('paytableBtn');
-        this.dom.closePaytable = document.getElementById('closePaytable');
-        this.dom.statsBtn = document.getElementById('statsBtn');
-        this.dom.closeStats = document.getElementById('closeStats');
-        this.dom.historyBtn = document.getElementById('historyBtn');
-        this.dom.closeHistory = document.getElementById('closeHistory');
-
-        // Containers
-        this.dom.gameContainer = document.querySelector('.game-container');
-        this.dom.slotMachineContainer = document.querySelector('.slot-machine');
-        this.dom.paylines = Array.from(document.querySelectorAll('.payline'));
-        this.dom.freeSpinsCounter = document.getElementById('freeSpinsCounter');
-
-        // Advanced controls
-        this.dom.autoplayBtn = document.getElementById('autoplayBtn');
-        this.dom.turboBtn = document.getElementById('turboBtn');
-        this.dom.autoCollectBtn = document.getElementById('autoCollectBtn');
-        this.dom.autoplayCounter = document.getElementById('autoplayCounter');
-
-        // Reel containers (cache these for frequent access)
-        this.dom.reels = [
-            document.getElementById('reel-0'),
-            document.getElementById('reel-1'),
-            document.getElementById('reel-2'),
-            document.getElementById('reel-3'),
-            document.getElementById('reel-4')
-        ];
-    }
 
     createReels() {
         this.ui.createReels(
@@ -332,156 +277,6 @@ export class GameOrchestrator extends SlotMachine {
         this.ui.hideFeatureOverlay();
     }
 
-    /**
-     * Phase 3: Toggle statistics dashboard
-     */
-    toggleStats() {
-        const shouldShow = !this.state.select('ui.statsOpen');
-
-        if (shouldShow) {
-            this.currentStatsTab = 'session';
-            this.updateStatsDisplay('session');
-        }
-
-        this.state.update('ui.statsOpen', shouldShow);
-        this.ui.toggleStatsModal(shouldShow);
-    }
-
-    /**
-     * Phase 3: Update statistics display with tabs
-     */
-    updateStatsDisplay(tab = 'session') {
-        // Update active tab
-        this.ui.setActiveStatsTab(tab);
-
-        const sessionStats = this.statistics.getSessionStats();
-        const allTimeStats = this.statistics.getAllTimeStats();
-        const achievementStats = this.achievements.getStats();
-
-        let html = '';
-
-        switch(tab) {
-            case 'session':
-                html = `
-                    <h3 style="color: #ffd700; margin-bottom: 20px;">🎮 Current Session</h3>
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-label">Spins</div>
-                            <div class="stat-value">${sessionStats.spins}</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Total Bet</div>
-                            <div class="stat-value">${sessionStats.totalBet}</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Total Win</div>
-                            <div class="stat-value">${sessionStats.totalWin}</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">RTP</div>
-                            <div class="stat-value">${sessionStats.rtp.toFixed(1)}%</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Best Win</div>
-                            <div class="stat-value">${sessionStats.bestWin}</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Hit Frequency</div>
-                            <div class="stat-value">${sessionStats.hitFrequency.toFixed(1)}%</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Bonus Frequency</div>
-                            <div class="stat-value">${sessionStats.bonusFrequency.toFixed(1)}%</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Avg Win</div>
-                            <div class="stat-value">${sessionStats.averageWin.toFixed(1)}</div>
-                        </div>
-                    </div>
-                `;
-                break;
-
-            case 'allTime':
-                html = `
-                    <h3 style="color: #ffd700; margin-bottom: 20px;">📊 Lifetime Stats</h3>
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-label">Total Spins</div>
-                            <div class="stat-value">${allTimeStats.totalSpins}</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Total Bet</div>
-                            <div class="stat-value">${allTimeStats.totalBet}</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Total Win</div>
-                            <div class="stat-value">${allTimeStats.totalWin}</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">RTP</div>
-                            <div class="stat-value">${allTimeStats.rtp.toFixed(1)}%</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Best Win</div>
-                            <div class="stat-value">${allTimeStats.bestWin}</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Hit Frequency</div>
-                            <div class="stat-value">${allTimeStats.hitFrequency.toFixed(1)}%</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Bonus Frequency</div>
-                            <div class="stat-value">${allTimeStats.bonusFrequency.toFixed(1)}%</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Avg Win</div>
-                            <div class="stat-value">${allTimeStats.averageWin.toFixed(1)}</div>
-                        </div>
-                    </div>
-                `;
-                break;
-
-            case 'achievements':
-                const unlocked = this.achievements.getUnlocked();
-                const locked = this.achievements.getLocked();
-
-                html = `
-                    <h3 style="color: #ffd700; margin-bottom: 10px;">🏅 Achievements (${achievementStats.unlocked}/${achievementStats.total})</h3>
-                    <p style="text-align: center; color: #b0bec5; margin-bottom: 20px;">Completion: ${achievementStats.completion}%</p>
-                    <div class="achievements-grid">
-                        ${unlocked.map(a => `
-                            <div class="achievement-item unlocked">
-                                <div class="achievement-item-icon">${a.icon}</div>
-                                <div class="achievement-item-name">${a.name}</div>
-                                <div class="achievement-item-desc">${a.description}</div>
-                                <div class="achievement-item-reward">+${a.reward} Credits</div>
-                                <div class="achievement-item-date">Unlocked ${new Date(a.unlockedAt).toLocaleDateString()}</div>
-                            </div>
-                        `).join('')}
-                        ${locked.map(a => `
-                            <div class="achievement-item locked">
-                                <div class="achievement-item-icon">${a.icon}</div>
-                                <div class="achievement-item-name">???</div>
-                                <div class="achievement-item-desc">${a.description}</div>
-                                <div class="achievement-item-reward">+${a.reward} Credits</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-                break;
-
-            case 'challenges':
-                html = `
-                    <h3 style="color: #ffd700; margin-bottom: 20px;">📅 Daily Challenges</h3>
-                    <div id="challengesListArea" style="margin-top: 30px;"></div>
-                `;
-                this.ui.renderStatsContent(html);
-                this.dailyChallenges.updateChallengesUI();
-                return;
-        }
-
-        this.ui.renderStatsContent(html);
-    }
 
     /**
      * Phase 5: Trigger screen shake effect for mega wins
@@ -532,26 +327,14 @@ export class GameOrchestrator extends SlotMachine {
     }
 
     /**
-     * Phase 5: Reset all game data
+     * Reset all game data
      */
     resetAllData() {
-        // Clear localStorage
-        Storage.clear();
+        // Clear localStorage via stateLoader
+        this.stateLoader.clear();
 
-        // Reset all game state using GameState
-        this.state.setCredits(GAME_CONFIG.initialCredits);
-        this.state.setCurrentBet(GAME_CONFIG.betOptions[0]);
-        this.state.setCurrentBetIndex(0);
-        this.state.setLastWin(0);
-
-        // Clear all subsystems (stats are managed by Statistics class)
-        this.levelSystem = new LevelSystem(this);
-        this.achievements = new Achievements(this);
-        this.dailyChallenges = new DailyChallenges(this);
-        this.statistics = new Statistics(this);
-        this.spinHistory.clear();
-
-        this.updateDisplay();
+        // Reload the page to fully reset (simplest approach)
+        window.location.reload();
     }
 
     /**

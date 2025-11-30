@@ -2,12 +2,26 @@
 import { FEATURES_CONFIG } from '../config/features.js';
 
 export class Cascade {
-    constructor(game) {
+    /**
+     * Create Cascade feature
+     * @param {Object} game - Game instance
+     * @param {Object} renderer - CascadeRenderer instance for UI
+     */
+    constructor(game, renderer = null) {
         this.game = game;
+        this.renderer = renderer;
         this.enabled = FEATURES_CONFIG.cascade.enabled;
         this.currentMultiplier = 1;
         this.cascadeCount = 0;
         this.totalCascadeWins = 0;
+    }
+
+    /**
+     * Set the renderer (for dependency injection)
+     * @param {Object} renderer - CascadeRenderer instance
+     */
+    setRenderer(renderer) {
+        this.renderer = renderer;
     }
 
     /**
@@ -57,23 +71,33 @@ export class Cascade {
             while (currentWinningPositions.size > 0) {
                 // Safety check to prevent infinite cascade loops
                 if (cascadeIterations >= MAX_CASCADE_ITERATIONS) {
-                    // Always log errors
                     console.error('Cascade: Maximum iteration limit reached, stopping cascade');
                     break;
                 }
                 cascadeIterations++;
 
-                // Show current multiplier
-                this.updateMultiplierUI();
+                // Show current multiplier (delegate to renderer)
+                if (this.renderer) {
+                    this.renderer.updateMultiplierUI(this.currentMultiplier, this.cascadeCount);
+                }
 
-                // Remove winning symbols
-                await this.removeSymbols(currentWinningPositions);
+                // Remove winning symbols (delegate to renderer)
+                if (this.renderer) {
+                    await this.renderer.removeSymbols(currentWinningPositions);
+                }
 
-                // Drop symbols down
-                await this.dropSymbols(currentWinningPositions);
+                // Drop symbols down (delegate to renderer)
+                if (this.renderer) {
+                    await this.renderer.dropSymbols(currentWinningPositions);
+                }
 
-                // Fill empty spaces with new symbols
-                await this.fillEmptySpaces(currentWinningPositions);
+                // Fill empty spaces with new symbols (delegate to renderer)
+                if (this.renderer) {
+                    await this.renderer.fillEmptySpaces(
+                        currentWinningPositions,
+                        (reelIndex, row) => this.getNewSymbol(reelIndex)
+                    );
+                }
 
                 // Check for new wins
                 const result = this.game.getReelResult();
@@ -105,8 +129,10 @@ export class Cascade {
                 }
             }
 
-            // Hide multiplier UI
-            this.hideMultiplierUI();
+            // Hide multiplier UI (delegate to renderer)
+            if (this.renderer) {
+                this.renderer.hideMultiplierUI();
+            }
 
             return totalWins;
         } catch (error) {
@@ -118,129 +144,18 @@ export class Cascade {
     }
 
     /**
-     * Remove winning symbols with animation
-     * @param {Set} winningPositions
+     * Get a new random symbol for a reel
+     * @param {number} reelIndex - Index of the reel
+     * @returns {string} Symbol emoji
      */
-    async removeSymbols(winningPositions) {
-        // Add removal animation class
-        winningPositions.forEach(pos => {
-            const [reel, row] = pos.split('-').map(Number);
-            const reelEl = document.getElementById(`reel-${reel}`);
-            const symbols = reelEl.querySelectorAll('.symbol');
-            if (symbols[row]) {
-                symbols[row].classList.add('removing');
-            }
-        });
-
-        await new Promise(resolve =>
-            setTimeout(resolve, FEATURES_CONFIG.cascade.removeDelay)
+    getNewSymbol(reelIndex) {
+        const position = this.game.rng.getRandomPosition(this.game.symbolsPerReel);
+        const newSymbols = this.game.rng.getSymbolsAtPosition(
+            this.game.reelStrips[reelIndex],
+            position,
+            1
         );
-
-        // Actually remove symbols (set to empty)
-        winningPositions.forEach(pos => {
-            const [reel, row] = pos.split('-').map(Number);
-            const reelEl = document.getElementById(`reel-${reel}`);
-            const symbols = reelEl.querySelectorAll('.symbol');
-            if (symbols[row]) {
-                symbols[row].textContent = '';
-                symbols[row].classList.remove('removing', 'winning');
-                symbols[row].classList.add('empty');
-            }
-        });
-    }
-
-    /**
-     * Drop symbols down to fill gaps
-     * @param {Set} winningPositions
-     */
-    async dropSymbols(winningPositions) {
-        // For each reel, drop symbols down
-        const reelsToProcess = new Set();
-        winningPositions.forEach(pos => {
-            const [reel] = pos.split('-').map(Number);
-            reelsToProcess.add(reel);
-        });
-
-        reelsToProcess.forEach(reelIndex => {
-            const reelEl = document.getElementById(`reel-${reelIndex}`);
-            const symbols = Array.from(reelEl.querySelectorAll('.symbol'));
-
-            // Create new array representing the reel
-            const symbolTexts = symbols.map(s => s.textContent);
-
-            // Remove empty symbols and shift down
-            const nonEmpty = symbolTexts.filter(text => text !== '');
-            const emptyCount = symbolTexts.length - nonEmpty.length;
-
-            // Add empty spaces at the top
-            const newOrder = new Array(emptyCount).fill('').concat(nonEmpty);
-
-            // Update DOM
-            symbols.forEach((symbol, index) => {
-                symbol.textContent = newOrder[index];
-                if (newOrder[index] === '') {
-                    symbol.classList.add('empty');
-                } else {
-                    symbol.classList.remove('empty');
-                    symbol.classList.add('dropping');
-                }
-            });
-        });
-
-        await new Promise(resolve =>
-            setTimeout(resolve, FEATURES_CONFIG.cascade.dropDelay)
-        );
-
-        // Remove dropping class
-        document.querySelectorAll('.symbol.dropping').forEach(s =>
-            s.classList.remove('dropping')
-        );
-    }
-
-    /**
-     * Fill empty spaces with new symbols
-     * @param {Set} winningPositions
-     */
-    async fillEmptySpaces(winningPositions) {
-        const reelsToProcess = new Set();
-        winningPositions.forEach(pos => {
-            const [reel] = pos.split('-').map(Number);
-            reelsToProcess.add(reel);
-        });
-
-        reelsToProcess.forEach(reelIndex => {
-            const reelEl = document.getElementById(`reel-${reelIndex}`);
-            const symbols = reelEl.querySelectorAll('.symbol');
-
-            symbols.forEach((symbol, row) => {
-                if (symbol.textContent === '') {
-                    // Get new symbol from reel strip
-                    const position = this.game.rng.getRandomPosition(this.game.symbolsPerReel);
-                    const newSymbols = this.game.rng.getSymbolsAtPosition(
-                        this.game.reelStrips[reelIndex],
-                        position,
-                        1
-                    );
-
-                    symbol.textContent = newSymbols[0];
-                    symbol.classList.remove('empty');
-                    symbol.classList.add('filling');
-                }
-            });
-        });
-
-        await new Promise(resolve =>
-            setTimeout(resolve, FEATURES_CONFIG.cascade.fillDelay)
-        );
-
-        // Remove filling class
-        document.querySelectorAll('.symbol.filling').forEach(s =>
-            s.classList.remove('filling')
-        );
-
-        await new Promise(resolve =>
-            setTimeout(resolve, FEATURES_CONFIG.cascade.evaluationDelay)
-        );
+        return newSymbols[0];
     }
 
     /**
@@ -252,32 +167,6 @@ export class Cascade {
         );
     }
 
-    /**
-     * Update multiplier UI
-     */
-    updateMultiplierUI() {
-        const container = document.getElementById('cascadeMultiplier');
-        if (!container) return;
-
-        container.innerHTML = `
-            <div class="cascade-mult-display">
-                <span class="cascade-label">CASCADE</span>
-                <span class="cascade-value">${this.currentMultiplier}x</span>
-                <span class="cascade-count">${this.cascadeCount}</span>
-            </div>
-        `;
-        container.classList.add('active');
-    }
-
-    /**
-     * Hide multiplier UI
-     */
-    hideMultiplierUI() {
-        const container = document.getElementById('cascadeMultiplier');
-        if (container) {
-            container.classList.remove('active');
-        }
-    }
 
     /**
      * Get save data for persistence

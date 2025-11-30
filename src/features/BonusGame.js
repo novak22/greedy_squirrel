@@ -1,16 +1,29 @@
 // Pick-Me Bonus Game implementation
 import { FEATURES_CONFIG } from '../config/features.js';
-import { formatNumber } from '../utils/formatters.js';
 
 export class BonusGame {
-    constructor(game) {
+    /**
+     * Create BonusGame feature
+     * @param {Object} game - Game instance
+     * @param {Object} renderer - BonusGameRenderer instance for UI
+     */
+    constructor(game, renderer = null) {
         this.game = game;
+        this.renderer = renderer;
         this.active = false;
         this.picks = [];
         this.totalPicks = 0;
         this.picksRemaining = 0;
         this.totalWon = 0;
         this.pickedItems = [];
+    }
+
+    /**
+     * Set the renderer (for dependency injection)
+     * @param {Object} renderer - BonusGameRenderer instance
+     */
+    setRenderer(renderer) {
+        this.renderer = renderer;
     }
 
     /**
@@ -44,11 +57,20 @@ export class BonusGame {
             // Generate pick items
             this.generatePicks();
 
-            // Show transition
-            await this.showTransition(bonusCount);
+            // Show transition (delegate to renderer)
+            if (this.renderer) {
+                await this.renderer.showTransition(bonusCount, this.totalPicks);
+            }
 
-            // Show pick-me game UI
-            this.showPickGame();
+            // Show pick-me game UI (delegate to renderer)
+            if (this.renderer) {
+                this.renderer.showPickGame(
+                    this.picks,
+                    this.picksRemaining,
+                    this.totalWon,
+                    (index) => this.pickItem(index)
+                );
+            }
         } catch (error) {
             console.error('BonusGame trigger failed:', error);
             this.active = false;
@@ -132,8 +154,10 @@ export class BonusGame {
         const item = this.picks[index];
         this.pickedItems.push(index);
 
-        // Reveal the item
-        await this.revealItem(index, item);
+        // Reveal the item (delegate to renderer)
+        if (this.renderer) {
+            await this.renderer.revealItem(index, item);
+        }
 
         // Process the prize
         if (item.type === 'credits') {
@@ -147,8 +171,10 @@ export class BonusGame {
 
         this.picksRemaining--;
 
-        // Update UI
-        this.updatePickUI();
+        // Update UI (delegate to renderer)
+        if (this.renderer) {
+            this.renderer.updatePickUI(this.picksRemaining, this.totalWon);
+        }
 
         // Check if done
         if (this.picksRemaining <= 0) {
@@ -183,11 +209,15 @@ export class BonusGame {
     async end() {
         this.active = false;
 
-        // Show summary
-        await this.showSummary();
+        // Show summary (delegate to renderer)
+        if (this.renderer) {
+            await this.renderer.showSummary(this.totalPicks, this.totalWon);
+        }
 
-        // Hide UI
-        this.hidePickGame();
+        // Hide UI (delegate to renderer)
+        if (this.renderer) {
+            this.renderer.hidePickGame();
+        }
 
         const wonAmount = this.totalWon;
         this.totalWon = 0;
@@ -197,124 +227,14 @@ export class BonusGame {
     }
 
     /**
-     * Show transition into bonus game
+     * Hide UI (fallback for error cases)
      */
-    async showTransition(bonusCount) {
-        const overlay = document.getElementById('featureOverlay');
-        if (!overlay) return;
-
-        overlay.innerHTML = `
-            <div class="feature-transition">
-                <div class="feature-icon">🎁🎁🎁</div>
-                <h1 class="feature-title">BONUS ROUND!</h1>
-                <div class="feature-details">
-                    <p class="picks-awarded">${this.totalPicks} PICKS</p>
-                    <p class="bonus-info">${bonusCount} BONUS symbols landed!</p>
-                </div>
-                <p class="feature-start">Pick your prizes...</p>
-            </div>
-        `;
-        overlay.classList.add('show');
-
-        await new Promise(resolve =>
-            setTimeout(resolve, FEATURES_CONFIG.bonusGame.transitionDuration)
-        );
-
-        overlay.classList.remove('show');
-    }
-
-    /**
-     * Show pick-me game UI
-     */
-    showPickGame() {
-        const container = document.getElementById('bonusGameUI');
-        if (!container) return;
-
-        let html = `
-            <div class="bonus-header">
-                <h2>PICK YOUR PRIZES</h2>
-                <div class="picks-info">
-                    <span class="picks-remaining">${this.picksRemaining}</span>
-                    <span class="picks-label">PICKS REMAINING</span>
-                </div>
-                <div class="bonus-total">Total: <span id="bonusTotalWon">${this.totalWon}</span></div>
-            </div>
-            <div class="pick-grid">
-        `;
-
-        for (let i = 0; i < this.picks.length; i++) {
-            html += `
-                <div class="pick-item" data-index="${i}">
-                    <div class="pick-cover">?</div>
-                </div>
-            `;
-        }
-
-        html += `
-            </div>
-        `;
-
-        container.innerHTML = html;
-        container.classList.add('active');
-
-        // Add click handlers
-        document.querySelectorAll('.pick-item').forEach((item, index) => {
-            item.addEventListener('click', () => this.pickItem(index));
-        });
-    }
-
-    /**
-     * Update pick game UI
-     */
-    updatePickUI() {
-        const remaining = document.querySelector('.picks-remaining');
-        const total = document.getElementById('bonusTotalWon');
-
-        if (remaining) remaining.textContent = formatNumber(this.picksRemaining);
-        if (total) total.textContent = formatNumber(this.totalWon);
-    }
-
-    /**
-     * Hide pick game UI
-     */
-    hidePickGame() {
-        const container = document.getElementById('bonusGameUI');
-        if (container) {
-            container.classList.remove('active');
+    hideUI() {
+        if (this.renderer) {
+            this.renderer.hidePickGame();
         }
     }
 
-    /**
-     * Show bonus game summary
-     */
-    async showSummary() {
-        const overlay = document.getElementById('featureOverlay');
-        if (!overlay) return;
-
-        overlay.innerHTML = `
-            <div class="feature-summary">
-                <h1 class="feature-title">BONUS COMPLETE!</h1>
-                <div class="summary-stats">
-                    <div class="stat-item">
-                        <span class="stat-label">Total Picks</span>
-                        <span class="stat-value">${formatNumber(this.totalPicks)}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Total Won</span>
-                        <span class="stat-value highlight">${formatNumber(this.totalWon)}</span>
-                    </div>
-                </div>
-                <p class="feature-end">Returning to normal game...</p>
-            </div>
-        `;
-        overlay.classList.add('show');
-
-        await new Promise(resolve =>
-            setTimeout(resolve, FEATURES_CONFIG.bonusGame.transitionDuration)
-        );
-
-        overlay.classList.remove('show');
-    }
 
     /**
      * Check if bonus game is active
