@@ -1,8 +1,8 @@
 // Visual effects system for enhanced animations and particle effects
 
 export class VisualEffects {
-    constructor(slotMachine) {
-        this.game = slotMachine;
+    constructor({ timerManager } = {}) {
+        this.timerManager = timerManager;
         this.particlesEnabled = true;
         this.animationsEnabled = true;
         this.activeParticleEffects = 0;
@@ -10,6 +10,14 @@ export class VisualEffects {
         this.maxConcurrentParticleEffects = 3;
         this.effectDebounce = 100;
         this.lastParticleEffectTime = 0;
+    }
+
+    scheduleTimeout(callback, delay) {
+        if (this.timerManager) {
+            return this.timerManager.setTimeout(callback, delay, 'visualEffects');
+        }
+
+        return setTimeout(callback, delay);
     }
 
     shouldAnimate() {
@@ -51,7 +59,7 @@ export class VisualEffects {
         this.lastParticleEffectTime = Date.now();
         effectRunner();
 
-        setTimeout(() => {
+        this.scheduleTimeout(() => {
             this.activeParticleEffects = Math.max(0, this.activeParticleEffects - 1);
             this.processParticleQueue();
         }, duration);
@@ -99,7 +107,7 @@ export class VisualEffects {
             this.animateParticle(particle, vx, vy, duration, gravity);
         }
 
-        setTimeout(() => container.remove(), duration);
+        this.scheduleTimeout(() => container.remove(), duration);
     }
 
     /**
@@ -214,7 +222,7 @@ export class VisualEffects {
         `;
         document.body.appendChild(flash);
 
-        setTimeout(() => flash.remove(), 500);
+        this.scheduleTimeout(() => flash.remove(), 500);
     }
 
     /**
@@ -224,7 +232,7 @@ export class VisualEffects {
         if (!this.shouldAnimate()) return;
 
         symbolElement.style.animation = 'symbolBounce 0.5s ease-in-out';
-        setTimeout(() => {
+        this.scheduleTimeout(() => {
             symbolElement.style.animation = '';
         }, 500);
     }
@@ -236,7 +244,7 @@ export class VisualEffects {
         if (!this.shouldAnimate()) return;
 
         scatterElements.forEach((element, index) => {
-            setTimeout(() => {
+            this.scheduleTimeout(() => {
                 element.style.animation = 'scatterPulse 0.3s ease-in-out 3';
                 this.createParticles(
                     element.getBoundingClientRect().left + element.offsetWidth / 2,
@@ -254,7 +262,7 @@ export class VisualEffects {
         if (!this.shouldAnimate()) return;
 
         bonusElements.forEach((element, index) => {
-            setTimeout(() => {
+            this.scheduleTimeout(() => {
                 element.style.animation = 'bonusPulse 0.3s ease-in-out 3';
                 this.createParticles(
                     element.getBoundingClientRect().left + element.offsetWidth / 2,
@@ -280,7 +288,7 @@ export class VisualEffects {
 
         // Multiple firework bursts
         for (let i = 0; i < 5; i++) {
-            setTimeout(() => {
+            this.scheduleTimeout(() => {
                 const offsetX = (Math.random() - 0.5) * 200;
                 const offsetY = (Math.random() - 0.5) * 200;
                 this.createParticles(centerX + offsetX, centerY + offsetY, {
@@ -330,7 +338,7 @@ export class VisualEffects {
 
         // Create continuous coin drops
         for (let i = 0; i < 10; i++) {
-            setTimeout(() => {
+            this.scheduleTimeout(() => {
                 this.createParticles(centerX, rect.top + 100, {
                     count: 5,
                     emoji: '🪙',

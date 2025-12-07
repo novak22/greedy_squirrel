@@ -206,7 +206,7 @@ export class SlotMachine {
 
         // Initialize advanced features
         this.soundManager = new SoundManager();
-        this.visualEffects = new VisualEffects(this);
+        this.visualEffects = new VisualEffects({ timerManager: this.timerManager });
         this.turboMode = new TurboMode({ eventBus: this.events, dom: this.dom });
         this.autoplay = new Autoplay(
             {
@@ -217,7 +217,14 @@ export class SlotMachine {
             },
             undefined
         );
-        this.settings = new Settings(this);
+        this.settings = new Settings({
+            soundManager: this.soundManager,
+            visualEffects: this.visualEffects,
+            autoplay: this.autoplay,
+            saveGameState: () => this.saveGameState?.(),
+            resetAllData: () => this.resetAllData(),
+            eventBus: this.events
+        });
 
         // Gamble settings
         this.autoCollectEnabled = false;

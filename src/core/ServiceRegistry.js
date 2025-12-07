@@ -249,12 +249,20 @@ export function registerServices(container) {
     // ============================================
     container.singleton('soundManager', SoundManager);
 
-    container.factory('visualEffects', () => {
-        return new VisualEffects(null); // Will be injected later
+    container.factory('visualEffects', (c) => {
+        return new VisualEffects({ timerManager: c.resolve('timerManager') });
     });
 
-    container.factory('settings', () => {
-        return new Settings(null); // Will be injected later
+    container.factory('settings', (c) => {
+        const eventBus = c.resolve('eventBus');
+        return new Settings({
+            soundManager: c.resolve('soundManager'),
+            visualEffects: c.resolve('visualEffects'),
+            autoplay: c.resolve('autoplay'),
+            saveGameState: () => eventBus.emit('game:save'),
+            resetAllData: () => eventBus.emit('game:reset'),
+            eventBus
+        });
     });
 
     container.factory('cascadeRenderer', (c) => {
