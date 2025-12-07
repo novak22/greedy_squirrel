@@ -7,6 +7,7 @@ import { UIController } from '../ui/UIController.js';
 import { Logger } from '../utils/Logger.js';
 import { Metrics } from '../utils/Metrics.js';
 import { GAME_EVENTS } from './EventBus.js';
+import { PaylineEvaluator } from './PaylineEvaluator.js';
 import { StatsRenderer } from '../ui/renderers/StatsRenderer.js';
 import { DOMCache } from '../ui/DOMCache.js';
 import { StatsController } from '../ui/StatsController.js';
