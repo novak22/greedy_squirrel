@@ -8,7 +8,7 @@ export const GAME_CONFIG = {
     initialCredits: 1000,
 
     // Bet options
-    betOptions: [10, 20, 50, 100, 200, 500, 1000, 2000],
+    betOptions: [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 25000, 50000, 100000],
 
     // Betting limits
     maxBetIncrementPercent: 0.1, // 10% of current balance
