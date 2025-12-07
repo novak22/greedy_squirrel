@@ -14,6 +14,7 @@ import { EventBus } from './EventBus.js';
 import { StateManager, createInitialState } from './StateManager.js';
 import { GameState } from './GameState.js';
 import { PaylineEvaluator } from './PaylineEvaluator.js';
+import { GameStateLoader } from './GameStateLoader.js';
 
 import { TimerManager } from '../utils/TimerManager.js';
 import { Metrics } from '../utils/Metrics.js';
@@ -78,6 +79,8 @@ export function registerServices(container) {
     // ============================================
     // Game State & Configuration
     // ============================================
+    container.value('autoCollectState', { enabled: false });
+
     container.factory('reelStrips', (c) => {
         const rng = c.resolve('rng');
         const { reelCount, symbolsPerReel } = c.resolve('gameConfig');
@@ -280,6 +283,28 @@ export function registerServices(container) {
     container.factory('spinHistory', (c) => {
         const { spinHistory } = c.resolve('featuresConfig');
         return new SpinHistory(spinHistory.maxEntries);
+    });
+
+    container.factory('gameStateLoader', (c) => {
+        const autoCollectState = c.resolve('autoCollectState');
+
+        return new GameStateLoader({
+            gameState: c.resolve('gameState'),
+            levelSystem: c.resolve('levelSystem'),
+            achievements: c.resolve('achievements'),
+            statistics: c.resolve('statistics'),
+            dailyChallenges: c.resolve('dailyChallenges'),
+            soundManager: c.resolve('soundManager'),
+            visualEffects: c.resolve('visualEffects'),
+            turboMode: c.resolve('turboMode'),
+            autoplay: c.resolve('autoplay'),
+            cascade: c.resolve('cascade'),
+            spinHistory: c.resolve('spinHistory'),
+            getAutoCollectEnabled: () => autoCollectState.enabled,
+            setAutoCollectEnabled: (value) => {
+                autoCollectState.enabled = Boolean(value);
+            }
+        });
     });
 
     // ============================================
