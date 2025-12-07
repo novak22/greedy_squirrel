@@ -83,7 +83,23 @@ export class GameOrchestrator extends SlotMachine {
         this.paylineEvaluator = paylineEvaluator;
 
         // Initialize state loader
-        this.stateLoader = new GameStateLoader(this);
+        this.stateLoader = new GameStateLoader({
+            gameState: this.state,
+            levelSystem: this.levelSystem,
+            achievements: this.achievements,
+            statistics: this.statistics,
+            dailyChallenges: this.dailyChallenges,
+            soundManager: this.soundManager,
+            visualEffects: this.visualEffects,
+            turboMode: this.turboMode,
+            autoplay: this.autoplay,
+            cascade: this.cascade,
+            spinHistory: this.spinHistory,
+            getAutoCollectEnabled: () => this.autoCollectEnabled,
+            setAutoCollectEnabled: (value: boolean) => {
+                this.autoCollectEnabled = Boolean(value);
+            }
+        });
         this.stateLoader.load();
 
         this.init();

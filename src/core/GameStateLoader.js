@@ -11,10 +11,49 @@ import { Logger } from '../utils/Logger.js';
 export class GameStateLoader {
     /**
      * Create GameStateLoader
-     * @param {Object} game - Game instance with all subsystems
+     * @param {Object} dependencies - Explicit subsystem dependencies
+     * @param {import('./GameState.js').GameState} dependencies.gameState
+     * @param {import('../progression/LevelSystem.js').LevelSystem} dependencies.levelSystem
+     * @param {import('../progression/Achievements.js').Achievements} dependencies.achievements
+     * @param {import('../progression/Statistics.js').Statistics} dependencies.statistics
+     * @param {import('../progression/DailyChallenges.js').DailyChallenges} dependencies.dailyChallenges
+     * @param {import('../audio/SoundManager.js').SoundManager} dependencies.soundManager
+     * @param {import('../effects/VisualEffects.js').VisualEffects} dependencies.visualEffects
+     * @param {import('../features/TurboMode.js').TurboMode} dependencies.turboMode
+     * @param {import('../features/Autoplay.js').Autoplay} dependencies.autoplay
+     * @param {import('../features/Cascade.js').Cascade} dependencies.cascade
+     * @param {import('../ui/SpinHistory.js').SpinHistory} dependencies.spinHistory
+     * @param {() => boolean} dependencies.getAutoCollectEnabled
+     * @param {(value: boolean) => void} dependencies.setAutoCollectEnabled
      */
-    constructor(game) {
-        this.game = game;
+    constructor({
+        gameState,
+        levelSystem,
+        achievements,
+        statistics,
+        dailyChallenges,
+        soundManager,
+        visualEffects,
+        turboMode,
+        autoplay,
+        cascade,
+        spinHistory,
+        getAutoCollectEnabled,
+        setAutoCollectEnabled
+    }) {
+        this.gameState = gameState;
+        this.levelSystem = levelSystem;
+        this.achievements = achievements;
+        this.statistics = statistics;
+        this.dailyChallenges = dailyChallenges;
+        this.soundManager = soundManager;
+        this.visualEffects = visualEffects;
+        this.turboMode = turboMode;
+        this.autoplay = autoplay;
+        this.cascade = cascade;
+        this.spinHistory = spinHistory;
+        this.getAutoCollectEnabled = getAutoCollectEnabled;
+        this.setAutoCollectEnabled = setAutoCollectEnabled;
     }
 
     /**
@@ -24,26 +63,26 @@ export class GameStateLoader {
         const savedData = Storage.load();
 
         // Load core state
-        this.game.state.setCredits(savedData.credits);
-        this.game.state.setCurrentBet(savedData.currentBet);
-        this.game.state.setCurrentBetIndex(savedData.currentBetIndex);
+        this.gameState.setCredits(savedData.credits);
+        this.gameState.setCurrentBet(savedData.currentBet);
+        this.gameState.setCurrentBetIndex(savedData.currentBetIndex);
 
         // Load progression systems
-        this.game.levelSystem.init(savedData.progression.levelSystem);
-        this.game.achievements.init(savedData.progression.achievements);
-        this.game.dailyChallenges.init(savedData.progression.dailyChallenges);
-        this.game.statistics.init(savedData.progression.statistics);
+        this.levelSystem.init(savedData.progression.levelSystem);
+        this.achievements.init(savedData.progression.achievements);
+        this.dailyChallenges.init(savedData.progression.dailyChallenges);
+        this.statistics.init(savedData.progression.statistics);
 
         // Load features (phase 4)
-        this.game.soundManager.init(savedData.phase4.sound);
-        this.game.visualEffects.init(savedData.phase4.visualEffects);
-        this.game.turboMode.init(savedData.phase4.turboMode);
-        this.game.autoplay.init(savedData.phase4.autoplay);
-        this.game.cascade.init(savedData.phase4.cascade);
+        this.soundManager.init(savedData.phase4.sound);
+        this.visualEffects.init(savedData.phase4.visualEffects);
+        this.turboMode.init(savedData.phase4.turboMode);
+        this.autoplay.init(savedData.phase4.autoplay);
+        this.cascade.init(savedData.phase4.cascade);
 
         // Load phase 5 features
-        this.game.spinHistory.init(savedData.phase5.spinHistory);
-        this.game.autoCollectEnabled = savedData.phase5.autoCollectEnabled;
+        this.spinHistory.init(savedData.phase5.spinHistory);
+        this.setAutoCollectEnabled(savedData.phase5.autoCollectEnabled);
 
         Logger.info('Game state loaded from localStorage');
     }
@@ -52,7 +91,20 @@ export class GameStateLoader {
      * Save game state to localStorage
      */
     save() {
-        const payload = Storage.createSavePayload(this.game);
+        const payload = Storage.createSavePayload({
+            gameState: this.gameState,
+            levelSystem: this.levelSystem,
+            achievements: this.achievements,
+            statistics: this.statistics,
+            dailyChallenges: this.dailyChallenges,
+            soundManager: this.soundManager,
+            visualEffects: this.visualEffects,
+            turboMode: this.turboMode,
+            autoplay: this.autoplay,
+            cascade: this.cascade,
+            spinHistory: this.spinHistory,
+            autoCollectEnabled: this.getAutoCollectEnabled()
+        });
         Storage.save(payload);
     }
 

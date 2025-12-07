@@ -141,30 +141,43 @@ export class Storage {
         return merged;
     }
 
-    static createSavePayload(game) {
+    static createSavePayload({
+        gameState,
+        levelSystem,
+        achievements,
+        statistics,
+        dailyChallenges,
+        soundManager,
+        visualEffects,
+        turboMode,
+        autoplay,
+        cascade,
+        spinHistory,
+        autoCollectEnabled
+    }) {
         const base = this.createDefaultSaveData();
 
         const payload = {
             ...base,
-            credits: game.state.getCredits(),
-            currentBet: game.state.getCurrentBet(),
-            currentBetIndex: game.state.getCurrentBetIndex(),
+            credits: gameState.getCredits(),
+            currentBet: gameState.getCurrentBet(),
+            currentBetIndex: gameState.getCurrentBetIndex(),
             progression: {
-                levelSystem: game.levelSystem.getSaveData(),
-                achievements: game.achievements.getSaveData(),
-                dailyChallenges: game.dailyChallenges.getSaveData(),
-                statistics: game.statistics.getSaveData()
+                levelSystem: levelSystem.getSaveData(),
+                achievements: achievements.getSaveData(),
+                dailyChallenges: dailyChallenges.getSaveData(),
+                statistics: statistics.getSaveData()
             },
             phase4: {
-                sound: game.soundManager.getSaveData(),
-                visualEffects: game.visualEffects.getSaveData(),
-                turboMode: game.turboMode.getSaveData(),
-                autoplay: game.autoplay.getSaveData(),
-                cascade: game.cascade.getSaveData()
+                sound: soundManager.getSaveData(),
+                visualEffects: visualEffects.getSaveData(),
+                turboMode: turboMode.getSaveData(),
+                autoplay: autoplay.getSaveData(),
+                cascade: cascade.getSaveData()
             },
             phase5: {
-                spinHistory: game.spinHistory.getSaveData(),
-                autoCollectEnabled: game.autoCollectEnabled
+                spinHistory: spinHistory.getSaveData(),
+                autoCollectEnabled
             },
             timestamp: Date.now()
         };
