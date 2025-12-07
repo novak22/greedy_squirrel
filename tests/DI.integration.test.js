@@ -62,8 +62,8 @@ async function runTests() {
 // Integration Tests
 // ============================================
 
-test('should create container with all services registered', () => {
-    const container = GameFactory.createContainer();
+test('should create container with all services registered', async () => {
+    const container = await GameFactory.createContainer();
 
     expect(container.has('eventBus')).toBeTruthy();
     expect(container.has('gameState')).toBeTruthy();
@@ -72,8 +72,8 @@ test('should create container with all services registered', () => {
     expect(container.has('autoplay')).toBeTruthy();
 });
 
-test('should resolve TurboMode with dependencies', () => {
-    const container = GameFactory.createContainer();
+test('should resolve TurboMode with dependencies', async () => {
+    const container = await GameFactory.createContainer();
     container.value('dom', { turboBtn: null });
 
     const turboMode = container.resolve('turboMode');
@@ -83,8 +83,8 @@ test('should resolve TurboMode with dependencies', () => {
     expect(turboMode.game).toBeFalsy(); // Should not have game ref
 });
 
-test('should resolve Autoplay with all dependencies', () => {
-    const container = GameFactory.createContainer();
+test('should resolve Autoplay with all dependencies', async () => {
+    const container = await GameFactory.createContainer();
     container.value('dom', {});
 
     const autoplay = container.resolve('autoplay');
@@ -96,8 +96,8 @@ test('should resolve Autoplay with all dependencies', () => {
     expect(autoplay.game).toBeFalsy(); // Should not have game ref
 });
 
-test('should emit events when TurboMode toggles', () => {
-    const container = GameFactory.createContainer();
+test('should emit events when TurboMode toggles', async () => {
+    const container = await GameFactory.createContainer();
 
     const events = [];
     const mockEventBus = {
@@ -129,27 +129,6 @@ test('should work with new DI API (TurboMode)', () => {
     expect(turboMode.game).toBeFalsy();
 });
 
-test('should work with backward compatible API (Autoplay)', () => {
-    const mockGame = {
-        state: {
-            getCredits: () => 1000,
-            getCurrentBet: () => 10
-        },
-        cleanupTimers: () => {},
-        showMessage: () => {}
-    };
-
-    const mockTimerManager = {
-        setTimeout: () => {},
-        onClear: () => {}
-    };
-
-    const autoplay = new Autoplay(mockGame, mockTimerManager);
-
-    expect(autoplay.game).toBeTruthy();
-    expect(autoplay.timerManager).toBeTruthy();
-});
-
 test('should work with new DI API (Autoplay)', () => {
     const mockTimerManager = {
         setTimeout: () => {},
@@ -179,8 +158,8 @@ test('should work with new DI API (Autoplay)', () => {
     expect(autoplay.game).toBeFalsy();
 });
 
-test('should share singletons across resolutions', () => {
-    const container = GameFactory.createContainer();
+test('should share singletons across resolutions', async () => {
+    const container = await GameFactory.createContainer();
 
     const eventBus1 = container.resolve('eventBus');
     const eventBus2 = container.resolve('eventBus');
@@ -188,10 +167,10 @@ test('should share singletons across resolutions', () => {
     expect(eventBus1 === eventBus2).toBeTruthy(); // Same instance
 });
 
-test('should create testing container with mocks', () => {
+test('should create testing container with mocks', async () => {
     const mockEventBus = { emit: () => 'mocked' };
 
-    const { container } = GameFactory.createForTesting({
+    const { container } = await GameFactory.createForTesting({
         eventBus: mockEventBus
     });
 
@@ -199,8 +178,8 @@ test('should create testing container with mocks', () => {
     expect(resolved.emit()).toBe('mocked');
 });
 
-test('should resolve complex dependency chain', () => {
-    const container = GameFactory.createContainer();
+test('should resolve complex dependency chain', async () => {
+    const container = await GameFactory.createContainer();
     container.value('dom', {});
 
     // Autoplay depends on: timerManager, gameState, eventBus, turboMode

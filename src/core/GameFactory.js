@@ -6,46 +6,44 @@
  *
  * Usage:
  *   import { GameFactory } from './core/GameFactory.js';
- *   const game = GameFactory.create();
+ *   const game = await GameFactory.create();
  */
 
-import { DIContainer } from './DIContainer.js';
-import { registerServices } from './ServiceRegistry.js';
-import { GameOrchestrator } from './GameOrchestrator.js';
+import { createConfiguredContainer } from './ServiceRegistry.js';
 
 export class GameFactory {
     /**
      * Create a new game instance using DI container
-     * @param {Object} options - Configuration options
-     * @param {boolean} options.useDI - Whether to use DI (default: false for backward compat)
-     * @returns {GameOrchestrator} Game instance
+     * @returns {Promise<GameOrchestrator>} Game instance
      */
-    static create(options = {}) {
-        const { useDI = false } = options;
-
-        if (!useDI) {
-            // Old way: manual instantiation
-            return new GameOrchestrator();
-        }
-
-        // New way: DI container
-        const container = new DIContainer();
-        registerServices(container);
+    static async create() {
+        const container = await createConfiguredContainer();
 
         // Create DOM cache (needed before resolving services)
         const dom = GameFactory.createDOMCache();
         container.value('dom', dom);
 
-        // Resolve migrated services
-        const turboMode = container.resolve('turboMode');
-        const autoplay = container.resolve('autoplay');
+        // Resolve dependencies from the configured container
+        const paylineEvaluator = container.resolve('paylineEvaluator');
+        const cascadeRenderer = container.resolve('cascadeRenderer');
+        const bonusGameRenderer = container.resolve('bonusGameRenderer');
+        const freeSpinsRenderer = container.resolve('freeSpinsRenderer');
 
-        // For now, create game with old pattern but inject DI-created services
-        const game = new GameOrchestrator();
+        const orchestratorModule =
+            (await GameFactory.safeImport('./GameOrchestrator.js')) ||
+            (await GameFactory.safeImport('./GameOrchestrator.ts'));
 
-        // Replace old instances with DI-created ones
-        game.turboMode = turboMode;
-        game.autoplay = autoplay;
+        if (!orchestratorModule?.GameOrchestrator) {
+            throw new Error('GameOrchestrator module could not be loaded.');
+        }
+
+        const game = new orchestratorModule.GameOrchestrator({
+            dom,
+            paylineEvaluator,
+            cascadeRenderer,
+            bonusGameRenderer,
+            freeSpinsRenderer
+        });
 
         return game;
     }
@@ -81,22 +79,19 @@ export class GameFactory {
     /**
      * Create DI container with all services registered
      * Useful for testing
-     * @returns {DIContainer}
+     * @returns {Promise<DIContainer>}
      */
-    static createContainer() {
-        const container = new DIContainer();
-        registerServices(container);
-        return container;
+    static async createContainer() {
+        return createConfiguredContainer();
     }
 
     /**
      * Create game instance for testing with mocked dependencies
      * @param {Object} mocks - Mocked dependencies
-     * @returns {Object} { game, container }
+     * @returns {Promise<{ container: DIContainer }>}
      */
-    static createForTesting(mocks = {}) {
-        const container = new DIContainer();
-        registerServices(container);
+    static async createForTesting(mocks = {}) {
+        const container = await createConfiguredContainer();
 
         // Override with mocks
         Object.entries(mocks).forEach(([name, mock]) => {
@@ -109,5 +104,14 @@ export class GameFactory {
         }
 
         return { container };
+    }
+
+    static async safeImport(specifier) {
+        try {
+            return await import(specifier);
+        } catch (error) {
+            console.warn(`Optional import failed for ${specifier}:`, error?.message ?? error);
+            return null;
+        }
     }
 }
