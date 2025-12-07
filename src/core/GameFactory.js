@@ -10,6 +10,9 @@
  */
 
 import { createConfiguredContainer } from './ServiceRegistry.js';
+import { UIFacade } from '../ui/UIFacade.js';
+import { SpinEngine } from './SpinEngine.js';
+import { FeatureManager } from './FeatureManager.js';
 
 export class GameFactory {
     /**
@@ -24,10 +27,87 @@ export class GameFactory {
         container.value('dom', dom);
 
         // Resolve dependencies from the configured container
+        const gameConfig = container.resolve('gameConfig');
+        const featuresConfig = container.resolve('featuresConfig');
+        const timerManager = container.resolve('timerManager');
+        const events = container.resolve('eventBus');
+        const stateManager = container.resolve('stateManager');
+        const state = container.resolve('gameState');
+        const rng = container.resolve('rng');
         const paylineEvaluator = container.resolve('paylineEvaluator');
-        const cascadeRenderer = container.resolve('cascadeRenderer');
-        const bonusGameRenderer = container.resolve('bonusGameRenderer');
-        const freeSpinsRenderer = container.resolve('freeSpinsRenderer');
+        const reelStrips = container.resolve('reelStrips');
+        const metrics = container.resolve('metrics');
+        const debugMode = container.resolve('debugMode');
+        const errorHandler = container.resolve('errorHandler');
+        const autoCollectState = container.resolve('autoCollectState');
+
+        const freeSpins = container.resolve('freeSpins');
+        const bonusGame = container.resolve('bonusGame');
+        const cascade = container.resolve('cascade');
+        const levelSystem = container.resolve('levelSystem');
+        const achievements = container.resolve('achievements');
+        const dailyChallenges = container.resolve('dailyChallenges');
+        const statistics = container.resolve('statistics');
+        const turboMode = container.resolve('turboMode');
+        const winAnticipation = container.resolve('winAnticipation');
+        const autoplay = container.resolve('autoplay');
+        const gamble = container.resolve('gamble');
+        const buyBonus = container.resolve('buyBonus');
+        const spinHistory = container.resolve('spinHistory');
+
+        const soundManager = container.resolve('soundManager');
+        const visualEffects = container.resolve('visualEffects');
+        const settings = container.resolve('settings');
+
+        const uiFacade = new UIFacade(dom, timerManager, turboMode);
+
+        let gameInstance = null;
+
+        const spinEngine = new SpinEngine({
+            reelCount: gameConfig.reelCount,
+            rowCount: gameConfig.rowCount,
+            symbolsPerReel: gameConfig.symbolsPerReel,
+            reelStrips,
+            turboMode,
+            timerManager,
+            state,
+            dom,
+            soundManager,
+            winAnticipation,
+            events,
+            cascade,
+            freeSpins,
+            statistics,
+            dailyChallenges,
+            levelSystem,
+            visualEffects,
+            ui: uiFacade,
+            triggerScreenShake: () => gameInstance?.triggerScreenShake?.(),
+            metrics,
+            rng
+        });
+
+        const featureManager = new FeatureManager({
+            freeSpins,
+            bonusGame,
+            statistics,
+            levelSystem,
+            achievements,
+            dailyChallenges,
+            soundManager,
+            gamble,
+            autoCollectEnabledRef: () => gameInstance?.autoCollectEnabled ?? autoCollectState.enabled,
+            state,
+            ui: uiFacade,
+            spinHistory,
+            cascade,
+            gameConfig,
+            spinExecutor: {
+                offerGamble: (amount) => gameInstance?.offerGamble(amount) ?? amount
+            },
+            saveGameState: () => gameInstance?.saveGameState?.(),
+            dom
+        });
 
         const orchestratorModule =
             (await GameFactory.safeImport('./GameOrchestrator.js')) ||
@@ -38,12 +118,33 @@ export class GameFactory {
         }
 
         const game = new orchestratorModule.GameOrchestrator({
+            core: { timerManager, events, stateManager, state, rng },
+            config: { gameConfig, featuresConfig, metrics, debugMode },
             dom,
             paylineEvaluator,
-            cascadeRenderer,
-            bonusGameRenderer,
-            freeSpinsRenderer
+            reels: { reelStrips },
+            features: {
+                freeSpins,
+                bonusGame,
+                cascade,
+                levelSystem,
+                achievements,
+                dailyChallenges,
+                statistics,
+                autoplay,
+                turboMode,
+                gamble,
+                buyBonus,
+                winAnticipation,
+                spinHistory
+            },
+            ui: { uiFacade, spinEngine, featureManager },
+            utilities: { soundManager, visualEffects, settings },
+            errorHandler,
+            autoCollectEnabled: autoCollectState.enabled
         });
+
+        gameInstance = game;
 
         return game;
     }

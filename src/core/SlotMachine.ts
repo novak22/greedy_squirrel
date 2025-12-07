@@ -1,32 +1,29 @@
 // Main SlotMachine class with Phase 1, 2, 3 & 4 enhancements
-import { getSymbolsForReel } from '../config/symbols.js';
-import { GAME_CONFIG } from '../config/game.js';
-import { FEATURES_CONFIG } from '../config/features.js';
-import { RNG } from '../utils/RNG.js';
-import { EventBus } from './EventBus.js';
-import { StateManager, createInitialState } from './StateManager.js';
-import { GameState } from './GameState.js';
-import { FreeSpins } from '../features/FreeSpins.js';
-import { BonusGame } from '../features/BonusGame.js';
-import { Cascade } from '../features/Cascade.js';
-import { LevelSystem } from '../progression/LevelSystem.js';
-import { Achievements } from '../progression/Achievements.js';
-import { DailyChallenges } from '../progression/DailyChallenges.js';
-import { Statistics } from '../progression/Statistics.js';
-import { Autoplay } from '../features/Autoplay.js';
-import { TurboMode } from '../features/TurboMode.js';
-import { VisualEffects } from '../effects/VisualEffects.js';
-import { SoundManager } from '../audio/SoundManager.js';
-import { Settings } from '../ui/Settings.js';
-import { SpinHistory } from '../ui/SpinHistory.js';
-import { Gamble } from '../features/Gamble.js';
-import { BuyBonus } from '../features/BuyBonus.js';
-import { WinAnticipation } from '../features/WinAnticipation.js';
-import { TimerManager } from '../utils/TimerManager.js';
-import { ErrorHandler } from './ErrorHandler.js';
-import { SpinEngine } from './SpinEngine.js';
-import { FeatureManager } from './FeatureManager.js';
-import { UIFacade } from '../ui/UIFacade.js';
+import type { RNG } from '../utils/RNG.js';
+import type { EventBus } from './EventBus.js';
+import type { StateManager } from './StateManager.js';
+import type { GameState } from './GameState.js';
+import type { FreeSpins } from '../features/FreeSpins.js';
+import type { BonusGame } from '../features/BonusGame.js';
+import type { Cascade } from '../features/Cascade.js';
+import type { LevelSystem } from '../progression/LevelSystem.js';
+import type { Achievements } from '../progression/Achievements.js';
+import type { DailyChallenges } from '../progression/DailyChallenges.js';
+import type { Statistics } from '../progression/Statistics.js';
+import type { Autoplay } from '../features/Autoplay.js';
+import type { TurboMode } from '../features/TurboMode.js';
+import type { VisualEffects } from '../effects/VisualEffects.js';
+import type { SoundManager } from '../audio/SoundManager.js';
+import type { Settings } from '../ui/Settings.js';
+import type { SpinHistory } from '../ui/SpinHistory.js';
+import type { Gamble } from '../features/Gamble.js';
+import type { BuyBonus } from '../features/BuyBonus.js';
+import type { WinAnticipation } from '../features/WinAnticipation.js';
+import type { TimerManager } from '../utils/TimerManager.js';
+import type { ErrorHandler } from './ErrorHandler.js';
+import type { SpinEngine } from './SpinEngine.js';
+import type { FeatureManager } from './FeatureManager.js';
+import type { UIFacade } from '../ui/UIFacade.js';
 import { Metrics } from '../utils/Metrics.js';
 import type { FeaturesConfig, GameConfig } from '../types/config.js';
 
@@ -51,15 +48,60 @@ type WinInfo = {
     scatterCount: number;
 };
 
-type SpinEngineOptions = Record<string, any>;
-
-type FeatureManagerOptions = Record<string, any>;
+export type SlotMachineDependencies = {
+    core: {
+        timerManager: TimerManager;
+        events: EventBus;
+        stateManager: StateManager;
+        state: GameState;
+        rng: RNG;
+    };
+    config: {
+        gameConfig: GameConfig;
+        featuresConfig: FeaturesConfig;
+        metrics?: typeof Metrics;
+        debugMode?: boolean;
+    };
+    dom?: Record<string, HTMLElement | null | undefined>;
+    paylineEvaluator: unknown;
+    reels: {
+        reelStrips: string[][];
+    };
+    features: {
+        freeSpins: FreeSpins;
+        bonusGame: BonusGame;
+        cascade: Cascade;
+        levelSystem: LevelSystem;
+        achievements: Achievements;
+        dailyChallenges: DailyChallenges;
+        statistics: Statistics;
+        autoplay: Autoplay;
+        turboMode: TurboMode;
+        gamble: Gamble;
+        buyBonus: BuyBonus;
+        winAnticipation: WinAnticipation;
+        spinHistory: SpinHistory;
+    };
+    ui: {
+        uiFacade: UIFacade;
+        spinEngine: SpinEngine;
+        featureManager: FeatureManager;
+    };
+    utilities: {
+        soundManager: SoundManager;
+        visualEffects: VisualEffects;
+        settings: Settings;
+    };
+    errorHandler?: ErrorHandler;
+    autoCollectEnabled?: boolean;
+};
 
 export class SlotMachine {
     timerManager: TimerManager;
     events: EventBus;
     stateManager: StateManager;
     state: GameState;
+    paylineEvaluator: unknown;
     reelCount: number;
     rowCount: number;
     symbolsPerReel: number;
@@ -109,198 +151,72 @@ export class SlotMachine {
     saveGameState?(): void;
 
     constructor({
+        core,
+        config,
         dom = {},
         paylineEvaluator,
-        cascadeRenderer,
-        bonusGameRenderer,
-        freeSpinsRenderer
-    }: {
-        dom?: Record<string, unknown>;
-        paylineEvaluator: unknown;
-        cascadeRenderer: unknown;
-        bonusGameRenderer: unknown;
-        freeSpinsRenderer: unknown;
-    } = {}) {
-        // Core systems
-        this.timerManager = new TimerManager();
-        this.events = new EventBus();
-        this.stateManager = new StateManager(createInitialState());
-        this.state = new GameState(this.stateManager);
+        reels,
+        features,
+        ui,
+        utilities,
+        errorHandler,
+        autoCollectEnabled = false
+    }: SlotMachineDependencies) {
+        if (!paylineEvaluator) {
+            throw new Error('SlotMachine requires a paylineEvaluator');
+        }
 
-        // Game configuration
-        this.gameConfig = GAME_CONFIG as GameConfig;
-        this.featuresConfig = FEATURES_CONFIG as FeaturesConfig;
+        this.timerManager = core.timerManager;
+        this.events = core.events;
+        this.stateManager = core.stateManager;
+        this.state = core.state;
+        this.rng = core.rng;
+        this.paylineEvaluator = paylineEvaluator;
+
+        this.gameConfig = config.gameConfig as GameConfig;
+        this.featuresConfig = config.featuresConfig as FeaturesConfig;
+        this.metrics = config.metrics ?? Metrics;
+        this.debugMode = Boolean(config.debugMode);
+
         this.reelCount = this.gameConfig.reelCount;
         this.rowCount = this.gameConfig.rowCount;
         this.symbolsPerReel = this.gameConfig.symbolsPerReel;
         this.betOptions = this.gameConfig.betOptions;
+        this.reelStrips = reels.reelStrips;
 
-        // Initialize RNG with symbol configuration
-        this.rng = RNG.create(getSymbolsForReel);
+        this.dom = dom as Record<string, HTMLElement | null | undefined>;
 
-        // Reel strips (generated once with weighted symbols)
-        this.reelStrips = [];
-        for (let i = 0; i < this.reelCount; i++) {
-            this.reelStrips.push(this.rng.generateReelStrip(i, this.symbolsPerReel));
-        }
+        this.freeSpins = features.freeSpins;
+        this.bonusGame = features.bonusGame;
+        this.cascade = features.cascade;
+        this.levelSystem = features.levelSystem;
+        this.achievements = features.achievements;
+        this.dailyChallenges = features.dailyChallenges;
+        this.statistics = features.statistics;
+        this.autoplay = features.autoplay;
+        this.turboMode = features.turboMode;
+        this.gamble = features.gamble;
+        this.buyBonus = features.buyBonus;
+        this.winAnticipation = features.winAnticipation;
+        this.spinHistory = features.spinHistory;
 
-        // DOM element cache (populated in init)
-        this.dom = dom;
+        this.soundManager = utilities.soundManager;
+        this.visualEffects = utilities.visualEffects;
+        this.settings = utilities.settings;
 
-        if (!paylineEvaluator) {
-            throw new Error('SlotMachine requires a paylineEvaluator');
-        }
-        if (!cascadeRenderer || !bonusGameRenderer || !freeSpinsRenderer) {
-            throw new Error('SlotMachine requires feature renderers');
-        }
+        this.uiFacade = ui.uiFacade;
+        this.spinEngine = ui.spinEngine;
+        this.featureManager = ui.featureManager;
 
-        this.paylineEvaluator = paylineEvaluator as any;
-
-        // Game state is now managed by GameState wrapper
-        // Initialize state with config defaults
-        this.state.setCredits(this.gameConfig.initialCredits);
-        this.state.setCurrentBet(this.gameConfig.betOptions[0]);
-        this.state.setCurrentBetIndex(0);
-        this.state.setLastWin(0);
-        this.state.setSpinning(false);
-        this.state.setReelPositions([0, 0, 0, 0, 0]);
-
-        // Initialize progression systems
-        this.statistics = new Statistics({ betOptions: this.betOptions });
-        this.freeSpins = new FreeSpins({ renderer: freeSpinsRenderer });
-        this.bonusGame = new BonusGame({ renderer: bonusGameRenderer });
-        this.cascade = new Cascade({
-            renderer: cascadeRenderer,
-            rng: this.rng,
-            reelStrips: this.reelStrips,
-            symbolsPerReel: this.symbolsPerReel,
-            paylineEvaluator: this.paylineEvaluator,
-            statistics: this.statistics,
-            eventBus: this.events,
-            getReelResult: () => this.getReelResult(),
-            evaluateWinsWithoutDisplay: (result, evaluator) =>
-                this.evaluateWinsWithoutDisplay?.(result, evaluator)
-        });
-        this.levelSystem = new LevelSystem({
-            gameState: this.state,
-            cascade: this.cascade,
-            eventBus: this.events,
-            showLevelUpMessage: (level: number, reward: unknown) =>
-                this.showLevelUpMessage(level, reward as any),
-            updateDisplay: () => this.updateDisplay(),
-            saveGameState: () => this.saveGameState?.()
-        });
-        this.achievements = new Achievements({
-            gameState: this.state,
-            updateDisplay: () => this.updateDisplay(),
-            saveGameState: () => this.saveGameState?.(),
-            eventBus: this.events
-        });
-        this.dailyChallenges = new DailyChallenges({
-            gameState: this.state,
-            updateDisplay: () => this.updateDisplay(),
-            saveGameState: () => this.saveGameState?.(),
-            showMessage: (message: string) => this.showMessage(message),
-            eventBus: this.events
-        });
-
-        // Initialize advanced features
-        this.soundManager = new SoundManager();
-        this.visualEffects = new VisualEffects({ timerManager: this.timerManager });
-        this.turboMode = new TurboMode({ eventBus: this.events, dom: this.dom });
-        this.autoplay = new Autoplay(
-            {
-                timerManager: this.timerManager,
-                gameState: this.state,
-                eventBus: this.events,
-                turboMode: this.turboMode
-            },
-            undefined
-        );
-        this.settings = new Settings({
-            soundManager: this.soundManager,
-            visualEffects: this.visualEffects,
-            autoplay: this.autoplay,
-            saveGameState: () => this.saveGameState?.(),
-            resetAllData: () => this.resetAllData(),
-            eventBus: this.events
-        });
-
-        // Gamble settings
-        this.autoCollectEnabled = false;
-
-        // Debug mode (enable with ?debug=true in URL)
-        this.debugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
-        this.debugNextSpin = null; // Format: [['🌰','🌰','🌰'], ['🌰','🌰','🌰'], ...]
-
-        // Metrics instrumentation (optional dashboard hook via window.__GS_METRICS_HOOK__)
-        this.metrics = Metrics;
-        if (typeof window !== 'undefined' && typeof window.__GS_METRICS_HOOK__ === 'function') {
-            Metrics.setReporter(window.__GS_METRICS_HOOK__);
-        }
-
-        ErrorHandler.init({
-            showMessage: (message: string) => this.showMessage(message)
-        });
-
-        // Track active timers to avoid overlapping animations
+        this.autoCollectEnabled = Boolean(autoCollectEnabled);
+        this.debugNextSpin = null;
         this.winCounterInterval = null;
 
-        // Initialize gamble and history features
-        this.spinHistory = new SpinHistory(this.featuresConfig.spinHistory.maxEntries);
-        this.gamble = new Gamble(this);
-        this.buyBonus = new BuyBonus(this);
-        this.winAnticipation = new WinAnticipation(this);
+        this.initializeMetricsHook();
 
-        // Delegated subsystems
-        this.uiFacade = new UIFacade(this.dom, this.timerManager, this.turboMode);
-        const spinEngineOptions: SpinEngineOptions = {
-            reelCount: this.reelCount,
-            rowCount: this.rowCount,
-            symbolsPerReel: this.symbolsPerReel,
-            reelStrips: this.reelStrips,
-            turboMode: this.turboMode,
-            timerManager: this.timerManager,
-            state: this.state,
-            dom: this.dom,
-            soundManager: this.soundManager,
-            winAnticipation: this.winAnticipation,
-            events: this.events,
-            cascade: this.cascade,
-            freeSpins: this.freeSpins,
-            statistics: this.statistics,
-            dailyChallenges: this.dailyChallenges,
-            levelSystem: this.levelSystem,
-            visualEffects: this.visualEffects,
-            ui: this.uiFacade,
-            triggerScreenShake: () => this.triggerScreenShake(),
-            metrics: this.metrics,
-            rng: this.rng
-        };
-
-        this.spinEngine = new SpinEngine(spinEngineOptions as any);
-
-        const featureManagerOptions: FeatureManagerOptions = {
-            freeSpins: this.freeSpins,
-            bonusGame: this.bonusGame,
-            statistics: this.statistics,
-            levelSystem: this.levelSystem,
-            achievements: this.achievements,
-            dailyChallenges: this.dailyChallenges,
-            soundManager: this.soundManager,
-            gamble: this.gamble,
-            autoCollectEnabledRef: () => this.autoCollectEnabled,
-            state: this.state,
-            ui: this.uiFacade,
-            spinHistory: this.spinHistory,
-            cascade: this.cascade,
-            gameConfig: this.gameConfig,
-            spinExecutor: this,
-            saveGameState: () => this.saveGameState?.(),
-            dom: this.dom
-        };
-
-        this.featureManager = new FeatureManager(featureManagerOptions as any);
+        errorHandler?.init?.({
+            showMessage: (message: string) => this.showMessage(message)
+        });
 
         // Maintain backward compatible UI reference
         this.ui = this.uiFacade as UIFacade & {
@@ -308,6 +224,23 @@ export class SlotMachine {
         };
         this.ui.applySymbolClasses = (symbol: any, text: string) =>
             this.applySymbolClasses(symbol, text);
+
+        this.initializeGame();
+    }
+
+    initializeMetricsHook(): void {
+        if (typeof window !== 'undefined' && typeof window.__GS_METRICS_HOOK__ === 'function') {
+            this.metrics.setReporter?.(window.__GS_METRICS_HOOK__);
+        }
+    }
+
+    initializeGame(): void {
+        this.state.setCredits(this.gameConfig.initialCredits);
+        this.state.setCurrentBet(this.gameConfig.betOptions[0]);
+        this.state.setCurrentBetIndex(0);
+        this.state.setLastWin(0);
+        this.state.setSpinning(false);
+        this.state.setReelPositions(new Array(this.reelCount).fill(0));
     }
 
     /**

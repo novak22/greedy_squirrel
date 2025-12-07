@@ -1,17 +1,14 @@
 import { GAME_CONFIG } from '../config/game.js';
-import { SYMBOLS, getPremiumSymbols, getSymbolByEmoji } from '../config/symbols.js';
+import { SYMBOLS, getPremiumSymbols } from '../config/symbols.js';
 import { FEATURES_CONFIG } from '../config/features.js';
-import { PaylineEvaluator } from './PaylineEvaluator.js';
-import { SlotMachine } from './SlotMachine.js';
+import { SlotMachine, type SlotMachineDependencies } from './SlotMachine.js';
 import { ErrorHandler, ERROR_TYPES } from './ErrorHandler.js';
 import { UIController } from '../ui/UIController.js';
 import { Logger } from '../utils/Logger.js';
 import { Metrics } from '../utils/Metrics.js';
 import { GAME_EVENTS } from './EventBus.js';
+import { PaylineEvaluator } from './PaylineEvaluator.js';
 import { StatsRenderer } from '../ui/renderers/StatsRenderer.js';
-import { CascadeRenderer } from '../ui/renderers/CascadeRenderer.js';
-import { BonusGameRenderer } from '../ui/renderers/BonusGameRenderer.js';
-import { FreeSpinsRenderer } from '../ui/renderers/FreeSpinsRenderer.js';
 import { DOMCache } from '../ui/DOMCache.js';
 import { StatsController } from '../ui/StatsController.js';
 import { GameStateLoader } from './GameStateLoader.js';
@@ -46,47 +43,15 @@ type LevelReward = {
     value?: string;
 } | null;
 
-type OrchestratorDependencies = {
-    dom?: Record<string, unknown>;
-    paylineEvaluator?: PaylineEvaluator;
-    cascadeRenderer?: CascadeRenderer;
-    bonusGameRenderer?: BonusGameRenderer;
-    freeSpinsRenderer?: FreeSpinsRenderer;
-};
+type OrchestratorDependencies = SlotMachineDependencies;
 
 export class GameOrchestrator extends SlotMachine {
     paylineEvaluator: PaylineEvaluator;
     stateLoader: GameStateLoader;
     statsController!: StatsController;
 
-    constructor({
-        dom = {},
-        paylineEvaluator,
-        cascadeRenderer,
-        bonusGameRenderer,
-        freeSpinsRenderer
-    }: OrchestratorDependencies = {}) {
-        const domCache: Record<string, unknown> = dom;
-        const cascadeRendererInstance = cascadeRenderer ?? new CascadeRenderer(domCache);
-        const bonusGameRendererInstance = bonusGameRenderer ?? new BonusGameRenderer();
-        const freeSpinsRendererInstance = freeSpinsRenderer ?? new FreeSpinsRenderer();
-        const paylineEvaluatorInstance =
-            paylineEvaluator ??
-            new PaylineEvaluator({
-                symbols: SYMBOLS,
-                symbolHelpers: { getSymbolByEmoji },
-                paylines: GAME_CONFIG.paylines,
-                reelCount: GAME_CONFIG.reelCount,
-                metrics: Metrics
-            });
-
-        super({
-            dom: domCache,
-            paylineEvaluator: paylineEvaluatorInstance,
-            cascadeRenderer: cascadeRendererInstance,
-            bonusGameRenderer: bonusGameRendererInstance,
-            freeSpinsRenderer: freeSpinsRendererInstance
-        });
+    constructor(dependencies: OrchestratorDependencies) {
+        super(dependencies);
 
         // Validate game configuration before initialization
         const configErrors = assertValidConfigs(Logger);
@@ -96,7 +61,7 @@ export class GameOrchestrator extends SlotMachine {
             );
         }
 
-        this.paylineEvaluator = paylineEvaluatorInstance;
+        this.paylineEvaluator = dependencies.paylineEvaluator;
 
         // Initialize state loader
         this.stateLoader = new GameStateLoader({
